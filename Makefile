@@ -15,7 +15,7 @@ FW_DIR  := firmware/xiao-sense
 FW_ELF  := $(FW_DIR)/target/thumbv7em-none-eabihf/release/xiao-sense-fw
 FW_UF2  := $(DIST)/xiao-sense-fw-$(VERSION).uf2
 
-.PHONY: all ci fmt fmt-check clippy test tools-test check-thumb fw fw-check fw-uf2 synth-demo build pi-zero pi-arm64 x86-musl dist clean
+.PHONY: all ci fmt fmt-check clippy test tools-test check-thumb fw fw-check fw-uf2 fw-uf2-pcm synth-demo build pi-zero pi-arm64 x86-musl dist clean
 
 all: ci
 
@@ -40,11 +40,13 @@ tools-test:
 
 # no_std libraries for Cortex-M4F (nRF52840).
 check-thumb:
-	$(CARGO) build -p trill-driver -p lsm6ds3trc -p motion-synth -p status-led --target thumbv7em-none-eabihf
+	$(CARGO) build -p trill-driver -p lsm6ds3trc -p motion-synth -p status-led -p instrument-events -p trill-usb --target thumbv7em-none-eabihf
 
 # XIAO nRF52840 Sense firmware: lint + linked release ELF + UF2 safety check.
 fw-check:
 	cd $(FW_DIR) && $(CARGO) clippy --release --locked -- -D warnings
+	cd $(FW_DIR) && $(CARGO) clippy --release --locked --features pcm-synth -- -D warnings
+	$(MAKE) fw-uf2-pcm
 	$(MAKE) fw-uf2
 
 fw:
@@ -55,6 +57,13 @@ fw-uf2: fw
 	mkdir -p $(DIST)
 	python3 tools/xiao_uf2.py convert $(FW_ELF) -o $(FW_UF2)
 	python3 tools/xiao_uf2.py inspect $(FW_UF2)
+
+# Optional debug build: on-board synth + PCM CDC port (USB PID 1209:0003).
+fw-uf2-pcm:
+	cd $(FW_DIR) && $(CARGO) build --release --locked --features pcm-synth
+	mkdir -p $(DIST)
+	python3 tools/xiao_uf2.py convert $(FW_ELF) -o $(DIST)/xiao-sense-fw-pcm-synth-$(VERSION).uf2
+	python3 tools/xiao_uf2.py inspect $(DIST)/xiao-sense-fw-pcm-synth-$(VERSION).uf2
 
 # Render the scripted motion demo to dist/motion-synth-demo.wav on the host.
 synth-demo:

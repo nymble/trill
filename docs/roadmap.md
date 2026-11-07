@@ -5,15 +5,17 @@
 | Item | State |
 |---|---|
 | Raspberry Pi wiring ([design](design-raspberry-pi.md)) | Proposal. Pins checked against Bela, Raspberry Pi docs. **Not tested on hardware** |
-| XIAO nRF52840 wiring ([design](design-xiao-nrf52840.md)) | Proposal. Pins and pull-ups checked against Seeed schematics and Nordic PS. **Not tested on hardware** |
+| XIAO nRF52840 wiring ([design](design-xiao-nrf52840.md)) | Proposal. Pins and pull-ups checked against Seeed schematics and Nordic PS; power/battery section transcribed from the Sense schematic Rev V1.1. **Not tested on hardware**; no battery fitted or measured |
 | `trill-driver` | Implemented. Host-tested against datasheet byte sequences with mock I²C. Compiles for `thumbv7em-none-eabihf`. **Not run against a sensor** |
 | `trill` CLI (Linux) | Implemented. Host build and argument tests. Cross-built for ARMv6 and aarch64 musl. **Not run on a Pi with a sensor** |
 | `lsm6ds3trc` IMU driver | Implemented from the ST datasheet. Mock-I²C tests. **Not run against a sensor** |
 | `motion-synth` | Implemented. Host test vectors and WAV demo. **No on-target timing yet** |
 | `status-led` + firmware LED task | Implemented. Host tests for priority, timing, wrap and pin writes. **LED not observed on hardware** |
-| XIAO Sense firmware ([doc](firmware-xiao-sense.md)) | Implemented: USB diagnostics, IMU, Trill, audio-rate synth, USB PCM test stream. Links for nRF52840 and passes UF2 checks in CI. **Never flashed or run** |
+| `instrument-events` ([mapping](midi-mapping.md)) | Implemented: single-voice touch + motion → MIDI engine, USB-MIDI encoder. Host-tested (unplug/reconnect, missing IMU, sensor loss, queue flood, note order, deadband, scaling, invalid input, timestamp wrap) |
+| `trill-usb` | Implemented: USB-MIDI + CDC layout; descriptors checked by host tests. **Enumeration not tested on any host** |
+| XIAO Sense firmware ([doc](firmware-xiao-sense.md), [USB MIDI](usb-midi.md)) | Implemented: class-compliant USB-MIDI + diagnostics (default), IMU and Trill as independent tasks, Trill frame-ID filtering; debug synth + PCM stream behind `pcm-synth`. Links and passes UF2 checks in CI. **Never flashed or run** |
 | Omi integration ([doc](omi-integration.md)) | Investigated. Decision: separate development image, Omi untouched |
-| I²S output, MIDI, BLE, mobile apps | Not started |
+| I²S output, BLE (incl. BLE-MIDI), MPE, multi-touch, mic, battery monitoring, mobile apps | Not started. BLE deferred pending a licensing decision |
 
 ## Instrument pipeline
 
@@ -23,12 +25,12 @@ Trill Flex ──I²C──> driver ──> touch frames ──> mapping ──>
                   or diff)       size, n)        expression)     BLE, OSC …)
 ```
 
-1. **Acquisition:** done (`trill-driver`). Next: status-byte frame ID, EVT-pin or timer-driven scanning, channel masks.
+1. **Acquisition:** done (`trill-driver`), including status-byte frame ID. Next: EVT-pin or timer-driven scanning, channel masks.
 2. **Touch tracking:** the sensor reports touches in no stable order. Planned: persistent touch IDs across frames, size-based onset and release detection, and smoothing.
 3. **Mapping:** location to pitch (continuous, or quantised to a scale), size to velocity or aftertouch, number of touches to voicing. Custom flex PCBs: diff channels grouped into pads or sliders on the host.
 4. **Outputs (future):**
    - **Local synth** on a Linux host through ALSA.
-   - **MIDI:** USB-MIDI or ALSA sequencer on Linux. MPE suits multi-touch expression.
+   - **MIDI:** USB-MIDI from the XIAO is implemented (single voice, [mapping](midi-mapping.md)); next: MPE with multi-touch tracking. ALSA sequencer on Linux.
    - **BLE (nRF52840):** BLE-MIDI or a custom GATT service to iPhone/iPad. The nRF52840 has no Wi-Fi; Wi-Fi transport would need a different host.
    - **OSC/network** from a Linux host over Wi-Fi to iPad apps.
    - **Contrail:** integration surface to be defined with the Contrail project.
@@ -40,7 +42,7 @@ Trill Flex ──I²C──> driver ──> touch frames ──> mapping ──>
 | 0.1 | Designs, driver, Linux CLI, CI and release workflow (this version) |
 | 0.2 | Hardware bring-up on a Pi: record `identify`/`read` logs, confirm pin mapping and FFC orientation, mark the Pi design *validated* |
 | 0.3 | XIAO Sense firmware on hardware: bring-up checklist, IMU axis signs, Trill on D4/D5, measured render time and latency. Validate the XIAO design |
-| 0.4 | I²S audio output, touch tracking, USB-MIDI; MIDI output on Linux |
+| 0.4 | USB-MIDI on hardware (implemented, to be accepted: [procedure](usb-midi.md#hardware-acceptance-procedure)); touch tracking, MPE; battery voltage/charge status reading; MIDI output on Linux |
 | 0.5 | BLE-MIDI from the XIAO to iPhone/iPad; optional PDM mic input |
 | later | Synth app for ZPOD, Contrail integration |
 

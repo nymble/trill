@@ -33,7 +33,7 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       - name: no_std libraries for Cortex-M4F (nRF52840)
-        run: cargo build -p trill-driver -p lsm6ds3trc -p motion-synth -p status-led --target thumbv7em-none-eabihf --locked
+        run: cargo build -p trill-driver -p lsm6ds3trc -p motion-synth -p status-led -p instrument-events -p trill-usb --target thumbv7em-none-eabihf --locked
       - name: Tool tests (UF2 safety checks, PCM stream parser)
         run: python3 -m unittest discover -s tools -p 'test_*.py' -v
       - name: Motion synth demo render
@@ -56,10 +56,13 @@ jobs:
       - name: fmt
         working-directory: firmware/xiao-sense
         run: cargo fmt -- --check
-      - name: clippy
+      - name: clippy (default USB-MIDI, pcm-synth, timing-gpio)
         working-directory: firmware/xiao-sense
-        run: cargo clippy --release --locked -- -D warnings
-      - name: Link release ELF
+        run: |
+          cargo clippy --release --locked -- -D warnings
+          cargo clippy --release --locked --features pcm-synth -- -D warnings
+          cargo clippy --release --locked --features pcm-synth,timing-gpio -- -D warnings
+      - name: Link release ELF (default USB-MIDI + diagnostics)
         working-directory: firmware/xiao-sense
         run: cargo build --release --locked
       - name: Memory layout
@@ -70,7 +73,16 @@ jobs:
           python3 tools/xiao_uf2.py convert firmware/xiao-sense/target/thumbv7em-none-eabihf/release/xiao-sense-fw -o dist/xiao-sense-fw.uf2
           python3 tools/xiao_uf2.py inspect dist/xiao-sense-fw.uf2
           cp firmware/xiao-sense/target/thumbv7em-none-eabihf/release/xiao-sense-fw dist/xiao-sense-fw.elf
-          (cd dist && sha256sum xiao-sense-fw.uf2 xiao-sense-fw.elf > SHA256SUMS)
+      - name: Link release ELF (optional pcm-synth debug build)
+        working-directory: firmware/xiao-sense
+        run: cargo build --release --locked --features pcm-synth
+      - name: PCM debug UF2 (validated, artifact only)
+        run: |
+          readelf -lW firmware/xiao-sense/target/thumbv7em-none-eabihf/release/xiao-sense-fw
+          python3 tools/xiao_uf2.py convert firmware/xiao-sense/target/thumbv7em-none-eabihf/release/xiao-sense-fw -o dist/xiao-sense-fw-pcm-synth.uf2
+          python3 tools/xiao_uf2.py inspect dist/xiao-sense-fw-pcm-synth.uf2
+          cp firmware/xiao-sense/target/thumbv7em-none-eabihf/release/xiao-sense-fw dist/xiao-sense-fw-pcm-synth.elf
+          (cd dist && sha256sum *.uf2 *.elf > SHA256SUMS)
       - uses: actions/upload-artifact@v4
         with:
           name: xiao-sense-fw-unvalidated-on-hardware

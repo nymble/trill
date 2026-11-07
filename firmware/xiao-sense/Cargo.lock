@@ -543,6 +543,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
+name = "instrument-events"
+version = "0.1.0"
+dependencies = [
+ "heapless",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -913,6 +920,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "trill-usb"
+version = "0.1.0"
+dependencies = [
+ "embassy-usb",
+]
+
+[[package]]
 name = "typenum"
 version = "1.20.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1039,11 +1053,13 @@ dependencies = [
  "embassy-usb",
  "embedded-hal 1.0.0",
  "heapless",
+ "instrument-events",
  "lsm6ds3trc",
  "motion-synth",
  "static_cell",
  "status-led",
  "trill-driver",
+ "trill-usb",
 ]
 
 [[package]]

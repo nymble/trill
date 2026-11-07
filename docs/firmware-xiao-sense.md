@@ -1,6 +1,6 @@
 # Firmware: XIAO nRF52840 Sense
 
-Rust ([Embassy](https://embassy.dev)) application image for the **Seeed Studio XIAO nRF52840 Sense**: USB diagnostics, the on-board LSM6DS3TR-C accelerometer + gyroscope, an optional Trill on D4/D5, and the audio-rate [motion synth](motion-synth.md).
+Rust ([Embassy](https://embassy.dev)) application image for the **Seeed Studio XIAO nRF52840 Sense**: a class-compliant **USB-MIDI 1.0** instrument driven by a Trill on D4/D5 and the on-board LSM6DS3TR-C accelerometer + gyroscope, plus a USB diagnostics port. The audio-rate [motion synth](motion-synth.md) is an optional debug build (`pcm-synth`). Setup and acceptance tests: [USB MIDI](usb-midi.md); exact event mapping: [MIDI mapping](midi-mapping.md); power and battery: [XIAO design](design-xiao-nrf52840.md#power-usb-and-battery).
 
 > **Status:** builds, links and passes the UF2 safety checks in CI. **It has not been run on hardware.** Every rate, pin and timing below is a design value taken from datasheets and board files, not a measurement.
 
@@ -19,15 +19,20 @@ An Omi DevKit 1/2 is an XIAO nRF52840 Sense running Omi's Zephyr firmware. Loadi
 
 ## What runs
 
+Default build (USB-MIDI + diagnostics):
+
 | Executor (NVIC priority) | Task | Rate / deadline |
 |---|---|---|
-| High (`EGU1_SWI1`, P5) | audio: take control snapshot, render one block, queue it for USB | 64 samples @ 32 kHz = **2 ms** per block, deadline from sample count |
-| Medium (`EGU0_SWI0`, P6) | USB device, diagnostics port, PCM port | USB full speed |
-| Thread (lowest) | IMU: data-ready wait, 14-byte burst read, motion processing, mapping | **416 Hz** (2.4 ms) |
-| Thread | Trill: identify, configure, centroid read | 200 Hz (5 ms) |
+| Medium (`EGU0_SWI0`, P6) | USB device, diagnostics port, MIDI writer (engine tick, packet fill, IN-endpoint write) | USB full speed; writer wakes on new input or every 2 ms |
+| Thread (lowest) | IMU: data-ready wait, 14-byte burst read, motion processing, engine `motion()` | **416 Hz ODR**; every sample is read and processed (~2.4 ms period) |
+| Thread | Trill: identify, configure (ultra-fast, 10 bit), status + centroid read, engine `touch()` for new frames only | Poll every 5 ms; frame ID filters repeats |
 | Thread | [Status LED](#status-led): select indication, write pins on change; crash-counter reset after 30 s | 50 Hz tick (20 ms) |
 
-Sensor I/O blocks for bounded time (every I²C transaction has a 5 ms timeout), and audio and USB preempt it. Control → audio hand-off is a fixed-size mailbox: continuous values are latest-wins, taps accumulate so none is lost. The audio → USB queue holds 8 blocks (16 ms). The audio task never waits on it: when it is full, the block is dropped and counted.
+With `--features pcm-synth` a high-priority executor (`EGU1_SWI1`, P5) also runs the audio task (64 samples @ 32 kHz = 2 ms blocks) and a second CDC port streams the PCM. The default build has no high-priority executor and renders no audio.
+
+Touch and IMU are independent tasks; each hands timestamped samples to the [event engine](midi-mapping.md) (`crates/instrument-events`) through a short critical section. Touch therefore works with the IMU absent or failing. Sensor I/O blocks for bounded time (every I²C transaction has a 5 ms timeout), and USB preempts it. The MIDI writer never blocks a sensor task: if the host stops reading, the engine coalesces controllers and holds note messages in a bounded queue (see [MIDI mapping](midi-mapping.md#priority-coalescing-and-backpressure)).
+
+**Trill scan vs poll.** A 30-channel Flex scan takes ≈ 30 × 205 µs ≈ 6.2 ms at the Trill-Linux default of 12 bits, longer than the 5 ms poll, so many polls would return the previous frame. The firmware uses 10 bits (≈ 30 × 78 µs ≈ 2.3 ms, Bela scan-time table) and reads the status byte with the centroids in one 21-byte transaction (≈ 2.3 ms at 100 kHz). A poll that returns the same 6-bit frame ID as the previous one is counted (`stale=`) and not passed on. Touch sensitivity at 10 bits (noise threshold 0.03 of full scale, size divided by 1200 × 2<sup>bits−12</sup> = 300) has **not** been tuned on hardware.
 
 ## Pins
 
@@ -48,7 +53,7 @@ HFCLK runs from the 32 MHz crystal (USB needs it) and LFCLK from the 32.768 kHz 
 | Range | Contents | Written by this project |
 |---|---|---|
 | `0x00000000–0x00027000` | MBR + SoftDevice S140 7.3.0 | **Never** |
-| `0x00027000–0x000EC000` | Application (this image, ~88 KB) | Yes |
+| `0x00027000–0x000EC000` | Application (this image: ~94 KB default, ~105 KB `pcm-synth`) | Yes |
 | `0x000EC000–0x000F4000` | Storage partition (Zephyr/Omi settings) | Never |
 | `0x000F4000–0x00100000` | UF2 bootloader, MBR params, settings | **Never** |
 | RAM `0x20000008–0x20040000` | Application (first 8 bytes kept for the MBR) | — |
@@ -62,14 +67,17 @@ The application window comes from Zephyr's `nrf52840_partition_uf2_sdv7.dtsi`, w
 Requirements: Rust stable (edition-2024 dependencies, so 1.85 or newer), `rustup target add thumbv7em-none-eabihf`, and `python3` for the UF2 step. No vendor SDK is needed.
 
 ```sh
-make fw-uf2          # clippy-clean release ELF -> dist/xiao-sense-fw-<version>.uf2 (validated)
+make fw-uf2          # default USB-MIDI build -> dist/xiao-sense-fw-<version>.uf2 (validated)
+make fw-uf2-pcm      # optional debug synth build -> dist/xiao-sense-fw-pcm-synth-<version>.uf2
 # without make:
 cd firmware/xiao-sense && cargo build --release --locked && cd ../..
 python3 tools/xiao_uf2.py convert firmware/xiao-sense/target/thumbv7em-none-eabihf/release/xiao-sense-fw -o dist/xiao-sense-fw.uf2
 python3 tools/xiao_uf2.py inspect dist/xiao-sense-fw.uf2
 ```
 
-`cargo run` has no runner configured, so it never touches a device. CI uploads the ELF, the UF2 and `SHA256SUMS` as a workflow artifact named `xiao-sense-fw-unvalidated-on-hardware`.
+Cargo features: `pcm-synth` (debug synth + PCM port, USB PID `1209:0003`), `timing-gpio` (logic-analyser outputs on D0/D1, see [USB MIDI](usb-midi.md#measuring-latency)). Neither is on by default.
+
+`cargo run` has no runner configured, so it never touches a device. CI uploads both ELFs, both UF2s and `SHA256SUMS` as a workflow artifact named `xiao-sense-fw-unvalidated-on-hardware`. Artifacts are not releases.
 
 ## Loading over USB (explicit steps only)
 
@@ -100,18 +108,33 @@ Never copy a `bootloader*.uf2` (for example Omi's `bootloader0.9.0.uf2`) or a fu
 
 ## USB interfaces
 
-Development identifiers: VID:PID `1209:0001` (pid.codes test ID, testing only; get a real PID before distributing hardware). The device enumerates as two CDC ACM ports:
+Layout and descriptors live in [`crates/trill-usb`](../crates/trill-usb), whose host tests build the exact firmware layout against a mock driver with the nRF52840 endpoint budget and check the descriptors (IADs, Audio Control / MIDI Streaming headers, jack IDs, bulk endpoints, `wTotalLength`).
 
-| Port | Content |
+| Build | VID:PID (pid.codes **test** IDs) | Product string | Functions (interface numbers) |
+|---|---|---|---|
+| default | `1209:0002` | `Trill XIAO MIDI (dev)` | CDC ACM diagnostics (0–1), USB-MIDI 1.0 (2–3) |
+| `pcm-synth` | `1209:0003` | `Trill XIAO MIDI+PCM (dev)` | diagnostics (0–1), USB-MIDI (2–3), CDC ACM PCM (4–5) |
+
+pid.codes test PIDs are for private development only. Distributed hardware needs its own assigned PID. Each layout has its own PID so a host that caches descriptors per VID:PID does not mix them up. Bus power requested: 100 mA.
+
+**Diagnostics port** (first `ttyACM` / `cu.usbmodem…`; only this port prints text). Banner, boot report, status line every 1 s. Keys:
+
+| Key | Action |
 |---|---|
-| 0 (first function) | Text diagnostics: banner, boot report, status line every 1 s. Keys: `s` status, `c` recalibrate gyro, `b` boot report, `v` version, `h` help; LED: `L` self-test, `0`–`7` manual colour, `a` automatic ([Status LED](#status-led)) |
-| 1 (second function) | Framed PCM test stream, active while the host holds DTR |
+| `s` | Status now. Also any unlisted key |
+| `m` | MIDI map and all engine counters |
+| `p` | MIDI panic: CC123, CC120, bend centre, pressure 0, RPN 0 (lift finger before the next note) |
+| `k` / `q` | Toggle pitch mode bend/steps; toggle scale chromatic/pentatonic (not persisted) |
+| `t` / `x` | Toggle tap percussion; toggle motion controllers (not persisted) |
+| `c` | Recalibrate gyro (hold still) |
+| `b`, `v`, `h`/`?` | Boot report, version + USB IDs, help |
+| `L`, `0`–`7`, `a` | LED self-test, manual colour, automatic ([Status LED](#status-led)) |
 
-On Linux they usually appear as `/dev/ttyACM0` and `/dev/ttyACM1`, and on macOS as two `/dev/cu.usbmodem…` entries. Port names are not guaranteed, so confirm with the banner: only port 0 prints text.
+The status line reports IMU state and counters, scaled accel/gyro, pitch, roll, rotation, calibration, Trill state, reads, errors, repeated frames (`stale=`), touch, then `midi=up|down` (host configured the MIDI function), active note, note on/off counts, packets, events, stalls (`stall=`, write pending > 100 ms), write errors, deferred note ons and coalesced controller updates, then taps and LED. With `pcm-synth` the audio and PCM counters follow.
 
-The status line reports IMU state, sample/error/power-cycle counters, scaled accel/gyro, pitch, roll, rotation, calibration flag, Trill state and touch, audio blocks, late blocks, resyncs, starved blocks, render time (last/max, DWT cycle counter), control age (last/max), PCM sent/dropped, tap count and the LED indication/colour (`led=ready/green`).
+**USB-MIDI function:** one virtual cable, embedded IN + OUT jacks, 64-byte bulk endpoints. Device → host carries the instrument. Host → device packets are read and discarded (counted as `rx_pk`). Setup on macOS/iOS: [USB MIDI](usb-midi.md).
 
-The PCM port is a test transport, **not** a USB Audio or MIDI device. iPhone/iPad and DAWs will not see it as audio. Capture it with:
+**PCM port (`pcm-synth` only)** is a test transport, **not** USB Audio. Capture it with:
 
 ```sh
 python3 tools/pcm_capture.py /dev/ttyACM1 -o take.wav --seconds 10
@@ -122,7 +145,9 @@ which also reports CRC errors, sequence gaps, device-side drops, and the sample 
 ## Fault handling
 
 - **IMU:** WHO_AM_I check and software reset at init. After five consecutive read errors, or an init failure, the sensor is powered off and the bias estimate discarded, then retried with exponential backoff (100 ms → 2 s). A missing data-ready edge for 20 ms is counted and the sample is polled anyway.
-- **Trill:** optional. If absent or failing, it is retried every 1–2 s and touch input reads as "not touched".
+- **Trill:** optional; firmware ≥ 3 required (frame ID). If absent or failing (4 consecutive read errors), the engine releases any touch note, touch reads as "not touched", and the sensor is retried every 1–2 s. If frames simply stop, the engine releases after 50 ms. A finger still on the strip when the sensor returns does not sound until lifted.
+- **IMU absent or failing:** touch MIDI is unaffected. The engine ends any percussion note and returns CC74/CC1 to 0 (also after 100 ms without IMU frames).
+- **USB unplug, bus reset, suspend or deconfigure:** the engine drops everything queued and sounding. On the next configuration it sends the reset sequence first ([MIDI mapping](midi-mapping.md#connect-disconnect-and-panic)).
 - **Panics and HardFaults** write a short record to non-initialised RAM and reset. The next boot prints it on the diagnostics port. After three consecutive crash resets the firmware starts in **safe mode**: USB diagnostics only, red LED fast blink, no sensors or audio. The counter clears after 30 s of healthy running or on a pin/power-on reset. The record is best effort, because the UF2 bootloader runs between resets and may reuse that RAM. The bootloader stays reachable by double-pressing RESET in every case.
 - **Watchdog:** not enabled yet. A running nRF52 watchdog survives reset into the bootloader, and its interaction with this bootloader has not been verified.
 
@@ -166,7 +191,7 @@ The firmware creates all three pins at `Level::High` (off) before the LED task r
 | 9 | `tap` | white | 120 ms flash | Tap counter rose |
 | 10 | `touch` | green | solid | Finger on the Trill |
 | 11 | `motion` | blue | solid | Rotation > 60 dps |
-| 12 | `ready_stream` | blue | 50/1000 heartbeat | Idle, with the host holding the PCM port open |
+| 12 | `ready_stream` | blue | 50/1000 heartbeat | Idle, with a USB host that has configured the MIDI function (or holds the `pcm-synth` PCM port open). USB-level state only: it does not show that an app is listening. |
 | 13 | `ready` | green | 50/1000 heartbeat | Idle |
 
 There is no BLE indication, because BLE is not implemented. Time is a wrapping 32-bit millisecond count, and blink phase and hold timers are tested across the wrap at about 49.7 days.
@@ -188,12 +213,12 @@ The status line shows `led=<indication>/<colour>`, so the override is always vis
 Record the result of each step in the PR or issue that marks this design validated.
 
 1. `xiao_uf2.py info` output (Board-ID, bootloader version, SoftDevice).
-2. Enumeration: two CDC ports (`lsusb -v -d 1209:0001` or System Information).
+2. Enumeration: one CDC port and one MIDI port (`lsusb -v -d 1209:0002`, macOS System Information, or Audio MIDI Setup). Then run the [USB-MIDI acceptance procedure](usb-midi.md#hardware-acceptance-procedure).
 3. Diagnostics banner: `consecutive_crashes=0`, `safe_mode=0`.
 4. IMU: `imu=run`, `n` increasing by about 416 per second, `err=0`. Flat on a table: `a≈[0,0,1]g`. Hold still for 1 s: `cal=1`, `rot` near 0.
 5. Axis signs: tilt the USB end down, then up, and note the sign of `pitch`. Roll left and right and note `roll`. Fix the mapping in `motion-synth` if the instrument should respond the other way.
-6. Trill (if fitted): `trill=run`, `touch=yes` while touching.
-7. Audio: `late=0`, `resync=0`, render time well below 2000 µs. Capture 10 s with `pcm_capture.py`: `crc_errors 0`, `seq_gaps 0`, measured rate within 0.1 % of 32000 Hz.
+6. Trill (if fitted): `trill=run`, `touch=yes` while touching, `reads` rising by ~200/s, `stale` small compared with `reads` (a large ratio means the scan is slower than the poll).
+7. Audio (`pcm-synth` build only): `late=0`, `resync=0`, render time well below 2000 µs. Capture 10 s with `pcm_capture.py`: `crc_errors 0`, `seq_gaps 0`, measured rate within 0.1 % of 32000 Hz.
 8. LED: press `L` and confirm red, green, blue, yellow, cyan, magenta, white, then off, in that order (this checks pins and polarity). The LED must be dark before the firmware starts. Then confirm `cyan` until still, then the `ready` green heartbeat. Record whether the mixes are distinguishable.
 9. Leave it running for 10 minutes and compare counters.
 
@@ -201,14 +226,16 @@ Record the result of each step in the PR or issue that marks this design validat
 
 The firmware measures on target:
 
-- `ctl_age`: time from the IMU sample timestamp (data-ready wake) to the start of the audio block that consumed it.
-- `render`: CPU time per block.
+- `ctl_age` (`pcm-synth` only): time from the IMU sample timestamp (data-ready wake) to the start of the audio block that consumed it.
+- `render` (`pcm-synth` only): CPU time per block.
+
+For the MIDI path see [USB MIDI: measuring latency](usb-midi.md#measuring-latency).
 
 End-to-end motion → sound needs an external reference:
 
 1. **I²S/DAC path (when added):** tap the board on a piezo or second accelerometer recorded on one channel of an audio interface, record the DAC output on the other, and measure onset to onset over 50+ taps. Report median and 95th percentile.
 2. **USB PCM path:** the host side adds unbounded buffering, so only device-side numbers (`ctl_age` + one block + USB frame) are meaningful there. Do not quote host playback latency as instrument latency.
-3. **Scope method:** add a GPIO toggle at IMU data-ready and at block start, and measure both on a scope.
+3. **Scope method:** the `timing-gpio` feature drives D0/D1 (see `src/timing.rs`); measure both on a scope or logic analyser.
 
 Design budget (estimates, not measurements): [motion-synth.md](motion-synth.md#latency-budget).
 
@@ -216,5 +243,6 @@ Design budget (estimates, not measurements): [motion-synth.md](motion-synth.md#l
 
 - PDM microphone capture. Pins and peripheral are free; the planned path is 16 kHz mono into a separate ring buffer, so it cannot disturb synth timing.
 - I²S DAC or PWM audio output ([options](motion-synth.md#output-paths)).
-- USB Audio Class or USB-MIDI device, BLE (any service), Omi protocol compatibility.
-- Watchdog, low-power modes, battery monitoring, settings storage.
+- USB Audio Class (sound card) output, BLE (any service, including BLE-MIDI), MPE, multi-touch voices, Omi protocol compatibility.
+- Watchdog, low-power modes, settings storage.
+- Battery voltage or charge-status reading. Charging is done by the board's charger IC without firmware ([XIAO design: power](design-xiao-nrf52840.md#power-usb-and-battery)); the firmware does not read `P0.17` (charge status), `P0.14`/`P0.31` (battery divider) or drive `P0.13` (charge current).

@@ -1,0 +1,18 @@
+[package]
+name = "trill-usb"
+description = "USB device layout for the Trill XIAO firmware: class-compliant USB-MIDI 1.0 + CDC ACM diagnostics (+ optional PCM test port), built with embassy-usb and checked on the host"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version = "1.85"
+publish = false
+
+[dependencies]
+# Six interfaces are needed with the optional PCM port (2 per CDC ACM, 2 for MIDI).
+embassy-usb = { version = "0.6.0", default-features = false, features = ["max-interface-count-6"] }
+
+[dev-dependencies]
+# Host implementation of critical sections for the descriptor tests.
+critical-section = { version = "1.2", features = ["std"] }
