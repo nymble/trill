@@ -23,6 +23,12 @@ Seeed Studio XIAO nRF52840 pin and schematic facts are taken from Seeed Studio's
 
 Bela and Trill are trademarks of Augmented Instruments Ltd. XIAO and Seeed Studio are trademarks of Seeed Technology Co., Ltd. Raspberry Pi is a trademark of Raspberry Pi Ltd. Nordic Semiconductor and nRF52840 are trademarks of Nordic Semiconductor ASA. QWIIC is a trademark of SparkFun Electronics. All other trademarks belong to their owners. These names are used here only to identify compatible hardware. This project is not affiliated with or endorsed by any of these companies.
 
+`lsm6ds3trc` was written from the ST LSM6DS3TR-C datasheet (DocID030071 Rev 3). XIAO nRF52840 Sense pin and memory-layout facts were cross-checked against Zephyr's `xiao_ble` board files (Apache-2.0) and Seeed's Arduino variant. No code was copied from them.
+
+## Omi
+
+[docs/omi-integration.md](docs/omi-integration.md) cites facts (pins, UUIDs, codec IDs, framing, flash procedure) from [BasedHardware/omi](https://github.com/BasedHardware/omi) (MIT, © 2024 Based Hardware Contributors), reviewed at commit `28c785960fa7`. No Omi source code is included in this repository. Omi is a trademark of its owner.
+
 ## Rust dependencies
 
-Third-party crates keep their own licences (mostly MIT/Apache-2.0); see `Cargo.lock` and each crate's metadata. Run `cargo tree` to list them.
+Third-party crates keep their own licences (mostly MIT/Apache-2.0); see `Cargo.lock`, `firmware/xiao-sense/Cargo.lock` and each crate's metadata. Run `cargo tree` to list them. Firmware binaries link permissively licensed crates only (MIT, Apache-2.0, BSD-3-Clause `nrf-pac`, Zlib, Unlicense). Anyone distributing a firmware binary must ship those notices with it.

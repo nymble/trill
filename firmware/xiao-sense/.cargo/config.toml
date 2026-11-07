@@ -1,0 +1,8 @@
+# Target-only build settings for the XIAO nRF52840 Sense firmware.
+# No `runner` is configured on purpose: `cargo run` never touches a device.
+# Loading is an explicit, separate step (see docs/firmware-xiao-sense.md).
+[build]
+target = "thumbv7em-none-eabihf"
+
+[target.thumbv7em-none-eabihf]
+rustflags = ["-C", "link-arg=--nmagic", "-C", "link-arg=-Tlink.x"]

@@ -1,0 +1,45 @@
+[package]
+name = "xiao-sense-fw"
+description = "Embassy firmware for the Seeed XIAO nRF52840 Sense: USB CDC diagnostics, LSM6DS3TR-C motion, Trill touch, audio-rate motion synth"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-only"
+repository = "https://github.com/nymble/trill"
+authors = ["Nymble (https://github.com/nymble)"]
+rust-version = "1.85"
+publish = false
+
+[[bin]]
+name = "xiao-sense-fw"
+path = "src/main.rs"
+test = false
+bench = false
+
+[dependencies]
+trill-driver = { path = "../../crates/trill-driver" }
+lsm6ds3trc = { path = "../../crates/lsm6ds3trc" }
+motion-synth = { path = "../../crates/motion-synth" }
+status-led = { path = "../../crates/status-led" }
+embassy-nrf = { version = "0.11.0", features = ["nrf52840", "time-driver-rtc1", "gpiote", "time", "unstable-pac"] }
+embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread", "executor-interrupt"] }
+embassy-time = "0.5.1"
+embassy-sync = "0.8.0"
+embassy-futures = "0.1.2"
+static_cell = "2.1.1"
+embedded-hal = "1.0.0"
+embassy-usb = { version = "0.6.0", default-features = false }
+cortex-m = { version = "0.7.7", features = ["inline-asm", "critical-section-single-core"] }
+cortex-m-rt = { version = "0.7.5", features = ["set-vtor"] }
+heapless = "0.9"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+debug = 2          # symbols stay in the ELF only; not in the UF2/bin
+panic = "abort"
+
+[profile.dev]
+opt-level = "s"
+debug = 2
+panic = "abort"

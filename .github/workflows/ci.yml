@@ -32,10 +32,50 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
-      - name: Driver compile check for Cortex-M4F (nRF52840)
-        run: cargo build -p trill-driver --target thumbv7em-none-eabihf --locked
+      - name: no_std libraries for Cortex-M4F (nRF52840)
+        run: cargo build -p trill-driver -p lsm6ds3trc -p motion-synth -p status-led --target thumbv7em-none-eabihf --locked
+      - name: Tool tests (UF2 safety checks, PCM stream parser)
+        run: python3 -m unittest discover -s tools -p 'test_*.py' -v
+      - name: Motion synth demo render
+        run: cargo run --release --locked -p motion-synth --example render_wav -- /tmp/motion-synth-demo.wav
       - name: Makefile parses
-        run: make --dry-run ci pi-zero dist >/dev/null
+        run: make --dry-run ci pi-zero dist fw-uf2 synth-demo >/dev/null
+
+  firmware:
+    name: XIAO nRF52840 Sense firmware (link + UF2 check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal --component rustfmt,clippy
+          rustup default stable
+          rustup target add thumbv7em-none-eabihf
+      - name: fmt
+        working-directory: firmware/xiao-sense
+        run: cargo fmt -- --check
+      - name: clippy
+        working-directory: firmware/xiao-sense
+        run: cargo clippy --release --locked -- -D warnings
+      - name: Link release ELF
+        working-directory: firmware/xiao-sense
+        run: cargo build --release --locked
+      - name: Memory layout
+        run: readelf -lW firmware/xiao-sense/target/thumbv7em-none-eabihf/release/xiao-sense-fw
+      - name: Application-only UF2 (validated, artifact only)
+        run: |
+          mkdir -p dist
+          python3 tools/xiao_uf2.py convert firmware/xiao-sense/target/thumbv7em-none-eabihf/release/xiao-sense-fw -o dist/xiao-sense-fw.uf2
+          python3 tools/xiao_uf2.py inspect dist/xiao-sense-fw.uf2
+          cp firmware/xiao-sense/target/thumbv7em-none-eabihf/release/xiao-sense-fw dist/xiao-sense-fw.elf
+          (cd dist && sha256sum xiao-sense-fw.uf2 xiao-sense-fw.elf > SHA256SUMS)
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xiao-sense-fw-unvalidated-on-hardware
+          path: dist/
+          retention-days: 14
 
   cross:
     name: cross-build ${{ matrix.target }}
