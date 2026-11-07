@@ -2,23 +2,25 @@
 
 Open hardware designs and Rust software for using [Bela Trill](https://bela.io/trill) capacitive touch sensors, starting with **Trill Flex**, as a musical instrument controller.
 
-> **Status (v0.1.0):** the wiring designs are proposals and have **not been validated on hardware**. The Rust driver, Linux CLI, IMU driver, motion synth and XIAO Sense firmware build and pass host tests, and the firmware links for the nRF52840. Nothing has been run on a physical sensor or board yet. See [design status](docs/roadmap.md#design-status).
+> **Status (v0.1.0):** the wiring designs are proposals and have **not been validated on hardware**. The Rust driver, Linux CLI, IMU driver, MIDI event engine, motion synth and XIAO Sense USB-MIDI firmware build and pass host tests, and the firmware links for the nRF52840. Nothing has been run on a physical sensor or board yet. See [design status](docs/roadmap.md#design-status).
 
 ## Designs
 
 | Design | Host | Document |
 |---|---|---|
 | Trill Flex → Raspberry Pi | Pi 40-pin header, I²C bus 1, Linux | [docs/design-raspberry-pi.md](docs/design-raspberry-pi.md) |
-| Trill Flex → Seeed Studio XIAO nRF52840 | XIAO D4/D5, Cortex-M4F, BLE-capable | [docs/design-xiao-nrf52840.md](docs/design-xiao-nrf52840.md) |
+| Trill Flex → Seeed Studio XIAO nRF52840 | XIAO D4/D5, Cortex-M4F, USB-MIDI; optional LiPo on the on-board charger | [docs/design-xiao-nrf52840.md](docs/design-xiao-nrf52840.md) ([power and battery](docs/design-xiao-nrf52840.md#power-usb-and-battery)) |
 
 [![Trill Flex to Raspberry Pi wiring](docs/images/trill-flex-raspberry-pi.svg)](docs/design-raspberry-pi.md)
 
-[![Trill Flex to XIAO nRF52840 wiring](docs/images/trill-flex-xiao-nrf52840.svg)](docs/design-xiao-nrf52840.md)
+[![Trill Flex to XIAO nRF52840 wiring, power and battery](docs/images/trill-flex-xiao-nrf52840.svg)](docs/design-xiao-nrf52840.md)
 
 ## Documentation
 
+- [USB MIDI](docs/usb-midi.md): what the XIAO presents to macOS/iOS, setup, hardware acceptance procedure, latency targets.
+- [MIDI mapping](docs/midi-mapping.md): touch and motion events → MIDI messages, priorities, reconnect/panic, example trace.
 - [XIAO nRF52840 Sense firmware](docs/firmware-xiao-sense.md): build, safe UF2 loading with backup/restore, USB diagnostics, bring-up checklist, latency measurement.
-- [Motion-to-music engine](docs/motion-synth.md): control vs audio rate, mapping, voice, latency budget, output paths.
+- [Motion-to-music engine](docs/motion-synth.md): motion processing, and the optional on-board debug synth.
 - [Omi integration](docs/omi-integration.md): what Omi's DevKit firmware does, licences by component, reuse matrix, architecture decision.
 
 - [Protocol notes](docs/protocol.md): I²C memory map, commands, data formats, and scaling.
@@ -35,8 +37,10 @@ Open hardware designs and Rust software for using [Bela Trill](https://bela.io/t
 | `trill-cli` (binary `trill`) | [crates/trill-cli](crates/trill-cli) | Linux bring-up tool over `/dev/i2c-N` (`linux-embedded-hal`). |
 | `lsm6ds3trc` | [crates/lsm6ds3trc](crates/lsm6ds3trc) | `no_std` LSM6DS3TR-C accelerometer + gyroscope driver (the XIAO Sense IMU). |
 | `motion-synth` | [crates/motion-synth](crates/motion-synth) | `no_std` motion processing, gesture mapping and audio-rate synth. |
+| `instrument-events` | [crates/instrument-events](crates/instrument-events) | `no_std` touch + motion → MIDI 1.0 event engine (single voice) and USB-MIDI packet encoder. |
+| `trill-usb` | [crates/trill-usb](crates/trill-usb) | USB-MIDI + CDC device layout (embassy-usb) with host descriptor tests. |
 | `status-led` | [crates/status-led](crates/status-led) | `no_std` RGB status LED: prioritised indications, blink timing, debug override, embedded-hal pin driver. |
-| `xiao-sense-fw` | [firmware/xiao-sense](firmware/xiao-sense) | Embassy firmware for the XIAO nRF52840 Sense (separate workspace). |
+| `xiao-sense-fw` | [firmware/xiao-sense](firmware/xiao-sense) | Embassy firmware for the XIAO nRF52840 Sense: USB-MIDI + diagnostics; optional debug synth (separate workspace). |
 | tools | [tools](tools) | `xiao_uf2.py` (application-only UF2 convert/inspect/backup/flash), `pcm_capture.py` (USB PCM stream → WAV). |
 
 Quick start on a Raspberry Pi with I²C enabled:
@@ -53,7 +57,7 @@ Build and check locally (no hardware needed):
 ```sh
 make ci          # fmt, clippy -D warnings, tests, tool tests, thumbv7em libs, firmware link + UF2 check
 make pi-zero     # static ARMv6 binary for Pi Zero / Zero W (needs cargo-zigbuild)
-make fw-uf2      # XIAO Sense firmware -> dist/*.uf2 (validated; never written to a device)
+make fw-uf2      # XIAO Sense USB-MIDI firmware -> dist/*.uf2 (validated; never written to a device)
 make synth-demo  # render the motion synth demo to dist/motion-synth-demo.wav
 ```
 

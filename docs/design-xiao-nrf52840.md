@@ -2,7 +2,7 @@
 
 **Status:** design proposal, **not hardware-validated**. Firmware for the XIAO nRF52840 **Sense** builds and links but has not been flashed: see [firmware-xiao-sense.md](firmware-xiao-sense.md).
 
-![Trill Flex to XIAO nRF52840 wiring](images/trill-flex-xiao-nrf52840.svg)
+![Trill Flex to XIAO nRF52840 wiring, with the on-board power and battery circuit](images/trill-flex-xiao-nrf52840.svg)
 
 ## Scope
 
@@ -47,6 +47,44 @@ Checks before power-up:
 
 The current capability of the XIAO 3V3 output is not stated on the Seeed wiki page cited here. A single Trill (about 4 mA) is a small load, but check the regulator's datasheet before adding other loads to the rail.
 
+## Power, USB and battery
+
+The XIAO nRF52840 Sense can run from USB, from one rechargeable lithium cell on its rear battery pads, or both. **Charging is done entirely by on-board hardware** (TI BQ25101) whenever USB VBUS is present. It needs no firmware, and this project's firmware does not control, measure or report it. The table is transcribed from the Seeed **XIAO nRF52840 Sense schematic, Rev V1.1** (KiCad, sheet 3 "Battery charge" and "System 3.3V"). Check the revision printed on your board's documentation; other revisions may differ.
+
+| Block | Part (schematic) | What it does |
+|---|---|---|
+| Charger | U2 **BQ25101** (`BQ25101YFPT`) | Linear single-cell Li-ion charger. IN = VBUS, OUT = VBAT. Regulation (full-charge) voltage **4.20 V** (BQ25101; the `H` variant would be 4.35 V). Fixed 10-hour safety timer, input over-voltage protection at 6.5 V, thermal regulation (TI datasheet) |
+| Charge current | ISET: R18 2.7 kΩ to GND, plus R12 2.7 kΩ to **P0.13** (`HICHG`) | I = K<sub>ISET</sub> / R<sub>ISET</sub>, K<sub>ISET</sub> = 135 AΩ typ. (129–145). P0.13 high-impedance: 2.7 kΩ → **≈ 50 mA** (≈ 48–54 mA). P0.13 driven low: 1.35 kΩ → **≈ 100 mA** (≈ 96–107 mA). Seeed's wiki gives the same 50/100 mA. These are fast-charge (constant-current) values; current tapers near full |
+| Battery temperature | TS: R20 fixed 10 kΩ to GND | NTC monitoring **disabled** (schematic note). The board does not measure cell temperature |
+| Charge status | `~CHG` → **P0.17** and the red charge LED (R5 2.2 kΩ) | Low while charging (Seeed wiki). Read-only status |
+| Battery sense | R16 1 MΩ / R17 510 kΩ from VBAT to **P0.14** (`READ_BAT`), tap to **P0.31** (AIN7) | Drive P0.14 low, then read AIN7. Seeed warns that P0.14 driven **high** can push P0.31 past its 3.6 V limit |
+| Battery ↔ USB switch-over | Q1 P-MOSFET (VBAT → VIN, gate = VBUS, R9 100 kΩ to GND) and D1 Schottky (VBUS → VIN) | With USB: the system runs from VBUS through D1, Q1 is off, and the charger charges the cell. Without USB: Q1 conducts and the cell feeds VIN. This is a simple switch-over, **not** a charger with an integrated power path (load sharing) |
+| 3.3 V rail | U6 **SGM2040-3.3** LDO, VIN → 3V3 | Labelled 3.3 V / 250 mA on the schematic. 3V3 is the XIAO 3V3 pin (pin 12) that powers the Trill and R1/R2 |
+
+**Firmware state of these pins.** The firmware never configures P0.13, P0.14, P0.17 or P0.31, so they stay in the nRF52840 reset state (input, disconnected). With P0.13 high-impedance the charger runs at the ≈ 50 mA setting. Battery voltage and charge status are **not measured or reported**. Adding them is a [roadmap](roadmap.md) item, not part of this design.
+
+**Rules:**
+- One **rechargeable** Li-ion / LiPo cell only, 3.7 V nominal class, 4.2 V full charge. Never primary (non-rechargeable) cells and never multi-cell packs.
+- Use a cell with **its own protection circuit** (over-charge, over-discharge, short circuit). The board has no NTC input and no battery-side protection beyond the charger's own functions.
+- **Polarity is critical:** battery + to pad `BAT0` (VBAT), battery − to pad `GND0` (GND). These are schematic names. Confirm the rear-side silkscreen and pad positions on your board and on Seeed's back-side photo before soldering. The diagram deliberately does not draw them.
+- **Never** connect the battery, or VBAT, to the 3V3 pin, the 5V pin, the Trill, or a Raspberry Pi. The Trill stays on 3V3 only.
+- Capacity is not specified here. With ≈ 50 mA charge current and the 10-hour safety timer, large cells may not reach full charge in one session.
+
+**USB host power.** The charger's input is VBUS itself, so it charges whenever VBUS is present, whether or not the host has configured the USB device. The firmware requests 100 mA (`bMaxPower`). MCU, IMU, Trill and LED current plus the charge current have **not been measured**. A host that strictly limits current, such as an iPhone or iPad through a camera adapter, may not supply both, so use a powered adapter or hub (see [USB MIDI](usb-midi.md#hardware-acceptance-procedure)). Plugging in a battery while connected to a phone charges the battery from the phone. The firmware does not select the 100 mA setting.
+
+**Battery bring-up (in this order):**
+1. With no battery, power from USB and check `3V3` ≈ 3.3 V on pin 12. Note whether the red charge LED is on or flickering with no battery: absent-battery behaviour is not documented here.
+2. With USB unplugged, check the cell's open-circuit voltage and polarity with a meter at its leads.
+3. Fit the cell to `BAT0` / `GND0` with the polarity confirmed on the board.
+4. Plug USB in: the red charge LED should light while charging and go out when charge ends (Seeed wiki).
+5. Unplug USB: the board should keep running from the cell (Q1 switch-over), with `3V3` still ≈ 3.3 V.
+6. Record charge time, cell voltage and any USB-host problems in the bring-up issue. None of this has been done in this project yet.
+
+| Qty | Item | Notes |
+|---|---|---|
+| 1 | Single-cell Li-ion/LiPo, 3.7 V nominal, 4.2 V full charge, with protection circuit | Capacity chosen by the user (not specified here) |
+| — | Leads or a connector suited to the pads | Not specified: follow Seeed's guidance for the board |
+
 ## Flex sensor attachment, modes, and address
 
 These are the same as in the Raspberry Pi design: [FFC attachment](design-raspberry-pi.md#flex-sensor-attachment), [stock vs custom sensors](design-raspberry-pi.md#stock-strip-vs-custom-sensors), [address selection](design-raspberry-pi.md#address-selection). The stock strip uses `Mode::Centroid`; custom flex PCBs use `Mode::Diff`.
@@ -59,23 +97,26 @@ These are the same as in the Raspberry Pi design: [FFC attachment](design-raspbe
 | 1 | — | QWIIC-to-pin cable | Supplied with Trill Flex |
 | 1 | U1 | Seeed Studio XIAO nRF52840 or nRF52840 Sense | — |
 | 2 | R1, R2 | 4.7 kΩ resistor, 1/8 W or larger, 5 % or better | SDA and SCL to 3V3 |
-| — | — | Headers or wire, optional LiPo cell | Battery charging is handled by the on-board BQ25101 (not used by this design) |
+| — | — | Headers or wire, optional single-cell LiPo | See [Power, USB and battery](#power-usb-and-battery) |
 
 ## Firmware
 
-[`firmware/xiao-sense`](../firmware/xiao-sense) (Embassy, `embassy-nrf` 0.11) implements this design on the XIAO nRF52840 Sense: TWIM0 on P0.04/P0.05 at 100 kHz with external R1/R2, Trill identified at 0x48 and polled every 5 ms, plus the on-board IMU and the [motion synth](motion-synth.md). Loading uses the factory UF2 bootloader with an application-only image at `0x27000`, after a read-only backup. See [firmware-xiao-sense.md](firmware-xiao-sense.md). BLE transport is not designed yet ([roadmap](roadmap.md)).
+[`firmware/xiao-sense`](../firmware/xiao-sense) (Embassy, `embassy-nrf` 0.11) implements this design on the XIAO nRF52840 Sense: TWIM0 on P0.04/P0.05 at 100 kHz with external R1/R2, Trill identified at 0x48 and polled every 5 ms, the on-board IMU, and a class-compliant [USB-MIDI](usb-midi.md) output ([mapping](midi-mapping.md)). The [motion synth](motion-synth.md) is an optional debug build. Loading uses the factory UF2 bootloader with an application-only image at `0x27000`, after a read-only backup. See [firmware-xiao-sense.md](firmware-xiao-sense.md). BLE transport is not designed yet ([roadmap](roadmap.md)).
 
 ## Known limits
 
 - Wiring, pull-up values, and orientation have not been tested on hardware.
 - The firmware has not been run on hardware. No BLE service or mobile app exists yet.
+- Battery operation, charge current and power draw have not been tested or measured.
 - The *Plus* variants and the XIAO expansion board are not covered.
 
 ## Sources
 
 - Seeed Studio XIAO nRF52840 series wiki (pin map, interfaces): <https://wiki.seeedstudio.com/XIAO_BLE/>
 - XIAO nRF52840 schematic v1.2: <https://files.seeedstudio.com/wiki/XIAO-BLE/Res/260828_XIAO_nRF52840.pdf>
-- XIAO nRF52840 Sense schematic: <https://files.seeedstudio.com/wiki/XIAO-BLE/Seeed_Studio_XIAO_nRF52840_PDF.pdf>
+- XIAO nRF52840 Sense schematic (Rev V1.1; battery charge, system 3.3 V): <https://files.seeedstudio.com/wiki/XIAO-BLE/Seeed_Studio_XIAO_nRF52840_PDF.pdf>
+- Seeed wiki, "Battery Charging current" and FAQ Q3/Q4 (P0.13 50/100 mA, P0.14/P0.31 battery read, P0.17 charge status): <https://wiki.seeedstudio.com/XIAO_BLE/>
+- TI BQ25101 datasheet (V<sub>O(REG)</sub> 4.20 V, K<sub>ISET</sub>, TS, safety timer): <https://www.ti.com/lit/ds/symlink/bq25101.pdf>
 - Nordic nRF52840 Product Specification v1.5 (VDD, I/O limits, RPU, TWIM): <https://files.seeedstudio.com/wiki/XIAO-BLE/nRF52840_PS_v1.5.pdf>
 - Trill datasheet Rev C v1.3: <https://github.com/BelaPlatform/Trill/raw/master/trill_datasheet.pdf>
 - All about I²C (Trill, pull-up guidance): <https://learn.bela.io/using-trill/all-about-i2c/>

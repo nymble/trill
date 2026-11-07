@@ -18,11 +18,13 @@ None of the builds or tests needs a Trill sensor or `/dev/i2c-*`.
 make ci                     # all of the following
 cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace      # driver, IMU, motion-synth tests; CLI arg tests
+cargo test --workspace      # driver, IMU, motion-synth, MIDI engine, USB descriptor tests; CLI arg tests
 python3 -m unittest discover -s tools -p 'test_*.py'
-cargo build -p trill-driver -p lsm6ds3trc -p motion-synth -p status-led --target thumbv7em-none-eabihf
+cargo build -p trill-driver -p lsm6ds3trc -p motion-synth -p status-led -p instrument-events -p trill-usb --target thumbv7em-none-eabihf
 (cd firmware/xiao-sense && cargo clippy --release --locked -- -D warnings)
-make fw-uf2                 # link firmware, convert + validate UF2 into dist/
+(cd firmware/xiao-sense && cargo clippy --release --locked --features pcm-synth -- -D warnings)
+make fw-uf2                 # link default USB-MIDI firmware, convert + validate UF2 into dist/
+make fw-uf2-pcm             # optional debug synth build (pcm-synth)
 ```
 
 Cargo aliases in `.cargo/config.toml` provide the same checks: `cargo ci-fmt`, `cargo ci-clippy`, `cargo ci-test`, `cargo check-thumb`.
@@ -38,7 +40,7 @@ The CLI only works on Linux. On macOS it compiles to a stub that exits with an e
 | `aarch64-unknown-linux-musl` | Pi 3/4/5, Zero 2 W running a 64-bit OS | `make pi-arm64` | cross-built in CI; not run on hardware |
 | `x86_64-unknown-linux-musl` | Linux PCs (for example with a USB-I²C adapter exposing `/dev/i2c-N`) | `make x86-musl` | built in the release workflow |
 | `thumbv7em-none-eabihf` | nRF52840 (XIAO) | `make check-thumb` | `no_std` libraries |
-| `thumbv7em-none-eabihf` | XIAO nRF52840 Sense firmware | `make fw-uf2` | linked ELF + application-only UF2 in CI. Not run on hardware. See [firmware-xiao-sense.md](firmware-xiao-sense.md) |
+| `thumbv7em-none-eabihf` | XIAO nRF52840 Sense firmware | `make fw-uf2`, `make fw-uf2-pcm` | default USB-MIDI and `pcm-synth` builds: linked ELFs + application-only UF2s in CI (artifact, not a release). Not run on hardware. See [firmware-xiao-sense.md](firmware-xiao-sense.md) |
 
 **Pi Zero W is ARMv6.** Binaries for `armv7-*` targets fail on it with "Illegal instruction". Rust's `arm-unknown-linux-*` targets generate ARMv6 code, but many distribution cross-GCC packages (`arm-linux-gnueabihf-gcc`) default to ARMv7. For that reason this project links with Zig through `cargo-zigbuild` and checks the output with `readelf`. Binaries built for `arm-unknown-linux-musleabihf` also run on 32-bit Pi OS installs on newer Pis.
 

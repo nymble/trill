@@ -1,0 +1,13 @@
+[package]
+name = "instrument-events"
+description = "no_std, transport-independent engine that turns Trill touch and IMU motion samples into single-channel MIDI 1.0 events, plus a USB-MIDI 1.0 event-packet encoder"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version = "1.81"
+publish = false
+
+[dependencies]
+heapless = "0.9"

@@ -70,4 +70,4 @@ With the default Format (16-bit, shift 0) and all channels enabled, each channel
 ## Practical notes
 
 - Update the baseline (done by `init`) with nothing touching the sensor.
-- Trill firmware ≥ 3 starts a new scan after every I²C transaction by default (ScanTrigger 1). Reading faster than a scan completes returns the previous frame, which the status byte's frame ID can detect.
+- Trill firmware ≥ 3 starts a new scan after every I²C transaction by default (ScanTrigger 1). Reading faster than a scan completes returns the previous frame, which the status byte's frame ID can detect. `Trill::read_frame()` reads the status byte and the centroids in one transaction from offset 3, so a caller can compare frame IDs without an extra read (the XIAO firmware does).

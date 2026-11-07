@@ -8,22 +8,27 @@
 //!
 //! | Executor | IRQ | Prio | Tasks |
 //! |---|---|---|---|
-//! | high | EGU1_SWI1 | P5 | audio (block render, fixed deadline) |
-//! | med | EGU0_SWI0 | P6 | USB device, diagnostics, PCM stream |
+//! | high | EGU1_SWI1 | P5 | audio (debug synth block render; only with feature `pcm-synth`) |
+//! | med | EGU0_SWI0 | P6 | USB device, diagnostics, MIDI writer, PCM stream (`pcm-synth`) |
 //! | thread | — | lowest | IMU, Trill (blocking I²C with timeouts), LED, health |
 //!
 //! Sensor I/O may block for bounded time (I²C timeouts) without delaying
-//! audio or USB, because both preempt thread mode.
+//! USB (or audio), because both preempt thread mode. Touch and IMU are
+//! separate tasks: each hands its own timestamped samples to the event
+//! engine (`instrument-events`), so either keeps working without the other.
+//! The default build has no audio task and no high-priority executor.
 
 #![no_std]
 #![no_main]
 
+#[cfg(feature = "pcm-synth")]
 mod audio;
 mod board;
 mod crash;
 mod i2c;
 mod imu;
 mod shared;
+mod timing;
 mod trill;
 mod usb;
 
@@ -43,8 +48,8 @@ use static_cell::{ConstStaticCell, StaticCell};
 use status_led::{Command as LedCommand, Inputs, Polarity, RgbLed, Sensor, StatusLed};
 
 use shared::{
-    set_state, SensorState, LAST_MOTION, LED_COLOR, LED_COMMAND, LED_INDICATION, PCM_ENABLED,
-    SAFE_MODE, STATS, TOUCH,
+    set_state, SensorState, ENGINE, LAST_MOTION, LED_COLOR, LED_COMMAND, LED_INDICATION,
+    MIDI_CONFIGURED, PCM_ENABLED, SAFE_MODE, STATS, TOUCH,
 };
 
 bind_interrupts!(pub struct Irqs {
@@ -54,10 +59,12 @@ bind_interrupts!(pub struct Irqs {
     TWISPI1 => twim::InterruptHandler<peripherals::TWISPI1>;
 });
 
+#[cfg(feature = "pcm-synth")]
 static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();
 static EXECUTOR_MED: InterruptExecutor = InterruptExecutor::new();
 static EXECUTOR_LOW: StaticCell<Executor> = StaticCell::new();
 
+#[cfg(feature = "pcm-synth")]
 #[interrupt]
 unsafe fn EGU1_SWI1() {
     // SAFETY: called only from this interrupt.
@@ -110,7 +117,10 @@ async fn led_task(mut led: Led, previous_crash: bool) {
             taps: r(&STATS.imu_taps),
             touching: TOUCH.lock(|t| t.get()).location.is_some(),
             rotation_dps: motion.rotation_dps,
-            usb_streaming: PCM_ENABLED.load(Ordering::Relaxed),
+            // Blue heartbeat: a host has configured the USB-MIDI function
+            // (or opened the PCM debug port). Not proof an app is listening.
+            usb_streaming: MIDI_CONFIGURED.load(Ordering::Relaxed)
+                || PCM_ENABLED.load(Ordering::Relaxed),
         };
         let out = ctl.update(now, &inputs);
         if out.changed {
@@ -149,6 +159,15 @@ fn main() -> ! {
     cp.DCB.enable_trace();
     cp.DWT.enable_cycle_counter();
 
+    // Event engine before any producer or consumer task starts.
+    ENGINE.lock(|e| {
+        *e.borrow_mut() = Some(instrument_events::Engine::new(
+            instrument_events::Config::default(),
+        ))
+    });
+    #[cfg(feature = "timing-gpio")]
+    timing::init(p.P0_02, p.P0_03);
+
     // USB runs on the medium-priority executor; built inside its task.
     interrupt::EGU0_SWI0.set_priority(Priority::P6);
     let med = EXECUTOR_MED.start(interrupt::EGU0_SWI0);
@@ -174,9 +193,12 @@ fn main() -> ! {
         });
     }
 
-    interrupt::EGU1_SWI1.set_priority(Priority::P5);
-    let high = EXECUTOR_HIGH.start(interrupt::EGU1_SWI1);
-    high.spawn(audio::audio_task().unwrap());
+    #[cfg(feature = "pcm-synth")]
+    {
+        interrupt::EGU1_SWI1.set_priority(Priority::P5);
+        let high = EXECUTOR_HIGH.start(interrupt::EGU1_SWI1);
+        high.spawn(audio::audio_task().unwrap());
+    }
 
     // Internal IMU bus (on-board 10 k pull-ups), 400 kHz like Zephyr's board file.
     let mut imu_cfg = twim::Config::default();
@@ -193,7 +215,7 @@ fn main() -> ! {
     let imu_int1 = Input::new(p.P0_11, Pull::None);
 
     // External Trill bus on D4/D5; requires external pull-ups. 100 kHz as in
-    // docs/design-xiao-nrf52840.md (a 20-byte centroid read takes ~2.3 ms).
+    // docs/design-xiao-nrf52840.md (a 21-byte status+centroid read takes ~2.3 ms).
     let mut trill_cfg = twim::Config::default();
     trill_cfg.frequency = twim::Frequency::K100;
     let trill_twim = Twim::new(

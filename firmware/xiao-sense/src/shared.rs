@@ -7,14 +7,21 @@ use core::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering};
 
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::blocking_mutex::Mutex;
+#[cfg(feature = "pcm-synth")]
 use embassy_sync::channel::Channel;
+use embassy_sync::signal::Signal;
+use embassy_time::Instant;
+use instrument_events::Engine;
+#[cfg(feature = "pcm-synth")]
 use motion_synth::mailbox::ControlMailbox;
 use motion_synth::mapping::TouchInput;
 use motion_synth::motion::MotionFrame;
 
+#[cfg(feature = "pcm-synth")]
 use crate::board::{BLOCK, PCM_QUEUE};
 
 /// One rendered audio block.
+#[cfg(feature = "pcm-synth")]
 pub struct PcmBlock {
     /// Block sequence number.
     pub seq: u32,
@@ -63,7 +70,9 @@ impl SensorState {
     }
 }
 
-/// Counters (wrap on overflow).
+/// Counters (wrap on overflow). Audio/PCM counters stay zero without
+/// the `pcm-synth` feature.
+#[cfg_attr(not(feature = "pcm-synth"), allow(dead_code))]
 pub struct Stats {
     pub imu_state: AtomicU8,
     pub imu_samples: AtomicU32,
@@ -77,6 +86,18 @@ pub struct Stats {
     pub trill_reads: AtomicU32,
     pub trill_errors: AtomicU32,
     pub trill_device: AtomicU8,
+    /// Polls that returned the same Trill frame ID as the previous poll.
+    pub trill_stale_frames: AtomicU32,
+    /// USB-MIDI packets written to the IN endpoint (1..=16 events each).
+    pub midi_packets: AtomicU32,
+    /// USB-MIDI events written.
+    pub midi_events: AtomicU32,
+    /// Writes still pending after `MIDI_STALL_MS` (host not reading).
+    pub midi_stalls: AtomicU32,
+    /// Writes that failed because the endpoint was disabled (unplug/reset).
+    pub midi_write_errors: AtomicU32,
+    /// Packets received from the host on the MIDI OUT endpoint (discarded).
+    pub midi_rx_packets: AtomicU32,
     pub audio_blocks: AtomicU32,
     pub audio_late: AtomicU32,
     pub audio_resyncs: AtomicU32,
@@ -106,6 +127,12 @@ pub static STATS: Stats = Stats {
     trill_reads: Z,
     trill_errors: Z,
     trill_device: AtomicU8::new(0),
+    trill_stale_frames: Z,
+    midi_packets: Z,
+    midi_events: Z,
+    midi_stalls: Z,
+    midi_write_errors: Z,
+    midi_rx_packets: Z,
     audio_blocks: Z,
     audio_late: Z,
     audio_resyncs: Z,
@@ -130,12 +157,14 @@ pub fn bump(c: &AtomicU32) {
 }
 
 /// Store `v` and raise `max` if exceeded.
+#[cfg(feature = "pcm-synth")]
 pub fn record_max(last: &AtomicU32, max: &AtomicU32, v: u32) {
     last.store(v, Ordering::Relaxed);
     max.fetch_max(v, Ordering::Relaxed);
 }
 
-/// Control → audio mailbox.
+/// Control → audio mailbox (debug synth).
+#[cfg(feature = "pcm-synth")]
 pub static MAILBOX: Mutex<CriticalSectionRawMutex, RefCell<ControlMailbox>> =
     Mutex::new(RefCell::new(ControlMailbox::new()));
 
@@ -165,6 +194,7 @@ pub static LAST_IMU: Mutex<CriticalSectionRawMutex, Cell<ImuReading>> =
     Mutex::new(Cell::new(([0.0; 3], [0.0; 3])));
 
 /// Audio → USB PCM queue.
+#[cfg(feature = "pcm-synth")]
 pub static PCM: Channel<CriticalSectionRawMutex, PcmBlock, PCM_QUEUE> = Channel::new();
 
 /// Host has the PCM port open (DTR asserted).
@@ -181,3 +211,29 @@ pub static LED_COMMAND: AtomicU8 = AtomicU8::new(0);
 pub static LED_INDICATION: AtomicU8 = AtomicU8::new(status_led::Indication::Booting as u8);
 /// Colour currently driven (`status_led::Color::bits`), for diagnostics.
 pub static LED_COLOR: AtomicU8 = AtomicU8::new(0);
+
+/// Free-running microsecond timestamp for the event engine (wraps every
+/// ~71.6 min; the engine uses wrapping comparisons).
+pub fn now_us32() -> u32 {
+    Instant::now().as_micros() as u32
+}
+
+/// The sensor -> MIDI event engine. Initialised in `main` before any task
+/// runs; every access is a short critical section (no I/O inside).
+pub static ENGINE: Mutex<CriticalSectionRawMutex, RefCell<Option<Engine>>> =
+    Mutex::new(RefCell::new(None));
+
+/// Run `f` on the engine (no-op before initialisation).
+pub fn with_engine<R>(f: impl FnOnce(&mut Engine) -> R) -> Option<R> {
+    ENGINE.lock(|e| e.borrow_mut().as_mut().map(f))
+}
+
+/// Wakes the MIDI writer when the engine may have output.
+pub static MIDI_WAKE: Signal<CriticalSectionRawMutex, ()> = Signal::new();
+/// The host has configured the device and the MIDI IN endpoint is enabled.
+/// This is USB-level state: it does not mean an app is listening.
+pub static MIDI_CONFIGURED: AtomicBool = AtomicBool::new(false);
+/// Diagnostics -> MIDI writer requests (`MIDI_REQ_*` bits).
+pub static MIDI_REQUEST: AtomicU8 = AtomicU8::new(0);
+/// Send the panic/reset sequence now.
+pub const MIDI_REQ_PANIC: u8 = 1;

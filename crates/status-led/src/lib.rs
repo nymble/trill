@@ -267,7 +267,8 @@ pub struct Inputs {
     pub touching: bool,
     /// Bias-corrected rotation speed (dps).
     pub rotation_dps: f32,
-    /// Host has the PCM stream open.
+    /// A host is using the USB data path: the firmware passes "USB-MIDI
+    /// function configured by the host, or PCM debug port open".
     pub usb_streaming: bool,
 }
 
