@@ -132,7 +132,7 @@ pid.codes test PIDs are for private development only. Distributed hardware needs
 
 The status line reports IMU state and counters, scaled accel/gyro, pitch, roll, rotation, calibration, Trill state, reads, errors, repeated frames (`stale=`), touch, then `midi=up|down` (host configured the MIDI function), active note, note on/off counts, packets, events, stalls (`stall=`, write pending > 100 ms), write errors, deferred note ons and coalesced controller updates, then taps and LED. With `pcm-synth` the audio and PCM counters follow.
 
-**USB-MIDI function:** one virtual cable, embedded IN + OUT jacks, 64-byte bulk endpoints. Device → host carries the instrument. Host → device packets are read and discarded (counted as `rx_pk`). Setup on macOS/iOS: [USB MIDI](usb-midi.md).
+**USB-MIDI function** (firmware 0.2.0, `bcdDevice` 0x0200): two virtual cables, embedded IN + OUT jacks each, 64-byte bulk endpoints. Cable 0 carries the instrument (device → host). Cable 1 carries the [configuration protocol](config-protocol.md): SysEx requests from the host are assembled (bounded, realtime bytes passed over) and answered on cable 1 only, in spare packet slots after instrument events, so notes are never delayed by replies. Everything else from the host is read and discarded (counted as `rx_pk`; ignored config messages as `cfg=…`). Settings changed this way are applied atomically through the engine (sounding notes released first) and live in RAM only: a reset restores the defaults. The banner names the config cable. Setup on macOS/iOS: [USB MIDI](usb-midi.md).
 
 **PCM port (`pcm-synth` only)** is a test transport, **not** USB Audio. Capture it with:
 

@@ -100,12 +100,12 @@ From `cargo run -p instrument-events --example trace`, asserted byte for byte by
 ### Not implemented in this milestone
 
 - Battery and charge status are not reported (no MIDI or diagnostics field). See [XIAO power](design-xiao-nrf52840.md#power-usb-and-battery).
-- Settings are not stored: map changes from keys are lost on reset.
-- Host → device MIDI is read and discarded.
+- Settings are not stored: map changes from keys or the configuration protocol are lost on reset.
+- Host → device MIDI on the instrument cable is read and discarded.
 
 ## Proposed (not implemented)
 
 - **MPE / multi-touch:** one channel per touch with persistent touch IDs (Trill reports touches in no stable order), per-note bend, pressure and CC74. Needs touch tracking first.
 - **Touch calibration:** per-unit size scaling and thresholds from a recorded light and firm touch, stored in flash.
-- **Configurable map** (base note, range, channel, CC numbers) over the diagnostics port or MIDI SysEx.
+- **Configurable CC numbers** and stored settings. The 13 map parameters (channel, base note, range, scale, pitch mode, bend range, minimum velocity, motion, rotation and tilt full scale, percussion) are already configurable over SysEx, RAM only: see [configuration protocol](config-protocol.md).
 - **BLE-MIDI** transport (deferred until a licensing decision on the BLE stack, see [roadmap](roadmap.md)).

@@ -14,8 +14,10 @@
 | `instrument-events` ([mapping](midi-mapping.md)) | Implemented: single-voice touch + motion → MIDI engine, USB-MIDI encoder. Host-tested (unplug/reconnect, missing IMU, sensor loss, queue flood, note order, deadband, scaling, invalid input, timestamp wrap) |
 | `trill-usb` | Implemented: USB-MIDI + CDC layout; descriptors checked by host tests. **Enumeration not tested on any host** |
 | XIAO Sense firmware ([doc](firmware-xiao-sense.md), [USB MIDI](usb-midi.md)) | Implemented: class-compliant USB-MIDI + diagnostics (default), IMU and Trill as independent tasks, Trill frame-ID filtering; debug synth + PCM stream behind `pcm-synth`. Links and passes UF2 checks in CI. **Never flashed or run** |
+| `trill-config` ([protocol](config-protocol.md)) | Implemented: SysEx configuration v1 on USB-MIDI cable 1 (13 RAM-only parameters, actions, error codes); Rust and Swift codecs checked against shared vectors; firmware handler host-tested via the crate. **Not exercised against a device** |
+| Apple app ([doc](apple-app.md)) | Implemented: Mac + iPhone SwiftUI app and `TrillKit`; built unsigned and tested in CI on macOS (see doc). **Not run against a device**; no signing, App Store, BLE or OTA |
 | Omi integration ([doc](omi-integration.md)) | Investigated. Decision: separate development image, Omi untouched |
-| I²S output, BLE (incl. BLE-MIDI), MPE, multi-touch, mic, battery monitoring, mobile apps | Not started. BLE deferred pending a licensing decision |
+| I²S output, BLE (incl. BLE-MIDI), MPE, multi-touch, mic, battery monitoring, settings persistence, firmware update from the app | Not started. BLE deferred pending a licensing decision |
 
 ## Instrument pipeline
 
@@ -43,6 +45,7 @@ Trill Flex ──I²C──> driver ──> touch frames ──> mapping ──>
 | 0.2 | Hardware bring-up on a Pi: record `identify`/`read` logs, confirm pin mapping and FFC orientation, mark the Pi design *validated* |
 | 0.3 | XIAO Sense firmware on hardware: bring-up checklist, IMU axis signs, Trill on D4/D5, measured render time and latency. Validate the XIAO design |
 | 0.4 | USB-MIDI on hardware (implemented, to be accepted: [procedure](usb-midi.md#hardware-acceptance-procedure)); touch tracking, MPE; battery voltage/charge status reading; MIDI output on Linux |
+| 0.4.x | Apple app against hardware: two-port enumeration on Mac and iPhone, configuration round trip, preset apply; optional virtual MIDI routing in the Mac app; settings persistence on the device |
 | 0.5 | BLE-MIDI from the XIAO to iPhone/iPad; optional PDM mic input |
 | later | Synth app for ZPOD, Contrail integration |
 

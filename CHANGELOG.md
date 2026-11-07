@@ -21,5 +21,12 @@ All notable changes to this project are documented here. Versions follow [Semant
 - XIAO Sense firmware: class-compliant USB-MIDI + diagnostics by default; Trill and IMU decoupled (touch works without IMU); Trill at 10-bit ultra-fast scan with frame-ID filtering; MIDI writer with disconnect detection and stall counting; diagnostics keys `m`, `p`, `k`, `q`, `t`, `x`; optional `timing-gpio` feature. Not yet run on hardware.
 - Docs: USB MIDI setup and acceptance procedure, MIDI mapping, XIAO power and battery (BQ25101 charger, P0.13 charge-current select, power switch-over) with the diagram extended.
 
+- `trill-config`: `no_std` versioned SysEx configuration protocol (dev manufacturer ID 0x7D, request IDs, ack/error codes, 64-byte bound, atomic SET_CONFIG with 13 RAM-only parameters, actions panic / recalibrate / LED self-test / restore defaults), bounded USB-MIDI SysEx assembler that passes over realtime bytes, `protocol/config-v1-vectors.txt` shared with Swift (`make protocol-vectors`).
+- XIAO Sense firmware 0.2.0: second USB-MIDI cable for configuration, replies interleaved after instrument events, boot ID and config generation, `cfg=` counters.
+- `apple/`: Trill companion app for macOS 13+ and iOS 16+ (SwiftUI, CoreMIDI): endpoint discovery and hotplug, MIDI monitor with SysEx reassembly, configuration with requested vs acknowledged state, JSON presets through user-selected files, read-only firmware assistant on the Mac. `TrillKit` Swift package with tests. Xcode project from pinned XcodeGen 2.45.4; bundle ID `com.nymble.trill`; no team or signing in the repository.
+- Make targets `apple-test`, `apple-test-ios-sim`, `apple-project`, `apple-mac`, `apple-ios-sim`, `apple-ios-device`, `apple`, `apple-dist`; CI job on macOS building unsigned apps and uploading `trill-apple-apps-unsigned-dev`.
+- Docs: Apple app, configuration protocol.
+
 ### Changed
+- USB layout: two MIDI cables per direction; `bcdDevice` 0x0200. Workspace version 0.2.0.
 - XIAO Sense firmware: the on-board synth, its high-priority audio task and the PCM CDC port moved behind the optional `pcm-synth` feature. The default build renders no audio. USB PID changed from 1209:0001 to 1209:0002 (default) / 1209:0003 (`pcm-synth`).

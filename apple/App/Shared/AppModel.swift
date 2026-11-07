@@ -5,6 +5,7 @@
 // stream never floods the main thread and never delays CoreMIDI.
 
 import Foundation
+import CoreMIDI
 import SwiftUI
 import TrillKit
 
