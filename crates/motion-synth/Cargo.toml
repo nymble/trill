@@ -1,0 +1,16 @@
+[package]
+name = "motion-synth"
+description = "no_std motion processing (IMU + Trill touch) and audio-rate synthesis engine for the Trill / XIAO nRF52840 Sense instrument"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version = "1.81"
+publish = false
+
+[dependencies]
+libm = "0.2"
+
+[[example]]
+name = "render_wav"

@@ -1,6 +1,7 @@
 [workspace]
 resolver = "2"
-members = ["crates/trill-driver", "crates/trill-cli"]
+members = ["crates/trill-driver", "crates/trill-cli", "crates/lsm6ds3trc", "crates/motion-synth"]
+exclude = ["firmware/xiao-sense"]
 
 [workspace.package]
 version = "0.1.0"

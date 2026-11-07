@@ -2,7 +2,7 @@
 
 Open hardware designs and Rust software for using [Bela Trill](https://bela.io/trill) capacitive touch sensors, starting with **Trill Flex**, as a musical instrument controller.
 
-> **Status (v0.1.0):** the wiring designs are proposals and have **not been validated on hardware**. The Rust driver and Linux CLI build and pass host tests against the datasheet protocol. Nothing has been run against a physical sensor yet. See [design status](docs/roadmap.md#design-status).
+> **Status (v0.1.0):** the wiring designs are proposals and have **not been validated on hardware**. The Rust driver, Linux CLI, IMU driver, motion synth and XIAO Sense firmware build and pass host tests, and the firmware links for the nRF52840. Nothing has been run on a physical sensor or board yet. See [design status](docs/roadmap.md#design-status).
 
 ## Designs
 
@@ -17,6 +17,10 @@ Open hardware designs and Rust software for using [Bela Trill](https://bela.io/t
 
 ## Documentation
 
+- [XIAO nRF52840 Sense firmware](docs/firmware-xiao-sense.md): build, safe UF2 loading with backup/restore, USB diagnostics, bring-up checklist, latency measurement.
+- [Motion-to-music engine](docs/motion-synth.md): control vs audio rate, mapping, voice, latency budget, output paths.
+- [Omi integration](docs/omi-integration.md): what Omi's DevKit firmware does, licences by component, reuse matrix, architecture decision.
+
 - [Protocol notes](docs/protocol.md): I²C memory map, commands, data formats, and scaling.
 - [Building](docs/build.md): host checks and cross-compiling (Pi Zero ARMv6, 64-bit Pi, Cortex-M4F).
 - [Releasing and deployment](docs/releasing.md): release workflow, artifacts, checksums, installing on a Pi or ZPOD.
@@ -29,6 +33,10 @@ Open hardware designs and Rust software for using [Bela Trill](https://bela.io/t
 |---|---|---|
 | `trill-driver` | [crates/trill-driver](crates/trill-driver) | `no_std` driver on `embedded-hal` 1.0 (`I2c` + `DelayNs`). Identify, configure, and read centroid or 16-bit channel frames. |
 | `trill-cli` (binary `trill`) | [crates/trill-cli](crates/trill-cli) | Linux bring-up tool over `/dev/i2c-N` (`linux-embedded-hal`). |
+| `lsm6ds3trc` | [crates/lsm6ds3trc](crates/lsm6ds3trc) | `no_std` LSM6DS3TR-C accelerometer + gyroscope driver (the XIAO Sense IMU). |
+| `motion-synth` | [crates/motion-synth](crates/motion-synth) | `no_std` motion processing, gesture mapping and audio-rate synth. |
+| `xiao-sense-fw` | [firmware/xiao-sense](firmware/xiao-sense) | Embassy firmware for the XIAO nRF52840 Sense (separate workspace). |
+| tools | [tools](tools) | `xiao_uf2.py` (application-only UF2 convert/inspect/backup/flash), `pcm_capture.py` (USB PCM stream → WAV). |
 
 Quick start on a Raspberry Pi with I²C enabled:
 
@@ -42,8 +50,10 @@ trill --address 0x49 --bus /dev/i2c-3 read --count 100
 Build and check locally (no hardware needed):
 
 ```sh
-make ci          # fmt check, clippy -D warnings, tests, thumbv7em driver build
+make ci          # fmt, clippy -D warnings, tests, tool tests, thumbv7em libs, firmware link + UF2 check
 make pi-zero     # static ARMv6 binary for Pi Zero / Zero W (needs cargo-zigbuild)
+make fw-uf2      # XIAO Sense firmware -> dist/*.uf2 (validated; never written to a device)
+make synth-demo  # render the motion synth demo to dist/motion-synth-demo.wav
 ```
 
 ## Licence
@@ -54,4 +64,4 @@ Copyright © 2026 Nymble ([@nymble](https://github.com/nymble)).
 - Commercial or proprietary licensing on separate terms: see [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).
 - Third-party names, references, and attributions: see [NOTICE.md](NOTICE.md).
 
-This project is not affiliated with or endorsed by Bela / Augmented Instruments Ltd., Seeed Studio, Nordic Semiconductor, or Raspberry Pi Ltd.
+This project is not affiliated with or endorsed by Bela / Augmented Instruments Ltd., Seeed Studio, Nordic Semiconductor, Raspberry Pi Ltd., or Based Hardware (Omi).

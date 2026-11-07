@@ -3,5 +3,6 @@
 ci-fmt = "fmt --all -- --check"
 ci-clippy = "clippy --workspace --all-targets -- -D warnings"
 ci-test = "test --workspace"
-# Driver compile check for Cortex-M4F (XIAO nRF52840); requires `rustup target add thumbv7em-none-eabihf`
-check-thumb = "build -p trill-driver --target thumbv7em-none-eabihf"
+# no_std library compile check for Cortex-M4F (XIAO nRF52840); requires `rustup target add thumbv7em-none-eabihf`.
+# The linked firmware lives in firmware/xiao-sense (own workspace): `make fw-uf2`.
+check-thumb = "build -p trill-driver -p lsm6ds3trc -p motion-synth --target thumbv7em-none-eabihf"

@@ -8,8 +8,11 @@
 | XIAO nRF52840 wiring ([design](design-xiao-nrf52840.md)) | Proposal. Pins and pull-ups checked against Seeed schematics and Nordic PS. **Not tested on hardware** |
 | `trill-driver` | Implemented. Host-tested against datasheet byte sequences with mock I²C. Compiles for `thumbv7em-none-eabihf`. **Not run against a sensor** |
 | `trill` CLI (Linux) | Implemented. Host build and argument tests. Cross-built for ARMv6 and aarch64 musl. **Not run on a Pi with a sensor** |
-| XIAO firmware | Not started (staged plan in the XIAO design) |
-| Synthesis, MIDI, BLE, mobile apps | Not started |
+| `lsm6ds3trc` IMU driver | Implemented from the ST datasheet. Mock-I²C tests. **Not run against a sensor** |
+| `motion-synth` | Implemented. Host test vectors and WAV demo. **No on-target timing yet** |
+| XIAO Sense firmware ([doc](firmware-xiao-sense.md)) | Implemented: USB diagnostics, IMU, Trill, audio-rate synth, USB PCM test stream. Links for nRF52840 and passes UF2 checks in CI. **Never flashed or run** |
+| Omi integration ([doc](omi-integration.md)) | Investigated. Decision: separate development image, Omi untouched |
+| I²S output, MIDI, BLE, mobile apps | Not started |
 
 ## Instrument pipeline
 
@@ -35,9 +38,9 @@ Trill Flex ──I²C──> driver ──> touch frames ──> mapping ──>
 |---|---|
 | 0.1 | Designs, driver, Linux CLI, CI and release workflow (this version) |
 | 0.2 | Hardware bring-up on a Pi: record `identify`/`read` logs, confirm pin mapping and FFC orientation, mark the Pi design *validated* |
-| 0.3 | XIAO firmware: TWIM + driver, USB serial output. Validate the XIAO design |
-| 0.4 | Touch tracking + mapping library, MIDI output on Linux |
-| 0.5 | BLE-MIDI from the XIAO to iPhone/iPad |
+| 0.3 | XIAO Sense firmware on hardware: bring-up checklist, IMU axis signs, Trill on D4/D5, measured render time and latency. Validate the XIAO design |
+| 0.4 | I²S audio output, touch tracking, USB-MIDI; MIDI output on Linux |
+| 0.5 | BLE-MIDI from the XIAO to iPhone/iPad; optional PDM mic input |
 | later | Synth app for ZPOD, Contrail integration |
 
 ## ZPOD

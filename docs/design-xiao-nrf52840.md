@@ -1,6 +1,6 @@
 # Design: Trill Flex → Seeed Studio XIAO nRF52840
 
-**Status:** design proposal, **not hardware-validated**. No firmware for this board is included yet; see [Firmware bring-up plan](#firmware-bring-up-plan).
+**Status:** design proposal, **not hardware-validated**. Firmware for the XIAO nRF52840 **Sense** builds and links but has not been flashed: see [firmware-xiao-sense.md](firmware-xiao-sense.md).
 
 ![Trill Flex to XIAO nRF52840 wiring](images/trill-flex-xiao-nrf52840.svg)
 
@@ -61,20 +61,14 @@ These are the same as in the Raspberry Pi design: [FFC attachment](design-raspbe
 | 2 | R1, R2 | 4.7 kΩ resistor, 1/8 W or larger, 5 % or better | SDA and SCL to 3V3 |
 | — | — | Headers or wire, optional LiPo cell | Battery charging is handled by the on-board BQ25101 (not used by this design) |
 
-## Firmware bring-up plan
+## Firmware
 
-`trill-driver` is `no_std`, uses only the `embedded-hal` 1.0 `I2c` and `DelayNs` traits, and compiles for `thumbv7em-none-eabihf` (checked in CI). Any nRF52840 HAL that implements these traits can drive it. Firmware has not been written or flashed yet. Planned stages:
-
-1. **Toolchain:** `rustup target add thumbv7em-none-eabihf`, then `make check-thumb`. This works today.
-2. **Blink + log:** a minimal firmware crate (planned: Embassy `embassy-nrf` with the `nrf52840` feature) that blinks the user LED and logs over USB CDC or RTT. Still to decide: the flashing route (the factory UF2 bootloader, entered by double-pressing reset per the Seeed wiki, or SWD with a debug probe) and the memory layout that keeps the bootloader intact.
-3. **I²C bus:** TWIM on P0.04 (SDA) / P0.05 (SCL) at 100 kHz with external R1/R2. Probe 0x48.
-4. **Trill:** `Trill::new(twim, 0x48)`, then `init(.., Some(Device::Flex), &Config::for_device(Device::Flex))`, then poll `read_touches()` at roughly 100 Hz.
-5. **Transport (future):** a BLE GATT or BLE-MIDI service carrying touch events to iPhone/iPad. Not designed yet; see [roadmap.md](roadmap.md).
+[`firmware/xiao-sense`](../firmware/xiao-sense) (Embassy, `embassy-nrf` 0.11) implements this design on the XIAO nRF52840 Sense: TWIM0 on P0.04/P0.05 at 100 kHz with external R1/R2, Trill identified at 0x48 and polled every 5 ms, plus the on-board IMU and the [motion synth](motion-synth.md). Loading uses the factory UF2 bootloader with an application-only image at `0x27000`, after a read-only backup. See [firmware-xiao-sense.md](firmware-xiao-sense.md). BLE transport is not designed yet ([roadmap](roadmap.md)).
 
 ## Known limits
 
 - Wiring, pull-up values, and orientation have not been tested on hardware.
-- No firmware binary, BLE service, or mobile app exists yet.
+- The firmware has not been run on hardware. No BLE service or mobile app exists yet.
 - The *Plus* variants and the XIAO expansion board are not covered.
 
 ## Sources
