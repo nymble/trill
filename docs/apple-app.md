@@ -96,9 +96,9 @@ On Linux, `make apple-test` runs the platform-independent TrillKit tests (protoc
 No team, certificate or profile is committed, and CI never signs.
 
 **CI artifacts:** the workflow artifact `trill-apple-apps-unsigned-dev` holds:
-- `Trill-macOS-unsigned-dev-<version>.zip`: the macOS app. It is not notarized and carries only the linker's ad-hoc signature, so entitlements (sandbox) are not applied. Gatekeeper blocks it after download. Open it with *right-click › Open*, or run `xattr -dr com.apple.quarantine Trill.app`, only if you trust the build.
+- `Trill-macOS-unsigned-dev-<version>.zip`: the macOS app. It is not notarized and carries only the linker's ad-hoc signature, so entitlements (sandbox) are not applied. Gatekeeper blocks it after download. Only if you trust the build and its checksum: on macOS 15 try to open it once, then use *System Settings › Privacy & Security › Open Anyway*; on macOS 13/14 use *right-click › Open*; or run `xattr -dr com.apple.quarantine Trill.app`.
 - `Trill-iOS-Simulator-<version>.zip`: for the Simulator only. Install it with `xcrun simctl install booted Trill.app`. It cannot be installed on a device.
-- `SHA256SUMS`.
+- `README.txt` with this disclaimer, and `SHA256SUMS` (for the zips).
 
 There is no App Store or TestFlight build. The code is GPL-3.0-only, and App Store distribution of GPL software has known licence conflicts, so any store release would need a decision under the commercial licence ([COMMERCIAL-LICENSE.md](../COMMERCIAL-LICENSE.md)).
 

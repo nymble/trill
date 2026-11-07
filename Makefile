@@ -139,6 +139,7 @@ apple-dist:
 	rm -rf $(DIST)/apple && mkdir -p $(DIST)/apple
 	ditto -c -k --keepParent $(APPLE_DD)/Build/Products/Release/Trill.app $(DIST)/apple/Trill-macOS-unsigned-dev-$(VERSION).zip
 	ditto -c -k --keepParent $(APPLE_DD)/Build/Products/Debug-iphonesimulator/Trill.app $(DIST)/apple/Trill-iOS-Simulator-$(VERSION).zip
+	cp $(APPLE)/DIST-README.txt $(DIST)/apple/README.txt
 	cd $(DIST)/apple && shasum -a 256 *.zip > SHA256SUMS && cat SHA256SUMS
 
 clean:
