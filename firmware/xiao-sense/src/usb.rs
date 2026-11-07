@@ -94,7 +94,7 @@ async fn write_all(tx: &mut Sender<'static, UsbDriver>, data: &[u8]) -> Result<(
     Ok(())
 }
 
-fn status_line(out: &mut String<512>) {
+fn status_line(out: &mut String<640>) {
     let s = &STATS;
     let r = |a: &core::sync::atomic::AtomicU32| a.load(Ordering::Relaxed);
     let m = LAST_MOTION.lock(|c| c.get());
@@ -103,7 +103,7 @@ fn status_line(out: &mut String<512>) {
     let up_ms = Instant::now().as_millis();
     let _ = write!(
         out,
-        "t={}.{:03}s imu={} n={} err={} e{} drdy_to={} pc={} | a=[{:.3},{:.3},{:.3}]g g=[{:.1},{:.1},{:.1}]dps pitch={:.1} roll={:.1} rot={:.0} cal={} | trill={} reads={} err={} touch={} | audio blocks={} late={} resync={} starve={} render={}us(max {}) ctl_age={}us(max {}) trig={} | pcm sent={} drop={}\r\n",
+        "t={}.{:03}s imu={} n={} err={} e{} drdy_to={} pc={} | a=[{:.3},{:.3},{:.3}]g g=[{:.1},{:.1},{:.1}]dps pitch={:.1} roll={:.1} rot={:.0} cal={} | trill={} reads={} err={} touch={} | audio blocks={} late={} resync={} starve={} render={}us(max {}) ctl_age={}us(max {}) trig={} | pcm sent={} drop={}",
         up_ms / 1000,
         up_ms % 1000,
         SensorState::from_u8(s.imu_state.load(Ordering::Relaxed)).label(),
@@ -136,12 +136,20 @@ fn status_line(out: &mut String<512>) {
         r(&s.pcm_sent),
         r(&s.pcm_dropped),
     );
+    let _ = write!(
+        out,
+        " | taps={} led={}/{}\r\n",
+        r(&s.imu_taps),
+        status_led::Indication::from_u8(LED_INDICATION.load(Ordering::Relaxed))
+            .map_or("?", |i| i.name()),
+        status_led::Color::from_bits(LED_COLOR.load(Ordering::Relaxed)).name(),
+    );
 }
 
-const HELP: &str =
-    "commands: s=status now, c=recalibrate gyro (hold still), b=boot report, v=version, h=help\r\n";
+const HELP: &str = "commands: s=status now, c=recalibrate gyro (hold still), b=boot report, v=version, h=help\r\n\
+     led: L=self-test, 0-7=manual colour (0 off 1 red 2 green 3 yellow 4 blue 5 magenta 6 cyan 7 white; 60 s), a=automatic\r\n";
 
-fn banner(out: &mut String<512>, report: &BootReport) {
+fn banner(out: &mut String<640>, report: &BootReport) {
     let _ = write!(
         out,
         "\r\ntrill xiao-sense-fw {} | {} Hz, block {} ({} us) | IMU 416 Hz | safe_mode={}\r\n",
@@ -184,7 +192,7 @@ async fn diag_loop(class: CdcAcmClass<'static, UsbDriver>, report: &'static Boot
     let writer = async {
         loop {
             tx.wait_connection().await;
-            let mut out: String<512> = String::new();
+            let mut out: String<640> = String::new();
             banner(&mut out, report);
             let _ = out.push_str(HELP);
             if write_all(&mut tx, out.as_bytes()).await.is_err() {
@@ -213,6 +221,26 @@ async fn diag_loop(class: CdcAcmClass<'static, UsbDriver>, report: &'static Boot
                             USB_VID,
                             USB_PID
                         );
+                    }
+                    Some(k) if status_led::Command::from_key(k).is_some() => {
+                        LED_COMMAND.store(k, Ordering::Relaxed);
+                        match status_led::Command::from_key(k) {
+                            Some(status_led::Command::Auto) => {
+                                let _ = out.push_str("led: automatic\r\n");
+                            }
+                            Some(status_led::Command::SelfTest) => {
+                                let _ = out
+                                    .push_str("led: self-test R G B Y C M W off, 400 ms each\r\n");
+                            }
+                            Some(status_led::Command::Manual(c)) => {
+                                let _ = write!(
+                                    out,
+                                    "led: manual {} for 60 s ('a' = automatic)\r\n",
+                                    c.name()
+                                );
+                            }
+                            None => {}
+                        }
                     }
                     Some(b'h') | Some(b'?') => {
                         let _ = out.push_str(HELP);

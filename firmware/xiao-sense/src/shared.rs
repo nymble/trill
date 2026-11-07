@@ -71,6 +71,8 @@ pub struct Stats {
     pub imu_drdy_timeouts: AtomicU32,
     pub imu_power_cycles: AtomicU32,
     pub imu_last_error: AtomicU8,
+    /// Taps detected by the motion pipeline.
+    pub imu_taps: AtomicU32,
     pub trill_state: AtomicU8,
     pub trill_reads: AtomicU32,
     pub trill_errors: AtomicU32,
@@ -99,6 +101,7 @@ pub static STATS: Stats = Stats {
     imu_drdy_timeouts: Z,
     imu_power_cycles: Z,
     imu_last_error: AtomicU8::new(0),
+    imu_taps: Z,
     trill_state: AtomicU8::new(0),
     trill_reads: Z,
     trill_errors: Z,
@@ -170,3 +173,11 @@ pub static PCM_ENABLED: AtomicBool = AtomicBool::new(false);
 pub static RECALIBRATE: AtomicBool = AtomicBool::new(false);
 /// Safe mode: crash loop detected, sensors and audio disabled.
 pub static SAFE_MODE: AtomicBool = AtomicBool::new(false);
+
+/// Pending LED debug key from diagnostics (`status_led::Command::from_key`);
+/// 0 = none. Consumed by the LED task.
+pub static LED_COMMAND: AtomicU8 = AtomicU8::new(0);
+/// Current LED indication (`status_led::Indication as u8`), for diagnostics.
+pub static LED_INDICATION: AtomicU8 = AtomicU8::new(status_led::Indication::Booting as u8);
+/// Colour currently driven (`status_led::Color::bits`), for diagnostics.
+pub static LED_COLOR: AtomicU8 = AtomicU8::new(0);

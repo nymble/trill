@@ -40,7 +40,7 @@ tools-test:
 
 # no_std libraries for Cortex-M4F (nRF52840).
 check-thumb:
-	$(CARGO) build -p trill-driver -p lsm6ds3trc -p motion-synth --target thumbv7em-none-eabihf
+	$(CARGO) build -p trill-driver -p lsm6ds3trc -p motion-synth -p status-led --target thumbv7em-none-eabihf
 
 # XIAO nRF52840 Sense firmware: lint + linked release ELF + UF2 safety check.
 fw-check:

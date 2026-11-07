@@ -801,6 +801,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "status-led"
+version = "0.1.0"
+dependencies = [
+ "embedded-hal 1.0.0",
+]
+
+[[package]]
 name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1035,6 +1042,7 @@ dependencies = [
  "lsm6ds3trc",
  "motion-synth",
  "static_cell",
+ "status-led",
  "trill-driver",
 ]
 

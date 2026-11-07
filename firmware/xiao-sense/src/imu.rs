@@ -72,6 +72,9 @@ pub async fn imu_task(
                             accel_g: s.accel_g,
                             gyro_dps: s.gyro_dps,
                         });
+                        if frame.tap.is_some() {
+                            bump(&STATS.imu_taps);
+                        }
                         let touch = TOUCH.lock(|t| t.get());
                         let params = map(&mapping, &frame, &touch);
                         MAILBOX.lock(|m| m.borrow_mut().post(params, t_us));

@@ -38,10 +38,14 @@ use embassy_nrf::interrupt::{InterruptExt, Priority};
 use embassy_nrf::twim::{self, Twim};
 use embassy_nrf::usb::vbus_detect;
 use embassy_nrf::{bind_interrupts, pac, peripherals, usb as nrf_usb};
-use embassy_time::Timer;
+use embassy_time::{Duration, Instant, Ticker, Timer};
 use static_cell::{ConstStaticCell, StaticCell};
+use status_led::{Command as LedCommand, Inputs, Polarity, RgbLed, Sensor, StatusLed};
 
-use shared::{set_state, SensorState, SAFE_MODE, STATS};
+use shared::{
+    set_state, SensorState, LAST_MOTION, LED_COLOR, LED_COMMAND, LED_INDICATION, PCM_ENABLED,
+    SAFE_MODE, STATS, TOUCH,
+};
 
 bind_interrupts!(pub struct Irqs {
     USBD => nrf_usb::InterruptHandler<peripherals::USBD>;
@@ -70,17 +74,51 @@ static REPORT: StaticCell<crash::BootReport> = StaticCell::new();
 static TWIM_IMU_BUF: ConstStaticCell<[u8; 4]> = ConstStaticCell::new([0; 4]);
 static TWIM_TRILL_BUF: ConstStaticCell<[u8; 4]> = ConstStaticCell::new([0; 4]);
 
+type Led = RgbLed<Output<'static>, Output<'static>, Output<'static>>;
+
+/// Status LED: samples shared state every `LED_TICK_MS`, selects an
+/// indication (`status_led` priority order) and writes pins only on change.
+/// Runs on the lowest-priority executor, so it can never delay audio/USB;
+/// a blocking sensor I²C timeout can delay it by a few ms at most.
 #[embassy_executor::task]
-async fn led_task(mut green: Output<'static>, mut red: Output<'static>) {
-    // Active-low LEDs. Normal: green 1 Hz blink. Safe mode: red fast blink.
-    let safe = SAFE_MODE.load(Ordering::Relaxed);
-    let led = if safe { &mut red } else { &mut green };
-    let (on, off) = if safe { (100, 100) } else { (50, 950) };
+async fn led_task(mut led: Led, previous_crash: bool) {
+    let mut ctl = StatusLed::new();
+    let mut ticker = Ticker::every(Duration::from_millis(board::LED_TICK_MS));
     loop {
-        led.set_low();
-        Timer::after_millis(on).await;
-        led.set_high();
-        Timer::after_millis(off).await;
+        let now = Instant::now().as_millis() as u32;
+        if let Some(cmd) = LedCommand::from_key(LED_COMMAND.swap(0, Ordering::Relaxed)) {
+            ctl.command(now, cmd);
+        }
+        let motion = LAST_MOTION.lock(|c| c.get());
+        let r = |a: &core::sync::atomic::AtomicU32| a.load(Ordering::Relaxed);
+        let sensor = |a: &core::sync::atomic::AtomicU8| match SensorState::from_u8(
+            a.load(Ordering::Relaxed),
+        ) {
+            SensorState::Off => Sensor::Off,
+            SensorState::Init => Sensor::Init,
+            SensorState::Running => Sensor::Running,
+            SensorState::Retry => Sensor::Retry,
+            SensorState::Disabled => Sensor::Disabled,
+        };
+        let inputs = Inputs {
+            safe_mode: SAFE_MODE.load(Ordering::Relaxed),
+            previous_crash,
+            imu: sensor(&STATS.imu_state),
+            imu_calibrated: motion.calibrated,
+            trill: sensor(&STATS.trill_state),
+            audio_faults: r(&STATS.audio_late).wrapping_add(r(&STATS.audio_resyncs)),
+            taps: r(&STATS.imu_taps),
+            touching: TOUCH.lock(|t| t.get()).location.is_some(),
+            rotation_dps: motion.rotation_dps,
+            usb_streaming: PCM_ENABLED.load(Ordering::Relaxed),
+        };
+        let out = ctl.update(now, &inputs);
+        if out.changed {
+            let _ = led.set(out.color); // Infallible on nRF GPIO
+        }
+        LED_INDICATION.store(out.indication as u8, Ordering::Relaxed);
+        LED_COLOR.store(led.color().bits(), Ordering::Relaxed);
+        ticker.next().await;
     }
 }
 
@@ -116,15 +154,22 @@ fn main() -> ! {
     let med = EXECUTOR_MED.start(interrupt::EGU0_SWI0);
     med.spawn(usb::usb_task(p.USBD, report).unwrap());
 
-    let green = Output::new(p.P0_30, Level::High, OutputDrive::Standard);
-    let red = Output::new(p.P0_26, Level::High, OutputDrive::Standard);
+    // User RGB LED: common anode to 3V3, cathodes on GPIOs (active low).
+    // Start high = off, so nothing lights before the LED task decides.
+    let led = RgbLed::new(
+        Output::new(p.P0_26, Level::High, OutputDrive::Standard),
+        Output::new(p.P0_30, Level::High, OutputDrive::Standard),
+        Output::new(p.P0_06, Level::High, OutputDrive::Standard),
+        Polarity::ActiveLow,
+    );
+    let previous_crash = report.kind != 0; // last run ended in panic/HardFault
 
     let executor = EXECUTOR_LOW.init(Executor::new());
     if safe_mode {
         set_state(&STATS.imu_state, SensorState::Disabled);
         set_state(&STATS.trill_state, SensorState::Disabled);
         executor.run(|spawner| {
-            spawner.spawn(led_task(green, red).unwrap());
+            spawner.spawn(led_task(led, previous_crash).unwrap());
             spawner.spawn(health_task().unwrap());
         });
     }
@@ -163,7 +208,7 @@ fn main() -> ! {
     executor.run(|spawner| {
         spawner.spawn(imu::imu_task(imu_twim, imu_power, imu_int1).unwrap());
         spawner.spawn(trill::trill_task(trill_twim).unwrap());
-        spawner.spawn(led_task(green, red).unwrap());
+        spawner.spawn(led_task(led, previous_crash).unwrap());
         spawner.spawn(health_task().unwrap());
     })
 }

@@ -10,6 +10,7 @@
 | `trill` CLI (Linux) | Implemented. Host build and argument tests. Cross-built for ARMv6 and aarch64 musl. **Not run on a Pi with a sensor** |
 | `lsm6ds3trc` IMU driver | Implemented from the ST datasheet. Mock-I²C tests. **Not run against a sensor** |
 | `motion-synth` | Implemented. Host test vectors and WAV demo. **No on-target timing yet** |
+| `status-led` + firmware LED task | Implemented. Host tests for priority, timing, wrap and pin writes. **LED not observed on hardware** |
 | XIAO Sense firmware ([doc](firmware-xiao-sense.md)) | Implemented: USB diagnostics, IMU, Trill, audio-rate synth, USB PCM test stream. Links for nRF52840 and passes UF2 checks in CI. **Never flashed or run** |
 | Omi integration ([doc](omi-integration.md)) | Investigated. Decision: separate development image, Omi untouched |
 | I²S output, MIDI, BLE, mobile apps | Not started |

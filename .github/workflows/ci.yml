@@ -33,7 +33,7 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       - name: no_std libraries for Cortex-M4F (nRF52840)
-        run: cargo build -p trill-driver -p lsm6ds3trc -p motion-synth --target thumbv7em-none-eabihf --locked
+        run: cargo build -p trill-driver -p lsm6ds3trc -p motion-synth -p status-led --target thumbv7em-none-eabihf --locked
       - name: Tool tests (UF2 safety checks, PCM stream parser)
         run: python3 -m unittest discover -s tools -p 'test_*.py' -v
       - name: Motion synth demo render

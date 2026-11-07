@@ -10,7 +10,8 @@
 //! | IMU INT1 | P0.11 | data-ready, active high |
 //! | Trill SDA / SCL (D4 / D5) | P0.04 / P0.05 | external 4.7 k pull-ups to 3V3 |
 //! | Mic PDM CLK / DATA / power | P1.00 / P0.16 / P1.10 | not used yet |
-//! | LED red / green / blue | P0.26 / P0.30 / P0.06 | active low |
+//! | LED red / green / blue | P0.26 / P0.30 / P0.06 | common-anode RGB to 3V3, active low; R7 2.2 k / R4 10 k / R3 2.2 k |
+//! | Charge LED (red, CHG0) | — | driven by the BQ25101 ~CHG output (net also on P0.17); not firmware-controlled |
 
 /// Audio sample rate for the synth (Hz). 16 000, 32 000 or 48 000.
 pub const SAMPLE_RATE: u32 = 32_000;
@@ -26,3 +27,6 @@ pub const I2C_TIMEOUT_MS: u64 = 5;
 pub const IMU_MAX_CONSECUTIVE_ERRORS: u32 = 5;
 /// Max wait for IMU data-ready before polling anyway (ms).
 pub const IMU_DRDY_TIMEOUT_MS: u64 = 20;
+/// LED task tick (ms): status re-evaluated and pins updated (only on change)
+/// at most this often.
+pub const LED_TICK_MS: u64 = 20;

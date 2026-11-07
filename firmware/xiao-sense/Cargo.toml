@@ -19,6 +19,7 @@ bench = false
 trill-driver = { path = "../../crates/trill-driver" }
 lsm6ds3trc = { path = "../../crates/lsm6ds3trc" }
 motion-synth = { path = "../../crates/motion-synth" }
+status-led = { path = "../../crates/status-led" }
 embassy-nrf = { version = "0.11.0", features = ["nrf52840", "time-driver-rtc1", "gpiote", "time", "unstable-pac"] }
 embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread", "executor-interrupt"] }
 embassy-time = "0.5.1"

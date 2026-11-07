@@ -20,7 +20,7 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets -- -D warnings
 cargo test --workspace      # driver, IMU, motion-synth tests; CLI arg tests
 python3 -m unittest discover -s tools -p 'test_*.py'
-cargo build -p trill-driver -p lsm6ds3trc -p motion-synth --target thumbv7em-none-eabihf
+cargo build -p trill-driver -p lsm6ds3trc -p motion-synth -p status-led --target thumbv7em-none-eabihf
 (cd firmware/xiao-sense && cargo clippy --release --locked -- -D warnings)
 make fw-uf2                 # link firmware, convert + validate UF2 into dist/
 ```
@@ -69,6 +69,7 @@ crates/trill-driver   no_std Trill driver (embedded-hal 1.0)
 crates/trill-cli      Linux binary `trill`
 crates/lsm6ds3trc     no_std IMU driver
 crates/motion-synth   no_std motion processing + synth (host demo: examples/render_wav.rs)
+crates/status-led     no_std RGB status LED selection, timing and pin driver
 firmware/xiao-sense   Embassy firmware, own workspace + Cargo.lock (excluded from the root workspace)
 tools/                xiao_uf2.py, pcm_capture.py, tests
 docs/                 designs, firmware, protocol, build, release, roadmap, Omi integration
