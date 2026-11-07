@@ -13,7 +13,7 @@
 | `status-led` + firmware LED task | Implemented. Host tests for priority, timing, wrap and pin writes. **LED not observed on hardware** |
 | XIAO Sense firmware ([doc](firmware-xiao-sense.md)) | Implemented: USB diagnostics, IMU, Trill, audio-rate synth, USB PCM test stream. Links for nRF52840 and passes UF2 checks in CI. **Never flashed or run** |
 | Omi integration ([doc](omi-integration.md)) | Investigated. Decision: separate development image, Omi untouched |
-| I²S output, MIDI, BLE, mobile apps | Not started |
+| I²S output, MIDI, BLE, mobile apps | Not started. Researched: [music-connectivity.md](music-connectivity.md) recommends host synth + USB-MIDI first, BLE-MIDI second |
 
 ## Instrument pipeline
 
@@ -29,7 +29,7 @@ Trill Flex ──I²C──> driver ──> touch frames ──> mapping ──>
 4. **Outputs (future):**
    - **Local synth** on a Linux host through ALSA.
    - **MIDI:** USB-MIDI or ALSA sequencer on Linux. MPE suits multi-touch expression.
-   - **BLE (nRF52840):** BLE-MIDI or a custom GATT service to iPhone/iPad. The nRF52840 has no Wi-Fi; Wi-Fi transport would need a different host.
+   - **BLE (nRF52840):** standard BLE-MIDI to iPhone/iPad/Mac. A custom GATT service only for diagnostics ([why](music-connectivity.md#4-custom-ble-messages-gatt)). The nRF52840 has no Wi-Fi; a Wi-Fi transport would need a different host.
    - **OSC/network** from a Linux host over Wi-Fi to iPad apps.
    - **Contrail:** integration surface to be defined with the Contrail project.
 
@@ -40,8 +40,8 @@ Trill Flex ──I²C──> driver ──> touch frames ──> mapping ──>
 | 0.1 | Designs, driver, Linux CLI, CI and release workflow (this version) |
 | 0.2 | Hardware bring-up on a Pi: record `identify`/`read` logs, confirm pin mapping and FFC orientation, mark the Pi design *validated* |
 | 0.3 | XIAO Sense firmware on hardware: bring-up checklist, IMU axis signs, Trill on D4/D5, measured render time and latency. Validate the XIAO design |
-| 0.4 | I²S audio output, touch tracking, USB-MIDI; MIDI output on Linux |
-| 0.5 | BLE-MIDI from the XIAO to iPhone/iPad; optional PDM mic input |
+| 0.4 | Sensor path fixes (Trill scan/EVT, touch decoupled from IMU), timestamped event layer, touch tracking; class-compliant USB-MIDI (single channel, then MPE) to Mac/iPhone; latency tests ([plan](music-connectivity.md#7-plan-minimum-viable-order)) |
+| 0.5 | BLE-MIDI to Mac/iPhone after the licence decision; optional I²S output and PDM mic input |
 | later | Synth app for ZPOD, Contrail integration |
 
 ## ZPOD
