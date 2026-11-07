@@ -15,15 +15,15 @@ Sources were checked on **2026-11-07** and are listed at the end as [S1]…[S22]
 
 1. **Make the host the primary sound engine.** Mac or iPhone/iPad instruments, DAWs and AUv3 synths are far richer than a Cortex-M4 voice, and they already own a low-latency audio path to wired headphones or an interface. Keep the MCU synth as an optional standalone and test path. It is not needed for the main workflow.
 2. **USB-MIDI 1.0 first** (class-compliant, composite with the existing CDC diagnostics port):
-   - It is deterministic, powered by the cable and needs no driver on macOS or iOS [S1][S2][S5].
+   - Its timing is typically more consistent than wireless, it is powered by the cable, and it needs no driver on macOS or iOS [S1][S2][S5]. Host and endpoint scheduling still have to be measured.
    - USB-C iPhones connect directly. Lightning devices need Apple's camera adapter [S6][S7].
    - The firmware's pinned `embassy-usb` 0.6.0 already contains a USB-MIDI class.
 3. **BLE-MIDI second**, after USB is measured:
    - It gives wireless freedom with standard Audio MIDI Setup / CoreAudioKit pairing [S3][S4].
-   - Its latency floor is the negotiated connection interval, not the PHY rate [S8][S9][S10].
+   - New events wait for the next connection event: a scheduling window of 0 up to one negotiated connection interval (CI), about CI/2 on average for randomly timed events. Queuing and retries add to that, and the PHY rate does not remove the wait [S8][S9][S10]. The interval actually granted must be measured.
    - Before starting, resolve the GPL vs Nordic-controller licensing question (below).
-4. **Do not build a custom BLE protocol for music.** It needs our own iOS/macOS app (Safari has no Web Bluetooth [S18]) and gives up DAW interoperability. Its only use would be an *optional* diagnostics/raw-sensor characteristic later.
-5. **Do not ship a custom USB protocol or USB Audio first.** CDC stays for diagnostics only. USB Audio class output only helps if on-device synthesis becomes a product goal.
+4. **For this project, we recommend against a custom BLE protocol as the music path.** It needs our own iOS/macOS app (Safari has no Web Bluetooth [S18]) and gives up DAW interoperability. Its only use would be an *optional* diagnostics/raw-sensor characteristic later.
+5. **We recommend against a custom USB protocol or USB Audio as the first step.** CDC stays for diagnostics only. USB Audio class output only helps if on-device synthesis becomes a product goal.
 6. **Fix the sensor path before any transport work:**
    - Shorten the Trill scan and make reads event-driven.
    - Decouple touch from the IMU frame.
@@ -34,7 +34,7 @@ Sources were checked on **2026-11-07** and are listed at the end as [S1]…[S22]
 | Works with DAWs/AUv3 without our app | **Yes** (CoreMIDI) [S1] | **Yes**, after pairing in Audio MIDI Setup or in-app [S3][S4] | No: needs our CoreBluetooth app or bridge | No: needs our bridge to a virtual MIDI port |
 | Mac | Yes | Yes | App needed | Bridge needed |
 | iPhone/iPad | USB-C direct; Lightning via camera adapter [S6][S7] | Yes; pairing UI must be offered by the app (CoreAudioKit) [S3] | App needed | Not practical on iOS |
-| Transport timing floor | USB full-speed 1 ms frames; bulk endpoints [S2] (*calculation basis*) | One connection interval: BLE-MIDI requires ≤ 15 ms [S8]; Apple's general rule is min ≥ 15 ms, multiples of 15 ms [S9] | Same radio floor as BLE-MIDI | Same as USB-MIDI, plus bridge scheduling |
+| Transport scheduling | USB full-speed 1 ms frames; bulk transfers, several per frame possible; host/OS polling varies, so no guaranteed per-event bound [S2]. Measure | Wait for the next connection event: 0 to one CI (≈ CI/2 average), plus queuing/retries. BLE-MIDI requires the device to request ≤ 15 ms [S8]; Apple *guidance* asks for Interval Min ≥ 15 ms [S9], while 7.5 ms was *observed* with an iPhone as Central [S20]. Measure the granted CI | Same radio scheduling as BLE-MIDI | Same as USB-MIDI, plus bridge scheduling |
 | Jitter control | Host polling + CoreMIDI | 13-bit ms timestamps in every packet [S8] | Our own timestamps | Our own timestamps |
 | Expressiveness | MIDI 1.0: 7-bit CC, 14-bit pitch bend, MPE per-note [S11] | Same messages as USB-MIDI | Unlimited (raw floats) | Unlimited |
 | Power | Bus-powered; iPhone USB-C supplies up to 900 mA (4.5 W) [S5] | Battery (XIAO has a charger) | Battery | Bus-powered |
@@ -48,7 +48,7 @@ End-to-end latency is the sum of the following stages; transport is only one of 
 |---|---|---|
 | Sensor acquisition | IMU: 0–2.4 ms wait + ≈ 0.4 ms read. Trill today: up to ≈ 6.2 ms scan + 0–5 ms poll + ≈ 2.3 ms read | *Calculation* from the configuration ([current-design.md](current-design.md)); the IMU's internal filter delay is not characterised |
 | Event generation (onset detection, mapping) | µs on the MCU | To measure with a GPIO toggle |
-| Transport | USB frame scheduling ≈ 0–1 ms, plus host stack | *Calculation*; host stack unmeasured |
+| Transport | Assumed ≈ 0–1 ms frame scheduling, plus host stack | *Provisional scheduling assumption*, not a spec bound: bulk scheduling depends on the host controller and OS. Measure it |
 | Host MIDI → synth | App-dependent; most synths apply events at the next audio buffer | Unmeasured |
 | Host audio output buffer | Table below | *Calculation* of one buffer only |
 | Converter and headphones | Interface-specific | Use wired output. Bluetooth headphones add codec buffering that varies by device; we make no numeric claim |
@@ -104,23 +104,28 @@ Streaming MCU audio to the phone over BLE is not a viable monitoring path:
   - one GATT service and one characteristic;
   - 13-bit millisecond timestamps in every packet;
   - the device "must request a connection interval of 15 ms or less".
-  - The spec notes that the interval "places a lower bound on latency" and that delivery delays "may occur unexpectedly at any time".
+  - The spec says, as a general statement about the transport, that the connection interval "places a lower bound on latency" and that delivery delays "may occur unexpectedly at any time". This is quoted, not a per-event minimum; see the scheduling-window explanation below.
 - **Apple.**
   - ADG R32 §43 requires BLE-MIDI 1.0a [S1].
-  - §57.6 sets the general connection-parameter rules: Interval Min ≥ 15 ms and a multiple of 15 ms; 11.25 ms "may be accepted by some devices" only with BLE HID [S9]. QA1931 states the same rules [S10].
+  - §57.6 gives general connection-parameter *guidance*: requests may be rejected unless Interval Min is ≥ 15 ms and a multiple of 15 ms; it also notes that with BLE HID connected, "a connection interval down to 11.25 ms may be accepted by some devices" [S9]. QA1931 states the same rules [S10].
+  - This is request policy, not a guaranteed or universal negotiated minimum. The Central decides; Microsoft *observed* an iPhone as Central negotiating 7.5 ms [S20]. Nothing here implies that HID is required for MIDI.
   - An older Apple MIDI-specific recommendation (try 11.25 ms, then fall back to 15 ms) is quoted by Silicon Labs [S19]; we did not find that text in R32. **Log the interval actually granted** by each Mac/iPhone during tests.
   - Pairing:
     - macOS: Audio MIDI Setup → MIDI Studio → Configure Bluetooth [S4].
     - iOS: the music app must present `CABTMIDICentralViewController`, and many apps do. Connections are always paired/secure and drop after several idle minutes [S3].
-- **Connection interval vs PHY.** BLE 2M PHY (supported by the nRF52840 [S12]) shortens air time per packet. It does **not** shorten the wait for the next connection event, so it cannot bring latency below the interval.
-  - Worst-case transport latency for one event is about one interval plus retransmissions under interference (*calculation*).
-  - Several packets per interval raise throughput, not responsiveness.
-  - Timestamps let a receiver reconstruct even spacing at the cost of a fixed extra delay. Whether a given iOS/macOS app honours them is untested.
+- **Connection interval: a scheduling window, not a per-event floor.** The spec quote above ("places a lower bound on latency") describes the transport in general. It is not a minimum latency for every event.
+  - An event generated just before a connection event can go out almost immediately.
+  - Events arriving at random times wait 0 up to one CI before transmission, about CI/2 on average (*calculation*), then host overhead.
+  - The wait grows with queuing (more data than fits in one event), retransmissions under interference, and missed events.
+  - If the receiver schedules by timestamp, it may deliberately add delay to even out jitter. Whether a given iOS/macOS app does this is untested.
+  - BLE 2M PHY (supported by the nRF52840 [S12]) shortens air time per packet and helps with queued data. It does not change the connection-event timing.
+  - Several packets per connection event raise throughput and reduce queuing, not the base scheduling wait.
+  - So wireless options cannot be ranked from PHY rate alone. Measure the distribution (p50/p95/p99).
   - Microsoft's BLE-MIDI notes (*third-party measurement*, one Windows PC): Windows as Central settled at 15 ms; an iPhone as Central negotiated 7.5 ms with a Windows peripheral [S20]. These are not Apple-Mac numbers.
 - **Products.**
   - Genki states 7–20 ms overall over BLE MIDI and recommends a USB dongle for jittery systems (*manufacturer claim*) [S13].
   - CME claims "as low as 3 ms" between two of its own WIDI devices in "low latency mode", and sells a USB dongle to "bypass wireless MIDI limitations of iOS/macOS" (*manufacturer claim*) [S17].
-  - Lesson: the best wireless numbers come from controlling **both ends** of the link.
+  - Observation from the products reviewed here: the lowest claimed wireless figures come from vendors that control **both ends** of the link.
 - **Firmware cost on nRF52840.**
   - A BLE controller (Nordic SoftDevice Controller via `nrf-sdc` + `trouble-host`, or the S140 SoftDevice already on the board via `nrf-softdevice`) reserves the highest interrupt priority for radio timing [S21]. Our P5 audio executor would be preempted by radio events, so check the audio late/resync counters under BLE load.
   - Use the IMU and Trill paths unchanged. Only the transport changes.
@@ -137,12 +142,12 @@ Pros:
 Cons:
 
 - every user needs **our** app: CoreBluetooth on iOS/macOS, a bridge to a virtual CoreMIDI port, or an AUv3. Safari/WebKit opposes Web Bluetooth, so a web app cannot do it on iPhone [S18];
-- the same connection-interval floor as BLE-MIDI;
+- the same connection-event scheduling window and jitter as BLE-MIDI;
 - a second GATT service shares connection events with MIDI if both run.
 
 Omi's accelerometer service is not a precedent: it notifies at 1 Hz and is off by default ([omi-integration.md](omi-integration.md)).
 
-**Use:** an optional, later, diagnostics-only characteristic (raw frames for calibration and research) next to standard BLE-MIDI. Never the primary music path.
+**Project recommendation:** an optional, later, diagnostics-only characteristic (raw frames for calibration and research) next to standard BLE-MIDI, rather than the primary music path.
 
 ## 5. Custom USB (current CDC) vs USB-MIDI vs USB Audio
 
@@ -160,7 +165,7 @@ Precedent only, not buying advice. Latency evidence is quoted exactly as found.
 | **Enhancia Neova** (ring + hub) [S14] | Hand-motion gestures (up to 4 at once, customisable) → MIDI | Ring ↔ hub over proprietary 2.4 GHz (FCC filing 2402–2479 MHz, 2 m range); hub → computer over USB-C ("appears … as a MIDI controller") plus 3.5 mm MIDI in/out | Computer over USB; tablets need a separate wireless MIDI adapter | Reuse: a dedicated receiver gives a controlled link. Avoid: extra hardware for phone use | None found in the manual |
 | **Artiphon Orba 2** [S16] | Pads, motion and touch → notes + MPE (pitch bend, aftertouch, vibrato per note); modes MPE / single channel / channel-per-part | USB-C MIDI (macOS, Windows, Android) and BLE-MIDI (macOS, iOS, Android) | Mac: USB or Audio MIDI Setup Bluetooth; iOS: via the Orba app's BLE device list | Reuse: offer both USB and BLE-MIDI, and MPE plus a single-channel fallback | None found |
 | **LinnStrument** [S15] | Pads with X (pitch bend), Y (CC74), Z (pressure) → MPE "Channel Per Note" or One Channel | Class-compliant USB-MIDI and DIN MIDI | Mac and iPad over USB, bus-powered (Lightning noted) | Reuse: class compliance, single-channel default, user-selectable MPE, data-reduction setting. Avoid: unthrottled MPE streams (documented stuck notes on overloaded hosts) | No latency number; documents the USB data rate vs DIN |
-| **CME WIDI Master** (adapter) [S17] | Transport only | BLE-MIDI (Bluetooth 5) between DIN gear, hosts and other WIDI units; WIDI Bud Pro is a USB dongle for hosts | Pairs with iOS/macOS native BLE-MIDI | Reuse idea: an optional USB BLE dongle on the host side for the lowest-latency wireless | *Manufacturer claim*: "as low as 3 ms" and "sub 1 ms" jitter between two WIDI devices; 20 m range |
+| **CME WIDI Master** (adapter) [S17] | Transport only | BLE-MIDI (Bluetooth 5) between DIN gear, hosts and other WIDI units; WIDI Bud Pro is a USB dongle for hosts | Pairs with iOS/macOS native BLE-MIDI | Reuse idea: an optional USB BLE dongle on the host side, which CME positions as its lower-latency option (unverified by us) | *Manufacturer claim*: "as low as 3 ms" and "sub 1 ms" jitter between two WIDI devices; 20 m range |
 
 ROLI Seaboard and Artiphon support pages blocked our fetcher (HTTP 302/500) on 2026-11-07. The Orba data comes from Artiphon's manual PDF [S16]. The Seaboard was dropped from the table because its pages could not be verified.
 
@@ -210,7 +215,7 @@ Clocks: never subtract a device timestamp from a host timestamp. Use one of:
 | Test | Method | Target (p95 / p99) |
 |---|---|---|
 | Sensor → event (device) | GPIO high at IMU INT1 or Trill EVT, GPIO high when the MIDI packet is queued; logic analyzer | motion ≤ 3 / 4 ms; touch ≤ 5 / 7 ms (after Stage A) |
-| Transport only (USB, BLE) | Device toggles a GPIO into audio input L as it sends Note On; host plays a click on that Note On into input R (simple patch, 32/64-sample buffer); subtract the known host buffer | USB ≤ 2 / 3 ms; BLE ≤ interval + 3 ms / interval + 8 ms |
+| Transport only (USB, BLE) | Device toggles a GPIO into audio input L as it sends Note On; host plays a click on that Note On into input R (simple patch, 32/64-sample buffer); subtract the known host buffer | USB ≤ 2 / 3 ms; BLE ≤ measured CI + 3 ms / measured CI + 8 ms (*targets*) |
 | Gesture → sound | Piezo/contact mic on the board on input L, host synth output on input R, ≥ 200 taps; report p50/p95/p99 and jitter (p95 − p5) | USB + 64 samples @ 48 kHz: ≤ 10 / 12 ms, jitter ≤ 2 ms; BLE: ≤ 20 / 30 ms, jitter ≤ 5 ms |
 | Hosts | MacBook (USB-C); USB-C iPhone; Lightning iPhone/iPad + camera adapter; record OS versions and the granted BLE interval | all pass |
 | Stress | 10 touches + full motion; BLE with Wi-Fi traffic, 1 m and 5 m, a body in the path; 30 min run | 0 lost Note Offs (count On = Off), 0 audio-late, queue-overflow counters recorded |
