@@ -1,0 +1,81 @@
+name: Release
+
+# Tag push vX.Y.Z  -> build, checksum, publish a GitHub Release.
+# Manual dispatch  -> build and checksum only; artifacts attached to the run.
+on:
+  push:
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    name: build ${{ matrix.target }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        target:
+          - arm-unknown-linux-musleabihf   # Pi Zero / Zero W / Pi 1 (ARMv6 hard-float)
+          - aarch64-unknown-linux-musl     # Pi 3/4/5 with 64-bit OS
+          - x86_64-unknown-linux-musl      # Linux PCs (e.g. USB-I2C adapters)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Rust and Zig toolchain
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add ${{ matrix.target }}
+          python3 -m pip install ziglang==0.17.0.post0
+          cargo install --locked cargo-zigbuild@0.23.4
+      - name: Test (host)
+        run: cargo test --workspace --locked
+      - name: Build
+        run: cargo zigbuild --release --locked -p trill-cli --target ${{ matrix.target }}
+      - name: Package
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          [ "${GITHUB_REF_TYPE}" = "tag" ] || version="0.0.0-${GITHUB_SHA::7}"
+          name="trill-${version}-${{ matrix.target }}"
+          mkdir -p "dist/${name}"
+          cp target/${{ matrix.target }}/release/trill LICENSE COMMERCIAL-LICENSE.md README.md "dist/${name}/"
+          tar -C dist -czf "dist/${name}.tar.gz" "${name}"
+          (cd dist && sha256sum "${name}.tar.gz" > "${name}.tar.gz.sha256")
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trill-${{ matrix.target }}
+          path: |
+            dist/*.tar.gz
+            dist/*.sha256
+          if-no-files-found: error
+
+  publish:
+    name: publish GitHub Release
+    if: github.ref_type == 'tag'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Combine checksums
+        run: cd dist && cat *.sha256 > SHA256SUMS && cat SHA256SUMS
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" dist/*.tar.gz dist/SHA256SUMS \
+            --repo "${GITHUB_REPOSITORY}" --title "${GITHUB_REF_NAME}" --generate-notes --verify-tag

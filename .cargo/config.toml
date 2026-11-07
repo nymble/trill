@@ -1,0 +1,7 @@
+[alias]
+# Host checks (no hardware required)
+ci-fmt = "fmt --all -- --check"
+ci-clippy = "clippy --workspace --all-targets -- -D warnings"
+ci-test = "test --workspace"
+# Driver compile check for Cortex-M4F (XIAO nRF52840); requires `rustup target add thumbv7em-none-eabihf`
+check-thumb = "build -p trill-driver --target thumbv7em-none-eabihf"

@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-3.0-only. Original diagram for the nymble/trill project. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="1040" height="600" viewBox="0 0 1040 600" font-family="Helvetica, Arial, sans-serif" font-size="14">
+  <rect width="1040" height="600" fill="#ffffff"/>
+  <text x="20" y="32" font-size="20" font-weight="bold">Trill Flex → Raspberry Pi 40-pin header (I²C bus 1)</text>
+  <text x="20" y="54" font-size="13" fill="#b00020">Design proposal — not hardware-validated. Signals are identified by label, not by wire colour.</text>
+
+  <!-- Flex sensor strip -->
+  <g>
+    <rect x="20" y="150" width="190" height="60" rx="6" fill="#f3e2b3" stroke="#8a6d1f"/>
+    <path d="M30 165 l10 15 l-10 15 M50 165 l10 15 l-10 15 M70 165 l10 15 l-10 15 M90 165 l10 15 l-10 15 M110 165 l10 15 l-10 15 M130 165 l10 15 l-10 15 M150 165 l10 15 l-10 15" fill="none" stroke="#8a6d1f" stroke-width="1.5"/>
+    <rect x="210" y="168" width="40" height="24" fill="#f3e2b3" stroke="#8a6d1f"/>
+    <text x="20" y="232" font-size="13">Flex sensor (flex PCB, 30 channels)</text>
+    <text x="20" y="250" font-size="12" fill="#555">chevron surface facing up</text>
+  </g>
+
+  <!-- Trill Flex base -->
+  <g>
+    <rect x="250" y="110" width="210" height="160" rx="8" fill="#e8eef7" stroke="#2b4a7a" stroke-width="2"/>
+    <text x="278" y="134" font-weight="bold">Trill Flex base</text>
+    <text x="278" y="152" font-size="12" fill="#555">CY8C20xx6A · addr 0x48</text>
+    <text x="278" y="168" font-size="12" fill="#555">no I²C pull-ups</text>
+    <rect x="250" y="166" width="16" height="28" fill="#555"/>
+    <text x="256" y="214" font-size="11" fill="#555">FFC 32-pin</text><text x="256" y="228" font-size="11" fill="#555">0.5 mm</text>
+    <!-- QWIIC receptacle -->
+    <rect x="400" y="190" width="60" height="70" fill="#ffffff" stroke="#2b4a7a"/>
+    <text x="404" y="186" font-size="11" fill="#2b4a7a">QWIIC (JST SH)</text>
+    <text x="408" y="207" font-size="12">1 GND</text>
+    <text x="408" y="222" font-size="12">2 VCC</text>
+    <text x="408" y="237" font-size="12">3 SDA</text>
+    <text x="408" y="252" font-size="12">4 SCL</text>
+  </g>
+
+  <!-- Pi header excerpt -->
+  <g>
+    <rect x="660" y="110" width="360" height="270" rx="8" fill="#eef7ee" stroke="#2e7d32" stroke-width="2"/>
+    <text x="672" y="134" font-weight="bold">Raspberry Pi 40-pin header (pins 1–6)</text>
+    <!-- odd column -->
+    <circle cx="700" cy="170" r="10" fill="#fff" stroke="#000"/><text x="696" y="175" font-size="11">1</text>
+    <circle cx="700" cy="220" r="10" fill="#fff" stroke="#000"/><text x="696" y="225" font-size="11">3</text>
+    <circle cx="700" cy="270" r="10" fill="#fff" stroke="#000"/><text x="696" y="275" font-size="11">5</text>
+    <!-- even column -->
+    <circle cx="860" cy="170" r="10" fill="#ddd" stroke="#999"/><text x="856" y="175" font-size="11">2</text>
+    <circle cx="860" cy="220" r="10" fill="#ddd" stroke="#999"/><text x="856" y="225" font-size="11">4</text>
+    <circle cx="860" cy="270" r="10" fill="#fff" stroke="#000" stroke-width="2"/><text x="856" y="275" font-size="11">6</text>
+    <text x="880" y="175" font-size="12">5 V: do not connect</text>
+    <text x="880" y="225" font-size="12">5 V: do not connect</text>
+    <text x="880" y="275" font-size="12">GND</text>
+    <text x="715" y="160" font-size="12" fill="#d32f2f">3V3</text>
+    <text x="715" y="210" font-size="12" fill="#1b7f3a">GPIO2 / SDA1</text>
+    <text x="715" y="260" font-size="12" fill="#6a1b9a">GPIO3 / SCL1</text>
+    <text x="715" y="304" font-size="12" fill="#2e7d32">on-board 1.8 kΩ pull-ups</text>
+    <text x="715" y="320" font-size="12" fill="#2e7d32">to 3V3 on GPIO2 / GPIO3</text>
+    <text x="672" y="366" font-size="12" fill="#555">header pin 1 is the square pad; 6 = 3rd pin of the even row</text>
+  </g>
+
+  <!-- Wires -->
+  <g fill="none" stroke-width="3">
+    <polyline points="460,203 545,203 545,350 860,350 860,280" stroke="#000000"/>
+    <polyline points="460,218 600,218 600,170 690,170" stroke="#d32f2f"/>
+    <polyline points="460,233 620,233 620,220 690,220" stroke="#1b7f3a"/>
+    <polyline points="460,248 640,248 640,270 690,270" stroke="#6a1b9a"/>
+  </g>
+  <g font-size="12">
+    <text x="470" y="198">GND</text>
+    <text x="604" y="162" fill="#d32f2f">3.3 V</text>
+    <text x="470" y="282" fill="#1b7f3a">SDA</text>
+    <text x="500" y="282" fill="#6a1b9a">SCL</text>
+  </g>
+
+  <!-- Notes -->
+  <g font-size="13">
+    <rect x="20" y="410" width="1000" height="170" rx="8" fill="#fafafa" stroke="#bbb"/>
+    <text x="36" y="436" font-weight="bold">Connections</text>
+    <text x="36" y="458">Trill 1 GND → Pi pin 6 (GND)   ·   Trill 2 VCC → Pi pin 1 (3V3)   ·   Trill 3 SDA → Pi pin 3 (GPIO2)   ·   Trill 4 SCL → Pi pin 5 (GPIO3)</text>
+    <text x="36" y="486" font-weight="bold">Electrical</text>
+    <text x="36" y="508">Power Trill from 3V3 only: Pi GPIO is 3.3 V logic and not 5 V tolerant; Trill I²C levels follow its VCC. Common ground is pin 6.</text>
+    <text x="36" y="530">Trill has no I²C pull-ups; the Pi's fixed 1.8 kΩ pull-ups serve the bus — add none. Bus speed 100 kHz (Pi default) or 400 kHz (Trill max).</text>
+    <text x="36" y="552">Linux: /dev/i2c-1, address 0x48 (default; ADR pads give 0x49–0x50). Wire colours on supplied cables differ between Bela documents.</text>
+    <text x="36" y="572" font-size="11" fill="#777">Diagram colours are a signal key only. Trill, Bela and Raspberry Pi are trademarks of their owners; no affiliation.</text>
+  </g>
+</svg>

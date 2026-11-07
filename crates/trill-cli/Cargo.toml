@@ -1,0 +1,21 @@
+[package]
+name = "trill-cli"
+description = "Linux command-line bring-up tool for Bela Trill sensors over /dev/i2c-N"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[[bin]]
+name = "trill"
+path = "src/main.rs"
+
+[dependencies]
+trill-driver = { path = "../trill-driver" }
+clap = { version = "4.5", features = ["derive"] }
+ctrlc = "3.4"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+linux-embedded-hal = { version = "0.5.0", default-features = false, features = ["i2c"] }
