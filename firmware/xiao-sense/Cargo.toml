@@ -1,7 +1,7 @@
 [package]
 name = "xiao-sense-fw"
 description = "Embassy firmware for the Seeed XIAO nRF52840 Sense: class-compliant USB-MIDI + CDC diagnostics from Trill touch and LSM6DS3TR-C motion; optional debug synth PCM stream"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "GPL-3.0-only"
 repository = "https://github.com/nymble/trill"
@@ -22,6 +22,7 @@ motion-synth = { path = "../../crates/motion-synth" }
 status-led = { path = "../../crates/status-led" }
 instrument-events = { path = "../../crates/instrument-events" }
 trill-usb = { path = "../../crates/trill-usb" }
+trill-config = { path = "../../crates/trill-config" }
 embassy-nrf = { version = "0.11.0", features = ["nrf52840", "time-driver-rtc1", "gpiote", "time", "unstable-pac"] }
 embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread", "executor-interrupt"] }
 embassy-time = "0.5.1"

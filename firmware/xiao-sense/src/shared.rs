@@ -3,11 +3,10 @@
 //! access uses critical sections that only copy a few words.
 
 use core::cell::{Cell, RefCell};
-use core::sync::atomic::{AtomicBool, AtomicU32, AtomicU8, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicU16, AtomicU32, AtomicU8, Ordering};
 
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
 use embassy_sync::blocking_mutex::Mutex;
-#[cfg(feature = "pcm-synth")]
 use embassy_sync::channel::Channel;
 use embassy_sync::signal::Signal;
 use embassy_time::Instant;
@@ -96,8 +95,12 @@ pub struct Stats {
     pub midi_stalls: AtomicU32,
     /// Writes that failed because the endpoint was disabled (unplug/reset).
     pub midi_write_errors: AtomicU32,
-    /// Packets received from the host on the MIDI OUT endpoint (discarded).
+    /// Packets received from the host on the MIDI OUT endpoint.
     pub midi_rx_packets: AtomicU32,
+    /// Configuration requests answered (cable 1 SysEx for this protocol).
+    pub config_requests: AtomicU32,
+    /// Complete SysEx messages on cable 1 that were not ours (no reply).
+    pub config_ignored: AtomicU32,
     pub audio_blocks: AtomicU32,
     pub audio_late: AtomicU32,
     pub audio_resyncs: AtomicU32,
@@ -133,6 +136,8 @@ pub static STATS: Stats = Stats {
     midi_stalls: Z,
     midi_write_errors: Z,
     midi_rx_packets: Z,
+    config_requests: Z,
+    config_ignored: Z,
     audio_blocks: Z,
     audio_late: Z,
     audio_resyncs: Z,
@@ -237,3 +242,19 @@ pub static MIDI_CONFIGURED: AtomicBool = AtomicBool::new(false);
 pub static MIDI_REQUEST: AtomicU8 = AtomicU8::new(0);
 /// Send the panic/reset sequence now.
 pub const MIDI_REQ_PANIC: u8 = 1;
+
+/// Configuration generation (14-bit, wraps): bumped on every mapping change
+/// from the SysEx protocol or a diagnostics key, reported in `CONFIG` replies.
+pub static CONFIG_GEN: AtomicU16 = AtomicU16::new(0);
+/// Random 14-bit ID chosen at boot (hardware RNG), reported by `HELLO`.
+pub static BOOT_ID: AtomicU16 = AtomicU16::new(0);
+/// Configuration replies waiting for the MIDI writer (cable 1). Small and
+/// bounded: the reader waits when it is full, which back-pressures the host.
+pub static CONFIG_REPLIES: Channel<CriticalSectionRawMutex, trill_config::Reply, 2> =
+    Channel::new();
+
+/// Bump [`CONFIG_GEN`] after a mapping change made outside the protocol.
+pub fn bump_config_generation() {
+    let g = CONFIG_GEN.load(Ordering::Relaxed);
+    CONFIG_GEN.store(trill_config::next_generation(g), Ordering::Relaxed);
+}

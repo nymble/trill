@@ -159,6 +159,15 @@ fn main() -> ! {
     cp.DCB.enable_trace();
     cp.DWT.enable_cycle_counter();
 
+    // Boot ID for the configuration protocol: lets a host notice a restart
+    // (and that RAM-only settings went back to defaults).
+    {
+        let mut rng = embassy_nrf::rng::Rng::new_blocking(p.RNG);
+        let mut b = [0u8; 2];
+        rng.blocking_fill_bytes(&mut b);
+        shared::BOOT_ID.store(u16::from_le_bytes(b) & 0x3FFF, Ordering::Relaxed);
+    }
+
     // Event engine before any producer or consumer task starts.
     ENGINE.lock(|e| {
         *e.borrow_mut() = Some(instrument_events::Engine::new(

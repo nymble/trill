@@ -1,0 +1,15 @@
+// SPDX-License-Identifier: GPL-3.0-only
+// Shared build settings for the Trill apps. Signing identity and team are
+// never committed: put your own in Config/Local.xcconfig (git-ignored), see
+// docs/apple-app.md. CI builds unsigned (CODE_SIGNING_ALLOWED=NO).
+
+TRILL_BUNDLE_ID = com.nymble.trill
+DEVELOPMENT_TEAM =
+CODE_SIGN_STYLE = Automatic
+// Mac: ad-hoc "Sign to Run Locally" by default, so a local build runs
+// without any Apple account. iOS devices need a team (Local.xcconfig).
+CODE_SIGN_IDENTITY[sdk=macosx*] = -
+MARKETING_VERSION = 0.2.0
+CURRENT_PROJECT_VERSION = 1
+
+#include? "Local.xcconfig"

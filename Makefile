@@ -2,6 +2,7 @@
 # Host checks need only a Rust toolchain. Cross targets need the rustup target,
 # cargo-zigbuild and Zig (see docs/build.md). Firmware needs the
 # thumbv7em-none-eabihf target and python3 (see docs/firmware-xiao-sense.md).
+# Apple targets need macOS with Xcode 16+ and XcodeGen (see docs/apple-app.md).
 # No target here talks to a device: loading firmware is a separate, explicit
 # step with tools/xiao_uf2.py.
 
@@ -15,7 +16,8 @@ FW_DIR  := firmware/xiao-sense
 FW_ELF  := $(FW_DIR)/target/thumbv7em-none-eabihf/release/xiao-sense-fw
 FW_UF2  := $(DIST)/xiao-sense-fw-$(VERSION).uf2
 
-.PHONY: all ci fmt fmt-check clippy test tools-test check-thumb fw fw-check fw-uf2 fw-uf2-pcm synth-demo build pi-zero pi-arm64 x86-musl dist clean
+.PHONY: all ci fmt fmt-check clippy test tools-test check-thumb fw fw-check fw-uf2 fw-uf2-pcm synth-demo build pi-zero pi-arm64 x86-musl dist clean \
+        protocol-vectors apple apple-project apple-test apple-test-ios-sim apple-mac apple-ios-sim apple-ios-device apple-dist
 
 all: ci
 
@@ -40,7 +42,11 @@ tools-test:
 
 # no_std libraries for Cortex-M4F (nRF52840).
 check-thumb:
-	$(CARGO) build -p trill-driver -p lsm6ds3trc -p motion-synth -p status-led -p instrument-events -p trill-usb --target thumbv7em-none-eabihf
+	$(CARGO) build -p trill-driver -p lsm6ds3trc -p motion-synth -p status-led -p instrument-events -p trill-usb -p trill-config --target thumbv7em-none-eabihf
+
+# Regenerate the configuration-protocol test vectors shared with the Swift tests.
+protocol-vectors:
+	$(CARGO) run -q -p trill-config --example vectors > protocol/config-v1-vectors.txt
 
 # XIAO nRF52840 Sense firmware: lint + linked release ELF + UF2 safety check.
 fw-check:
@@ -96,7 +102,46 @@ dist:
 	done
 	cd $(DIST) && sha256sum *.tar.gz > SHA256SUMS && cat SHA256SUMS
 
+# ---- Apple (macOS host only) ---------------------------------------------
+# Unsigned builds (CODE_SIGNING_ALLOWED=NO): the macOS app is linker
+# ad-hoc signed only; the iOS device build is a compile check, not an
+# installable IPA. Sign and install from Xcode with your own team instead.
+APPLE    := apple
+APPLE_DD := build/apple
+XCODEGEN ?= xcodegen
+XCB      := xcodebuild -project $(APPLE)/Trill.xcodeproj -derivedDataPath $(APPLE_DD) CODE_SIGNING_ALLOWED=NO
+
+apple: apple-test apple-mac apple-ios-sim apple-ios-device apple-dist
+
+# Generate apple/Trill.xcodeproj from apple/project.yml (not committed).
+apple-project:
+	cd $(APPLE) && $(XCODEGEN) generate --spec project.yml
+
+# TrillKit tests on the host (macOS: also the CoreMIDI loopback tests;
+# Linux: protocol/model/UF2 tests only).
+apple-test:
+	swift test --package-path $(APPLE)/TrillKit
+
+apple-test-ios-sim:
+	cd $(APPLE)/TrillKit && xcodebuild test -scheme TrillKit -destination "id=$$(python3 ../scripts/pick_simulator.py)" CODE_SIGNING_ALLOWED=NO
+
+apple-mac: apple-project
+	$(XCB) -scheme TrillMac -configuration Release -destination 'generic/platform=macOS' build
+
+apple-ios-sim: apple-project
+	$(XCB) -scheme TrillIOS -configuration Debug -destination 'generic/platform=iOS Simulator' build
+
+apple-ios-device: apple-project
+	$(XCB) -scheme TrillIOS -configuration Release -destination 'generic/platform=iOS' build
+
+# Zip the built apps into dist/apple with SHA-256 sums.
+apple-dist:
+	rm -rf $(DIST)/apple && mkdir -p $(DIST)/apple
+	ditto -c -k --keepParent $(APPLE_DD)/Build/Products/Release/Trill.app $(DIST)/apple/Trill-macOS-unsigned-dev-$(VERSION).zip
+	ditto -c -k --keepParent $(APPLE_DD)/Build/Products/Debug-iphonesimulator/Trill.app $(DIST)/apple/Trill-iOS-Simulator-$(VERSION).zip
+	cd $(DIST)/apple && shasum -a 256 *.zip > SHA256SUMS && cat SHA256SUMS
+
 clean:
 	$(CARGO) clean
 	cd $(FW_DIR) && $(CARGO) clean
-	rm -rf $(DIST)
+	rm -rf $(DIST) $(APPLE_DD)

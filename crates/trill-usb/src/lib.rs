@@ -4,9 +4,14 @@
 //!
 //! Functions, in interface order:
 //! 1. CDC ACM "diagnostics" (interfaces 0-1): text status and key commands.
-//! 2. USB-MIDI 1.0 (interfaces 2-3): Audio Control + MIDI Streaming, one
-//!    embedded IN jack and one embedded OUT jack, 64-byte bulk endpoints.
-//!    Class compliant: macOS and iOS use their built-in driver.
+//! 2. USB-MIDI 1.0 (interfaces 2-3): Audio Control + MIDI Streaming, two
+//!    virtual cables (two embedded IN and two embedded OUT jacks) on one pair
+//!    of 64-byte bulk endpoints. Cable 0 ([`CABLE_INSTRUMENT`]) carries only
+//!    the instrument's notes and controllers; cable 1 ([`CABLE_CONFIG`])
+//!    carries only the SysEx configuration protocol (`trill-config`), so
+//!    configuration replies never appear on the port a DAW records from.
+//!    Class compliant: macOS and iOS use their built-in driver and show each
+//!    cable as its own MIDI source/destination pair.
 //! 3. Optional CDC ACM "PCM" test stream (interfaces 4-5), only with the
 //!    `pcm-synth` firmware feature.
 //!
@@ -34,6 +39,16 @@ pub const USB_VID: u16 = 0x1209;
 pub const USB_PID_MIDI: u16 = 0x0002;
 /// pid.codes test PID for the layout with the optional PCM port.
 pub const USB_PID_MIDI_PCM: u16 = 0x0003;
+/// USB-MIDI virtual cables (embedded jack pairs).
+pub const MIDI_CABLES: u8 = 2;
+/// Cable for instrument output (notes, controllers, pressure, bend).
+pub const CABLE_INSTRUMENT: u8 = 0;
+/// Cable for the SysEx configuration protocol (both directions).
+pub const CABLE_CONFIG: u8 = 1;
+/// `bcdDevice`: bumped whenever the descriptor layout changes under the same
+/// PID (0x0200 = two MIDI cables), so hosts that cache descriptors per
+/// VID/PID/bcdDevice re-read them.
+pub const DEVICE_RELEASE: u16 = 0x0200;
 /// Full-speed bulk packet size used by every function.
 pub const MAX_PACKET: u16 = 64;
 /// Size of the configuration-descriptor buffer the firmware must provide.
@@ -65,6 +80,7 @@ pub fn device_config(pcm: bool) -> Config<'static> {
         "Trill XIAO MIDI (dev)"
     });
     cfg.serial_number = None;
+    cfg.device_release = DEVICE_RELEASE;
     cfg.max_power = MAX_POWER_MA;
     cfg.max_packet_size_0 = 64;
     // Composite with IADs: device class EF/02/01 (embassy default).
@@ -89,7 +105,7 @@ pub fn add_functions<'d, D: Driver<'d>>(
     pcm_state: Option<&'d mut State<'d>>,
 ) -> Functions<'d, D> {
     let diag = CdcAcmClass::new(builder, diag_state, MAX_PACKET);
-    let midi = MidiClass::new(builder, 1, 1, MAX_PACKET);
+    let midi = MidiClass::new(builder, MIDI_CABLES, MIDI_CABLES, MAX_PACKET);
     let pcm = pcm_state.map(|s| CdcAcmClass::new(builder, s, MAX_PACKET));
     Functions { diag, midi, pcm }
 }
