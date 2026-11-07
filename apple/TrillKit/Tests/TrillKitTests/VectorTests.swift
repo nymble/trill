@@ -7,7 +7,7 @@ import XCTest
 final class VectorTests: XCTestCase {
     struct Vector { let request: [UInt8]; let reply: [UInt8]? }
 
-    static func load() throws -> [String: Vector] {
+    static func loadVectors() throws -> [String: Vector] {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent()
@@ -23,7 +23,7 @@ final class VectorTests: XCTestCase {
     }
 
     func testRequestsMatchRustEncoder() throws {
-        let v = try Self.load()
+        let v = try Self.loadVectors()
         XCTAssertEqual(v.count, 17)
         XCTAssertEqual(TrillCodec.hello(1), v["hello"]!.request)
         XCTAssertEqual(TrillCodec.getConfig(2), v["get_config"]!.request)
@@ -38,7 +38,7 @@ final class VectorTests: XCTestCase {
     }
 
     func testRepliesDecode() throws {
-        let v = try Self.load()
+        let v = try Self.loadVectors()
         guard case let .hello(id, h)? = TrillCodec.decodeReply(v["hello"]!.reply!) else { return XCTFail("hello") }
         XCTAssertEqual(id, 1)
         XCTAssertEqual(h.protocolVersion, 1)
@@ -87,7 +87,7 @@ final class VectorTests: XCTestCase {
     }
 
     func testMalformedRepliesAreRejected() throws {
-        let good = try Self.load()["get_config"]!.reply!
+        let good = try Self.loadVectors()["get_config"]!.reply!
         var bad = good; bad[bad.count - 2] = 0x80
         XCTAssertNil(TrillCodec.decodeReply(bad), "status byte inside")
         bad = good; bad.removeLast()
