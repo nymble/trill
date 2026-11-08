@@ -64,6 +64,7 @@ pub async fn imu_task(
             backoff_ms = 100;
             let mut consecutive = 0u32;
             let mut was_calibrated = false;
+            let mut applied_tap = (f32::NAN, 0u32);
             loop {
                 if with_timeout(
                     Duration::from_millis(IMU_DRDY_TIMEOUT_MS),
@@ -94,17 +95,26 @@ pub async fn imu_task(
                             bump(&STATS.imu_calibrations);
                         }
                         was_calibrated = frame.calibrated;
-                        with_engine(|e| {
+                        let tap_cfg = with_engine(|e| {
                             e.motion(
                                 t_us as u32,
                                 instrument_events::MotionSample {
                                     calibrated: frame.calibrated,
                                     rotation_dps: frame.rotation_dps,
                                     pitch_deg: frame.pitch_deg,
+                                    roll_deg: frame.roll_deg,
+                                    gyro_dps: frame.gyro_dps,
                                     tap: frame.tap,
                                 },
-                            )
+                            );
+                            (e.config().tap_threshold_g, e.config().tap_cooldown_us)
                         });
+                        // Tap sensitivity lives in the engine config (set over
+                        // SysEx); the detector picks it up from the next sample.
+                        if let Some(tap_cfg) = tap_cfg.filter(|c| *c != applied_tap) {
+                            applied_tap = tap_cfg;
+                            motion.set_tap(tap_cfg.0, u64::from(tap_cfg.1));
+                        }
                         MIDI_WAKE.signal(());
                         #[cfg(feature = "pcm-synth")]
                         crate::audio::post_controls(&frame, t_us);

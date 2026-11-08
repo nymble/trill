@@ -162,7 +162,14 @@ final class AppModel: ObservableObject {
         if session.perform(a, now: now) { sessionRevision += 1 }
     }
 
-    var hasUnappliedEdits: Bool { session.acknowledged.map { $0 != draft } ?? false }
+    /// Edits the connected firmware could take (page-1 edits on firmware
+    /// 0.3.0 are not counted: they are never sent there).
+    var hasUnappliedEdits: Bool { !session.unappliedChanges(draft).isEmpty }
+
+    /// Fill the editor with a built-in preset (nothing is sent until Apply).
+    func load(builtIn p: BuiltInPreset) { draft = p.config }
+
+    func setHideTrillSysEx(_ on: Bool) { monitor.hideTrillSysEx = on }
 
     // MARK: Timer
 

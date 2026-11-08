@@ -25,6 +25,7 @@ fn main() {
             rotation_dps: 0.0,
             pitch_deg: 0.0,
             tap: None,
+            ..Default::default()
         },
     );
     e.touch(1_000, None); // finger up: arms the touch voice
@@ -51,6 +52,7 @@ fn main() {
             rotation_dps: 90.0,
             pitch_deg: 15.0,
             tap: None,
+            ..Default::default()
         },
     );
     emit(&mut e, 10_000);

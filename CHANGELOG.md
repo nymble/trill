@@ -4,7 +4,12 @@ All notable changes to this project are documented here. Versions follow [Semant
 
 ## [Unreleased]
 
+### Fixed
+- **Tap percussion stopped after 35.8 min** of continuous calibration (and returned 35.8 min later): the 1 s arm delay used a signed `u32` µs comparison that flips at 2³¹ µs. Now a latch. The same class of bug could hold a controller unchanged for over 35.8 min, or a sensor returning after a 35.8 min gap; elapsed times are now `wrapping_sub` intervals and only samples up to 1 s older are treated as backwards. Tests at 37/60/72/100/150 min and across the u32 wrap. (Firmware 0.4.0; not yet run on hardware.)
+
 ### Added
+- Firmware/protocol 0.4.0 (simulation-tested, **not hardware-tested**): sensor modes (touch, tilt notes with scale steps, gate and hysteresis, theremin with continuous tilt pitch and expression CC); configurable controllers A/B (source, CC number, deadzone, bounded smoothing); tap threshold and cooldown; optional flick / zig-zag gestures (off by default; circle/twirl deferred); orientation zero (action 5). Paged configuration (capability bit 4, page 1 = parameters 14–30); page 0 and 0.3.0 hosts unchanged. Status line shows mode, controllers and gestures.
+- Apple app 0.4.0: built-in presets, sensor-mode / controller / tap / gesture controls (disabled and never sent on firmware < 0.4.0), per-page apply; MIDI monitor hides Trill sensor SysEx by default, shows display vs sent channels and active channels, and shows any CC.
 - Sensor telemetry (protocol v1 messages `05`/`06`/`45`/`50`, capability bit 3, firmware 0.3.0): lease-based subscription (5 s), 1–100 Hz (default 50), 54-byte frames with accel, gyro, pitch/roll, touch, states and counters; lowest priority on cable 1, skipped rather than queued; `tlm=` in the status line. Shared fixtures `protocol/telemetry-v1-frames.txt` tested in Rust and Swift.
 - Apple app: Sensors tab (live charts that break at gaps, orientation, touch, stream health, events, CSV export, unsupported-firmware state) and a MIDI monitor with real-time filter, rates, SysEx counts and CSV export.
 - `make test-kit` and CI artifact `trill-test-kit-unsigned-dev`: Mac app + matching application-only UF2 + tool + docs + manifest + checksums.

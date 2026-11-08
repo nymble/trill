@@ -40,6 +40,10 @@ public enum TrillProtocol {
     public static let capTelemetry: UInt8 = 0x08
     /// Oldest firmware that streams sensor telemetry.
     public static let telemetryMinimumFirmware = "0.3.0"
+    /// Paged configuration: parameters 14...30 and action 5 (firmware 0.4.0+).
+    public static let capConfigPages: UInt8 = 0x10
+    /// Oldest firmware with paged configuration (sensor modes, gestures).
+    public static let configPagesMinimumFirmware = "0.4.0"
 }
 
 /// Device-side error codes.
@@ -63,6 +67,8 @@ public enum TrillErrorCode: UInt8, CaseIterable, Sendable {
 /// Actions the firmware implements.
 public enum TrillAction: UInt8, CaseIterable, Sendable {
     case panic = 1, recalibrateGyro, ledSelfTest, restoreDefaults
+    /// Take the current pitch and roll as level (firmware 0.4.0+, RAM only).
+    case zeroOrientation
 
     public var title: String {
         switch self {
@@ -70,14 +76,56 @@ public enum TrillAction: UInt8, CaseIterable, Sendable {
         case .recalibrateGyro: return "Recalibrate gyro"
         case .ledSelfTest: return "LED self-test"
         case .restoreDefaults: return "Restore firmware defaults"
+        case .zeroOrientation: return "Set current orientation as level"
+        }
+    }
+
+    /// Needs `TrillProtocol.capConfigPages`.
+    public var needsConfigPages: Bool { self == .zeroOrientation }
+}
+
+/// Values of `TrillParam.mode`.
+public enum SensorMode: Int, CaseIterable, Sendable {
+    case touch = 0, tiltNotes, theremin
+    public var title: String {
+        switch self {
+        case .touch: return "Touch strip + motion controllers"
+        case .tiltNotes: return "Tilt notes (scale steps)"
+        case .theremin: return "Theremin (continuous tilt pitch)"
         }
     }
 }
 
-/// Configurable parameters (IDs, ranges and defaults as in firmware 0.2.0).
+/// Values of `TrillParam.ccASource` / `.ccBSource`.
+public enum CCSource: Int, CaseIterable, Sendable {
+    case off = 0, rotation, pitchForward, pitchBack, rollRight, rollLeft, pitchCentered, rollCentered
+    public var title: String {
+        switch self {
+        case .off: return "Off"
+        case .rotation: return "Rotation speed (any axis)"
+        case .pitchForward: return "Pitch forward"
+        case .pitchBack: return "Pitch back (inverted)"
+        case .rollRight: return "Roll right"
+        case .rollLeft: return "Roll left (inverted)"
+        case .pitchCentered: return "Pitch, centred (64 = level)"
+        case .rollCentered: return "Roll, centred (64 = level)"
+        }
+    }
+}
+
+/// Configurable parameters. IDs 1...13 (page 0) exist since firmware 0.2.0;
+/// IDs 14...30 (page 1) need firmware 0.4.0 (`capConfigPages`).
 public enum TrillParam: UInt8, CaseIterable, Codable, Sendable {
     case channel = 1, baseNote, rangeSemitones, scale, pitchMode, bendRange, velocityMin,
          motionEnabled, rotationFullDps, tiltFullDeg, percussionEnabled, percussionChannel, percussionNote
+    case mode = 14, ccASource, ccANumber, ccBSource, ccBNumber, ccDeadzone, ccSmoothingMs,
+         tiltSpanDeg, gateDeg, stepHysteresis, expressionCC, tapThresholdCg, tapCooldownMs,
+         gestureAxis, gestureThresholdDps, gestureCooldownMs, gestureBaseNote
+
+    /// Configuration page (a `CONFIG` reply carries one page).
+    public var page: Int { rawValue <= 13 ? 0 : 1 }
+    public static let pageCount = 2
+    public static func params(page: Int) -> [TrillParam] { allCases.filter { $0.page == page } }
 
     public var range: ClosedRange<Int> {
         switch self {
@@ -89,6 +137,21 @@ public enum TrillParam: UInt8, CaseIterable, Codable, Sendable {
         case .velocityMin: return 1...127
         case .rotationFullDps: return 30...2000
         case .tiltFullDeg: return 5...90
+        case .mode: return 0...2
+        case .ccASource, .ccBSource: return 0...7
+        case .ccANumber, .ccBNumber: return 1...119
+        case .ccDeadzone: return 0...50
+        case .ccSmoothingMs: return 0...500
+        case .tiltSpanDeg: return 10...90
+        case .gateDeg: return 5...60
+        case .stepHysteresis: return 0...49
+        case .expressionCC: return 0...119
+        case .tapThresholdCg: return 30...400
+        case .tapCooldownMs: return 50...1000
+        case .gestureAxis: return 0...3
+        case .gestureThresholdDps: return 100...2000
+        case .gestureCooldownMs: return 100...2000
+        case .gestureBaseNote: return 0...125
         }
     }
 
@@ -108,6 +171,23 @@ public enum TrillParam: UInt8, CaseIterable, Codable, Sendable {
         case .percussionEnabled: return 0
         case .percussionChannel: return 9
         case .percussionNote: return 39
+        case .mode: return 0
+        case .ccASource: return 1
+        case .ccANumber: return 74
+        case .ccBSource: return 2
+        case .ccBNumber: return 1
+        case .ccDeadzone: return 0
+        case .ccSmoothingMs: return 0
+        case .tiltSpanDeg: return 45
+        case .gateDeg: return 15
+        case .stepHysteresis: return 20
+        case .expressionCC: return 0
+        case .tapThresholdCg: return 80
+        case .tapCooldownMs: return 120
+        case .gestureAxis: return 0
+        case .gestureThresholdDps: return 400
+        case .gestureCooldownMs: return 300
+        case .gestureBaseNote: return 60
         }
     }
 
@@ -127,6 +207,23 @@ public enum TrillParam: UInt8, CaseIterable, Codable, Sendable {
         case .percussionEnabled: return "percussion_enabled"
         case .percussionChannel: return "percussion_channel"
         case .percussionNote: return "percussion_note"
+        case .mode: return "mode"
+        case .ccASource: return "cc_a_source"
+        case .ccANumber: return "cc_a_number"
+        case .ccBSource: return "cc_b_source"
+        case .ccBNumber: return "cc_b_number"
+        case .ccDeadzone: return "cc_deadzone_percent"
+        case .ccSmoothingMs: return "cc_smoothing_ms"
+        case .tiltSpanDeg: return "tilt_span_deg"
+        case .gateDeg: return "gate_deg"
+        case .stepHysteresis: return "step_hysteresis_percent"
+        case .expressionCC: return "expression_cc"
+        case .tapThresholdCg: return "tap_threshold_cg"
+        case .tapCooldownMs: return "tap_cooldown_ms"
+        case .gestureAxis: return "gesture_axis"
+        case .gestureThresholdDps: return "gesture_threshold_dps"
+        case .gestureCooldownMs: return "gesture_cooldown_ms"
+        case .gestureBaseNote: return "gesture_base_note"
         }
     }
 
@@ -148,9 +245,13 @@ public struct DeviceConfig: Equatable, Hashable, Sendable {
         set { values[p] = min(max(newValue, p.range.lowerBound), p.range.upperBound) }
     }
 
-    /// Parameters whose values differ from `other`, in ID order.
-    public func changes(from other: DeviceConfig) -> [(TrillParam, Int)] {
-        TrillParam.allCases.compactMap { self[$0] != other[$0] ? ($0, self[$0]) : nil }
+    /// Parameters whose values differ from `other`, in ID order, limited to
+    /// `pages` (all pages by default).
+    public func changes(from other: DeviceConfig, pages: Set<Int>? = nil) -> [(TrillParam, Int)] {
+        TrillParam.allCases.compactMap { p in
+            guard pages.map({ $0.contains(p.page) }) ?? true else { return nil }
+            return self[p] != other[p] ? (p, self[p]) : nil
+        }
     }
 }
 
@@ -169,6 +270,8 @@ public enum TrillReply: Equatable, Sendable {
         public var isPCMSynthBuild: Bool { variant & TrillProtocol.variantPCMSynth != 0 }
         public var persistent: Bool { capabilities & TrillProtocol.capPersistent != 0 }
         public var supportsTelemetry: Bool { capabilities & TrillProtocol.capTelemetry != 0 }
+        /// Parameters 14...30 and action 5 (firmware 0.4.0+).
+        public var supportsConfigPages: Bool { capabilities & TrillProtocol.capConfigPages != 0 }
         public static func == (a: Hello, b: Hello) -> Bool {
             a.protocolVersion == b.protocolVersion && a.firmware == b.firmware && a.variant == b.variant
                 && a.capabilities == b.capabilities && a.maxMessageLength == b.maxMessageLength
@@ -177,7 +280,9 @@ public enum TrillReply: Equatable, Sendable {
     }
 
     case hello(requestID: UInt8, Hello)
-    case config(requestID: UInt8, generation: Int, persistent: Bool, DeviceConfig)
+    /// One page of parameters. Only that page's values in the `DeviceConfig`
+    /// come from the device; the others are firmware defaults.
+    case config(requestID: UInt8, generation: Int, persistent: Bool, page: Int, DeviceConfig)
     case actionAck(requestID: UInt8, TrillAction)
     /// Telemetry subscription state: rate (0 = stopped), lease, frame length, format.
     case telemetryAck(requestID: UInt8, rateHz: Int, leaseSeconds: Int, frameLength: Int, format: Int)
@@ -185,7 +290,7 @@ public enum TrillReply: Equatable, Sendable {
 
     public var requestID: UInt8 {
         switch self {
-        case let .hello(id, _), let .config(id, _, _, _), let .actionAck(id, _), let .error(id, _, _),
+        case let .hello(id, _), let .config(id, _, _, _, _), let .actionAck(id, _), let .error(id, _, _),
              let .telemetryAck(id, _, _, _, _): return id
         }
     }
@@ -198,7 +303,10 @@ public enum TrillCodec {
     }
 
     public static func hello(_ id: UInt8) -> [UInt8] { header(.hello, id) + [TrillProtocol.version, 0xF7] }
+    /// Page 0 (every firmware).
     public static func getConfig(_ id: UInt8) -> [UInt8] { header(.getConfig, id) + [0xF7] }
+    /// One page (pages other than 0 need `capConfigPages`).
+    public static func getConfig(_ id: UInt8, page: Int) -> [UInt8] { header(.getConfig, id) + [UInt8(page & 0x7F), 0xF7] }
     public static func action(_ id: UInt8, _ a: TrillAction) -> [UInt8] { header(.action, id) + [a.rawValue, 0xF7] }
     /// `nil` if the rate is outside 1...100 Hz.
     public static func telemetryStart(_ id: UInt8, rateHz: Int) -> [UInt8]? {
@@ -250,8 +358,9 @@ public enum TrillCodec {
                 seen.insert(param)
                 cfg[param] = v
             }
-            guard seen.count == TrillParam.allCases.count else { return nil }
-            return .config(requestID: id, generation: u14(p[0], p[1]), persistent: p[2] != 0, cfg)
+            // Exactly one complete page.
+            guard let page = seen.first?.page, Set(TrillParam.params(page: page)) == seen else { return nil }
+            return .config(requestID: id, generation: u14(p[0], p[1]), persistent: p[2] != 0, page: page, cfg)
         case .actionAck:
             guard p.count == 1, let a = TrillAction(rawValue: p[0]) else { return nil }
             return .actionAck(requestID: id, a)

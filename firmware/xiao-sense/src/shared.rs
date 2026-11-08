@@ -195,6 +195,7 @@ pub static LAST_MOTION: Mutex<CriticalSectionRawMutex, Cell<MotionFrame>> =
         rotation_dps: 0.0,
         tap: None,
         calibrated: false,
+        gyro_dps: [0.0; 3],
     }));
 
 /// Scaled IMU reading: accel (g), gyro (dps).

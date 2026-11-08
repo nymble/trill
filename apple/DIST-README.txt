@@ -24,8 +24,12 @@ Trill-iOS-Simulator-<version>.zip
   source in Xcode with your own team.
 
 The app talks to Trill firmware 0.2.0 or newer over USB MIDI; its Sensors
-tab needs firmware 0.3.0 or newer. Firmware 0.2.0 has been checked on one
-XIAO Sense from a Mac; firmware 0.3.0 telemetry and the Sensors tab have not
-run on hardware yet. The app never
+tab needs firmware 0.3.0 or newer, and the sensor modes (tilt notes,
+theremin), controller assignment, tap sensitivity and flick gestures on the
+Mapping tab need firmware 0.4.0. With older firmware those controls are
+disabled and never sent. Firmware 0.3.0 (telemetry, Sensors tab, tap
+percussion) has been checked on one XIAO Sense from a Mac; the firmware 0.4.0
+modes and gestures have only been tested in simulation, not on hardware.
+The app never
 writes firmware: its Mac firmware page only checks a UF2 file and shows
 commands for you to run.

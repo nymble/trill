@@ -40,15 +40,17 @@ The device **never answers a reply-typed message** (`type & 0x40`), anything wit
 | Request | Payload | Reply |
 |---|---|---|
 | `01` HELLO | host's highest version (1 byte) | `41` HELLO_REPLY |
-| `02` GET_CONFIG | none | `42` CONFIG |
-| `03` SET_CONFIG | 1–16 × `(param, hi, lo)` | `42` CONFIG with the values now in effect, or `7F` ERROR |
-| `04` ACTION | action code (1 byte) | `44` ACTION_ACK `<code>`. Restore-defaults answers with `42` CONFIG |
+| `02` GET_CONFIG | none (page 0), or page number (1 byte, firmware 0.4.0+) | `42` CONFIG for that page; an unknown page gets ERROR OutOfRange (detail = page) |
+| `03` SET_CONFIG | 1–16 × `(param, hi, lo)` | `42` CONFIG (the page of the **first** parameter) with the values now in effect, or `7F` ERROR |
+| `04` ACTION | action code (1 byte) | `44` ACTION_ACK `<code>`. Restore-defaults answers with `42` CONFIG page 0 |
 | `05` TELEMETRY_START | rate in Hz, 1–100 (1 byte) | `45` TELEMETRY_ACK, then `50` TELEMETRY frames (firmware 0.3.0+, [below](#sensor-telemetry-firmware-030)) |
 | `06` TELEMETRY_STOP | none | `45` TELEMETRY_ACK with rate 0 |
 
-**HELLO_REPLY payload** (13 bytes): protocol version, firmware major, minor, patch, variant (bit 0 = `pcm-synth` build), capabilities (bit 0 SET_CONFIG, bit 1 ACTION, bit 2 persistent settings: **never set by this firmware**, bit 3 sensor telemetry: firmware 0.3.0+), max message length (64), parameter count (13), uptime in seconds (3 bytes, 21 bits, saturating), boot ID (2 bytes, 14 bits). The boot ID is drawn from the nRF52840 hardware RNG at reset. A changed boot ID means the device restarted and its settings went back to defaults.
+**HELLO_REPLY payload** (13 bytes): protocol version, firmware major, minor, patch, variant (bit 0 = `pcm-synth` build), capabilities (bit 0 SET_CONFIG, bit 1 ACTION, bit 2 persistent settings: **never set by this firmware**, bit 3 sensor telemetry: firmware 0.3.0+, bit 4 paged configuration: firmware 0.4.0+), max message length (64), parameter count (13 before 0.4.0, 30 in 0.4.0), uptime in seconds (3 bytes, 21 bits, saturating), boot ID (2 bytes, 14 bits). The boot ID is drawn from the nRF52840 hardware RNG at reset. A changed boot ID means the device restarted and its settings went back to defaults.
 
-**CONFIG payload:** generation (2 bytes, 14 bits, wraps), persistent flag (`00`: RAM only), then `(param, hi, lo)` for every parameter in ID order. The generation increases whenever the mapping changes, through this protocol or a diagnostics key. Unchanged values leave it as it is. Hosts should skip unknown parameter IDs, because a newer firmware may add some.
+**CONFIG payload:** generation (2 bytes, 14 bits, wraps), persistent flag (`00`: RAM only), then `(param, hi, lo)` for every parameter of one page in ID order. The page is implied by the IDs.
+
+**Pages (firmware 0.4.0, capability bit 4 `0x10`).** One 64-byte reply holds at most 17 parameters (7 + 3 + 3n + 1 ≤ 64), so parameters are grouped in pages: page 0 = IDs 1–13, exactly the firmware 0.2/0.3 set and reply (an empty GET_CONFIG still returns it byte for byte); page 1 = IDs 14–30. A host that does not see bit 4 must not send page-1 parameters, `GET_CONFIG` with a payload or action 5: firmware 0.3.0 answers UnknownParam / BadLength / UnknownAction and changes nothing. The app enforces this (`ConfigSession.supportedPages`, tested against a fake 0.3.0 device), and sends one SET_CONFIG per page, at most 16 parameters each, so every CONFIG reply covers what it changed. The generation increases whenever the mapping changes, through this protocol or a diagnostics key. Unchanged values leave it as it is. Hosts should skip unknown parameter IDs, because a newer firmware may add some.
 
 **SET_CONFIG is atomic.** All values are checked first. If any parameter is unknown, repeated or out of range, nothing changes and the reply is an ERROR naming that parameter. Values are rejected, never clamped. Applying a change releases a sounding note. The engine then waits for the finger to lift, and re-centres pitch bend and resends RPN 0 if the channel, pitch mode or bend range changed. Remapping therefore cannot leave a stuck note.
 
@@ -67,7 +69,7 @@ The device **never answers a reply-typed message** (`type & 0x40`), anything wit
 
 ## Parameters
 
-These match `instrument_events::Config` ([MIDI mapping](midi-mapping.md)). Controller numbers are fixed in this firmware (CC74 rotation, CC1 tilt, channel pressure = touch size) and are not parameters.
+These match `instrument_events::Config` ([MIDI mapping](midi-mapping.md)). Page 0 exists in firmware 0.2.0+. Before 0.4.0 the controller numbers were fixed (CC74 rotation, CC1 tilt); from 0.4.0 they are page-1 parameters with those defaults. Channel pressure always follows the note's pressure (touch size, or tilt depth in tilt modes).
 
 | ID | Parameter | Range | Default |
 |---|---|---|---|
@@ -85,7 +87,29 @@ These match `instrument_events::Config` ([MIDI mapping](midi-mapping.md)). Contr
 | 12 | Percussion channel (9 = GM drums) | 0–15 | 9 |
 | 13 | Percussion note | 0–127 | 39 |
 
-Thresholds, smoothing and timing constants are not exposed in version 1.
+Page 1 (firmware 0.4.0+):
+
+| ID | Parameter | Range | Default |
+|---|---|---|---|
+| 14 | Mode: 0 touch strip, 1 tilt notes, 2 theremin | 0–2 | 0 |
+| 15 | Controller A source (below) | 0–7 | 1 rotation |
+| 16 | Controller A CC number | 1–119 | 74 |
+| 17 | Controller B source | 0–7 | 2 pitch forward |
+| 18 | Controller B CC number | 1–119 | 1 |
+| 19 | Controller deadzone, % of full scale | 0–50 | 0 |
+| 20 | Controller smoothing time constant, ms (0 = off) | 0–500 | 0 |
+| 21 | Tilt modes: roll from centre to each end of the range, ° | 10–90 | 45 |
+| 22 | Tilt modes: forward pitch that opens the gate, ° (closes 3° lower) | 5–60 | 15 |
+| 23 | Stepped-note hysteresis, % of a step | 0–49 | 20 |
+| 24 | Tilt modes: CC mirroring note pressure (0 = off) | 0–119 | 0 |
+| 25 | Tap threshold, centi-g above baseline | 30–400 | 80 |
+| 26 | Minimum time between taps, ms | 50–1000 | 120 |
+| 27 | Flick gestures: 0 off, 1 X, 2 Y, 3 Z sensor axis | 0–3 | 0 |
+| 28 | Flick threshold, °/s | 100–2000 | 400 |
+| 29 | Minimum time between flicks, ms | 100–2000 | 300 |
+| 30 | Flick notes: negative = n, positive = n + 1, zig-zag = n + 2 | 0–125 | 60 |
+
+Controller sources: 0 off, 1 rotation speed (full scale = param 9), 2 pitch forward, 3 pitch back, 4 roll right, 5 roll left (full scale = param 10; "back" and "left" are the inversions), 6 pitch centred, 7 roll centred (±param 10 → 0–127, 64 level). Pitch and roll are relative to the zero set by action 5. Other thresholds and timing constants are not exposed.
 
 ## Actions
 
@@ -94,7 +118,8 @@ Thresholds, smoothing and timing constants are not exposed in version 1.
 | 1 | Panic | Same reset sequence as diagnostics key `p` (CC123, CC120, bend centre, pressure 0, RPN 0) |
 | 2 | Recalibrate gyro | Same as key `c`. Keep the board still for about 1 s |
 | 3 | LED self-test | Same as key `L` |
-| 4 | Restore defaults | Firmware default mapping (RAM). Replies with CONFIG |
+| 4 | Restore defaults | Firmware default mapping (RAM) and clears the orientation zero. Replies with CONFIG page 0; hosts with bit 4 then read page 1 |
+| 5 | Zero orientation (0.4.0+) | Current pitch and roll become level for controllers and tilt modes (RAM). Ignored, but acknowledged, before gyro calibration |
 
 ## Persistence
 
@@ -146,7 +171,7 @@ magnetometer). Shared fixtures: `protocol/telemetry-v1-frames.txt`.
 
 ## Safety properties
 
-- A message can only read or change the 13 parameters above and trigger the 4 actions. No message addresses memory, pins or flash.
+- A message can only read or change the 30 parameters above and trigger the 5 actions. No message addresses memory, pins or flash.
 - Parsing is bounded: fixed 64-byte buffers, no allocation, and work proportional to the message length. It runs on the USB executor, and engine access is a short critical section, the same as the diagnostics keys. It never waits on sensors.
 - A fuzz test pushes 200 000 random packets through reassembly and handling. It checks that nothing panics, that every reply is a well-formed SysEx of at most 64 bytes, and that every applied config is already sanitized.
 

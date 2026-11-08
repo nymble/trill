@@ -15,7 +15,8 @@ hardware. Check `SHA256SUMS` first (`shasum -a 256 -c SHA256SUMS`).
 
 ## Bring-up
 
-1. **Firmware.** The Sensors tab needs firmware 0.3.0 or newer; older firmware
+1. **Firmware.** The Mapping tab's sensor modes and gestures need firmware
+   0.4.0; the Sensors tab needs firmware 0.3.0 or newer; older firmware
    still plays MIDI and the app says "Sensors unsupported until the firmware is
    updated". To update: double-press RESET on the XIAO so the `XIAO-SENSE`
    drive appears, then
@@ -32,7 +33,24 @@ hardware. Check `SHA256SUMS` first (`shasum -a 256 -c SHA256SUMS`).
    pitch/roll, Trill touch and stream health update live. Charts show the last
    10 s; gaps and stale periods are left blank, never drawn through.
 5. **MIDI tab.** Logs what port 1 sends (CoreMIDI time, channel, decoded
-   message), with clock filtering, rates and CSV export.
+   message), with clock and Trill-SysEx filtering, rates and CSV export. Select
+   port 1 as the monitor source; port 2 is configuration + sensor stream only.
+6. **Mapping tab (firmware 0.4.0).** Built-in presets and the new sensor
+   modes, controller assignment, tap sensitivity and gestures. Firmware 0.3.0
+   keeps working with the old controls; the new ones are disabled and not sent.
+
+### What to test on hardware with 0.4.0 (not yet done)
+
+- Taps still make notes after more than 36 minutes connected (the 0.3.0 bug)
+  and across 72 minutes (clock wrap).
+- Tilt scale: gate opens about 15° forward, notes step cleanly while rolling,
+  no stuck notes when switching preset, recalibrating or unplugging.
+- Theremin: synth bend range ±24, continuous pitch, CC11 expression.
+- Controller A/B source and number changes, deadzone, smoothing lag.
+- Tap threshold/cooldown; flick gestures on each axis (which direction is
+  "negative" depends on mounting), zig-zag, no repeat from a held rotation.
+- Orientation zero, and that restore defaults clears it.
+- Instrument (port 1) timing unaffected while the Sensors tab streams.
 
 Microphone, battery level and heading (yaw) are not available with this
 firmware and board, and the app says so instead of showing values.

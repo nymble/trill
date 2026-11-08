@@ -24,13 +24,19 @@ final class VectorTests: XCTestCase {
 
     func testRequestsMatchRustEncoder() throws {
         let v = try Self.loadVectors()
-        XCTAssertEqual(v.count, 24)
+        XCTAssertEqual(v.count, 33)
         XCTAssertEqual(TrillCodec.hello(1), v["hello"]!.request)
         XCTAssertEqual(TrillCodec.getConfig(2), v["get_config"]!.request)
         XCTAssertEqual(TrillCodec.setConfig(3, [(.channel, 2), (.pitchMode, 1)]), v["set_channel_steps"]!.request)
         XCTAssertEqual(TrillCodec.setConfig(4, [(.rotationFullDps, 2000)]), v["set_rotation_2000"]!.request)
         XCTAssertEqual(TrillCodec.action(9, .panic), v["action_panic"]!.request)
         XCTAssertEqual(TrillCodec.action(10, .restoreDefaults), v["action_restore_defaults"]!.request)
+        XCTAssertEqual(TrillCodec.getConfig(22, page: 0), v["get_config_page0"]!.request)
+        XCTAssertEqual(TrillCodec.getConfig(23, page: 1), v["get_config_page1"]!.request)
+        XCTAssertEqual(TrillCodec.setConfig(26, [(.mode, 2), (.expressionCC, 11), (.gateDeg, 20)]), v["set_theremin"]!.request)
+        XCTAssertEqual(TrillCodec.setConfig(27, [(.gestureAxis, 3), (.gestureThresholdDps, 500), (.gestureBaseNote, 70)]), v["set_flick_gestures"]!.request)
+        XCTAssertEqual(TrillCodec.action(30, .zeroOrientation), v["action_zero_orientation"]!.request)
+        XCTAssertNil(TrillCodec.setConfig(29, [(.tapThresholdCg, 10)]))
         // The app refuses to encode requests the device would reject.
         XCTAssertNil(TrillCodec.setConfig(5, [(.channel, 2), (.bendRange, 30)]))
         XCTAssertNil(TrillCodec.setConfig(7, [(.baseNote, 60), (.baseNote, 61)]))
@@ -42,7 +48,8 @@ final class VectorTests: XCTestCase {
         guard case let .hello(id, h)? = TrillCodec.decodeReply(v["hello"]!.reply!) else { return XCTFail("hello") }
         XCTAssertEqual(id, 1)
         XCTAssertEqual(h.protocolVersion, 1)
-        XCTAssertEqual(h.firmwareString, "0.3.0")
+        XCTAssertEqual(h.firmwareString, "0.4.0")
+        XCTAssertTrue(h.supportsConfigPages)
         XCTAssertTrue(h.supportsTelemetry)
         XCTAssertEqual(h.uptimeSeconds, 1234)
         XCTAssertEqual(h.bootID, 0x1555)
@@ -50,18 +57,33 @@ final class VectorTests: XCTestCase {
         XCTAssertFalse(h.persistent)
         XCTAssertFalse(h.isPCMSynthBuild)
 
-        guard case let .config(_, gen, persistent, cfg)? = TrillCodec.decodeReply(v["get_config"]!.reply!) else { return XCTFail("config") }
+        guard case let .config(_, gen, persistent, page0, cfg)? = TrillCodec.decodeReply(v["get_config"]!.reply!) else { return XCTFail("config") }
         XCTAssertEqual(gen, 0)
         XCTAssertFalse(persistent)
+        XCTAssertEqual(page0, 0)
         XCTAssertEqual(cfg, DeviceConfig.firmwareDefaults, "Swift defaults match firmware defaults")
+        guard case let .config(_, _, _, page1, cfgP1)? = TrillCodec.decodeReply(v["get_config_page1"]!.reply!) else { return XCTFail("page 1") }
+        XCTAssertEqual(page1, 1)
+        XCTAssertEqual(cfgP1, DeviceConfig.firmwareDefaults, "page-1 defaults match firmware")
+        guard case let .config(_, _, _, 1, th)? = TrillCodec.decodeReply(v["set_theremin"]!.reply!) else { return XCTFail("theremin") }
+        XCTAssertEqual(th[.mode], SensorMode.theremin.rawValue)
+        XCTAssertEqual(th[.expressionCC], 11)
+        XCTAssertEqual(th[.gateDeg], 20)
+        guard case let .config(_, _, _, 0, mixed)? = TrillCodec.decodeReply(v["set_mixed_pages"]!.reply!) else { return XCTFail("mixed") }
+        XCTAssertEqual(mixed[.bendRange], 12)
+        XCTAssertEqual(TrillCodec.decodeReply(v["get_config_page0"]!.reply!), TrillCodec.decodeReply(v["get_config"]!.reply!).map {
+            guard case let .config(_, g, pe, pg, c) = $0 else { return $0 }
+            return .config(requestID: 22, generation: g, persistent: pe, page: pg, c)
+        })
+        guard case .actionAck(30, .zeroOrientation)? = TrillCodec.decodeReply(v["action_zero_orientation"]!.reply!) else { return XCTFail("zero") }
 
-        guard case let .config(_, gen2, _, cfg2)? = TrillCodec.decodeReply(v["set_channel_steps"]!.reply!) else { return XCTFail("set") }
+        guard case let .config(_, gen2, _, _, cfg2)? = TrillCodec.decodeReply(v["set_channel_steps"]!.reply!) else { return XCTFail("set") }
         XCTAssertEqual(gen2, 1)
         XCTAssertEqual(cfg2[.channel], 2)
         XCTAssertEqual(cfg2[.pitchMode], 1)
         XCTAssertEqual(cfg2.changes(from: .firmwareDefaults).map(\.0), [.channel, .pitchMode])
 
-        guard case let .config(_, _, _, cfg3)? = TrillCodec.decodeReply(v["set_rotation_2000"]!.reply!) else { return XCTFail("rot") }
+        guard case let .config(_, _, _, _, cfg3)? = TrillCodec.decodeReply(v["set_rotation_2000"]!.reply!) else { return XCTFail("rot") }
         XCTAssertEqual(cfg3[.rotationFullDps], 2000)
 
         let errors: [(String, TrillErrorCode, UInt8)] = [
@@ -73,6 +95,9 @@ final class VectorTests: XCTestCase {
             ("too_long", .tooLong, 0),
             ("bad_version", .badVersion, 1),
             ("unknown_type", .unknownType, 0x20),
+            ("get_config_bad_page", .outOfRange, 2),
+            ("get_config_bad_length", .badLength, 2),
+            ("set_tap_out_of_range", .outOfRange, TrillParam.tapThresholdCg.rawValue),
         ]
         for (name, code, detail) in errors {
             guard case let .error(_, c, d)? = TrillCodec.decodeReply(v[name]!.reply!) else { return XCTFail(name) }

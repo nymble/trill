@@ -9,7 +9,7 @@ CODE_SIGN_STYLE = Automatic
 // Mac: ad-hoc "Sign to Run Locally" by default, so a local build runs
 // without any Apple account. iOS devices need a team (Local.xcconfig).
 CODE_SIGN_IDENTITY[sdk=macosx*] = -
-MARKETING_VERSION = 0.3.0
+MARKETING_VERSION = 0.4.0
 CURRENT_PROJECT_VERSION = 1
 
 #include? "Local.xcconfig"

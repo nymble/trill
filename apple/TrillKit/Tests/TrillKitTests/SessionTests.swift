@@ -12,6 +12,10 @@ final class FakeTrill {
     var actions: [TrillAction] = []
     var telemetry = false
     var telemetryRate = 0
+    /// Firmware 0.4.0 behaviour: paged configuration, params 14...30, action 5.
+    var pages = false
+
+    func known(_ p: TrillParam) -> Bool { pages || p.page == 0 }
 
     func reply(to m: [UInt8]) -> [UInt8]? {
         guard !silent, TrillCodec.isTrillSysEx(m), m.count >= 8 else { return nil }
@@ -19,23 +23,29 @@ final class FakeTrill {
         let hdr = { (t: UInt8) in [0xF0, 0x7D, 0x54, 0x52, 0x01, t, id] as [UInt8] }
         switch m[5] {
         case 0x01:
-            return hdr(0x41) + [1, 0, telemetry ? 3 : 2, 0, 0, telemetry ? 0x0B : 3, 64, 13, 0, 0, 5, UInt8(bootID >> 7), UInt8(bootID & 0x7F), 0xF7]
+            let minor: UInt8 = pages ? 4 : telemetry ? 3 : 2
+            let caps: UInt8 = (telemetry ? 0x0B : 3) | (pages ? 0x10 : 0)
+            return hdr(0x41) + [1, 0, minor, 0, 0, caps, 64, pages ? 30 : 13, 0, 0, 5, UInt8(bootID >> 7), UInt8(bootID & 0x7F), 0xF7]
         case 0x02:
-            return configReply(hdr)
+            let payload = Array(m[7..<(m.count - 1)])
+            if payload.isEmpty { return configReply(hdr, page: 0) }
+            guard pages else { return hdr(0x7F) + [3, UInt8(payload.count), 0xF7] }
+            guard payload.count == 1, payload[0] < 2 else { return hdr(0x7F) + [5, payload[0], 0xF7] }
+            return configReply(hdr, page: Int(payload[0]))
         case 0x03:
             var new = config
             for i in stride(from: 7, to: m.count - 1, by: 3) {
-                guard let p = TrillParam(rawValue: m[i]) else { return hdr(0x7F) + [4, m[i], 0xF7] }
+                guard let p = TrillParam(rawValue: m[i]), known(p) else { return hdr(0x7F) + [4, m[i], 0xF7] }
                 let v = Int(m[i + 1]) << 7 | Int(m[i + 2])
                 guard p.range.contains(v) else { return hdr(0x7F) + [5, p.rawValue, 0xF7] }
                 new[p] = v
             }
             if new != config { generation = (generation + 1) & 0x3FFF; config = new }
-            return configReply(hdr)
+            return configReply(hdr, page: TrillParam(rawValue: m[7])!.page)
         case 0x04:
-            let a = TrillAction(rawValue: m[7])!
+            guard let a = TrillAction(rawValue: m[7]), !a.needsConfigPages || pages else { return hdr(0x7F) + [7, m[7], 0xF7] }
             actions.append(a)
-            if a == .restoreDefaults { config = .firmwareDefaults; return configReply(hdr) }
+            if a == .restoreDefaults { config = .firmwareDefaults; return configReply(hdr, page: 0) }
             return hdr(0x44) + [a.rawValue, 0xF7]
         case 0x05 where telemetry:
             guard (1...100).contains(Int(m[7])) else { return hdr(0x7F) + [5, m[7], 0xF7] }
@@ -49,9 +59,9 @@ final class FakeTrill {
         }
     }
 
-    func configReply(_ hdr: (UInt8) -> [UInt8]) -> [UInt8] {
+    func configReply(_ hdr: (UInt8) -> [UInt8], page: Int) -> [UInt8] {
         var r = hdr(0x42) + [UInt8(generation >> 7), UInt8(generation & 0x7F), 0]
-        for p in TrillParam.allCases { r += [p.rawValue, UInt8(config[p] >> 7), UInt8(config[p] & 0x7F)] }
+        for p in TrillParam.params(page: page) { r += [p.rawValue, UInt8(config[p] >> 7), UInt8(config[p] & 0x7F)] }
         return r + [0xF7]
     }
 }
@@ -178,5 +188,77 @@ final class SessionTests: XCTestCase {
         session.connect(now: now); pump()
         for _ in 0..<300 { session.perform(.panic, now: now); pump() }
         XCTAssertEqual(device.actions.count, 300)
+    }
+
+    // MARK: Firmware 0.4.0 paged configuration
+
+    func testPagedHandshakeReadsBothPages() {
+        device.telemetry = true
+        device.pages = true
+        device.config[.mode] = 2
+        session.connect(now: now); pump()
+        XCTAssertEqual(session.phase, .ready)
+        XCTAssertTrue(session.supportsConfigPages)
+        XCTAssertEqual(session.receivedPages, [0, 1])
+        XCTAssertEqual(session.acknowledged?[.mode], 2)
+        XCTAssertEqual(session.acknowledged, device.config)
+    }
+
+    func testPresetTouchingBothPagesIsSplitPerPageAndAcknowledged() {
+        device.pages = true
+        session.connect(now: now); pump()
+        var want = DeviceConfig.firmwareDefaults
+        want[.channel] = 3
+        want[.mode] = 1
+        want[.gestureAxis] = 3
+        XCTAssertTrue(session.apply(want, now: now))
+        pump()
+        XCTAssertEqual(session.acknowledged, want)
+        XCTAssertEqual(device.config, want)
+        XCTAssertTrue(session.unappliedChanges(want).isEmpty)
+        // All 17 page-1 parameters at once: more than one request holds.
+        var all = want
+        for p in TrillParam.params(page: 1) { all[p] = p.range.upperBound }
+        XCTAssertTrue(session.apply(all, now: now))
+        pump()
+        XCTAssertEqual(device.config, all)
+        XCTAssertEqual(session.acknowledged, all)
+    }
+
+    func testOldFirmwareNeverGetsPageOneParametersOrActions() {
+        device.telemetry = true // 0.3.0
+        session.connect(now: now); pump()
+        XCTAssertEqual(session.phase, .ready)
+        XCTAssertFalse(session.supportsConfigPages)
+        XCTAssertTrue(session.unsupported(.mode))
+        XCTAssertFalse(session.unsupported(.channel))
+        var want = DeviceConfig.firmwareDefaults
+        want[.mode] = 2
+        want[.tapThresholdCg] = 50
+        XCTAssertFalse(session.apply(want, now: now), "only unsupported edits: nothing sent")
+        XCTAssertTrue(session.unappliedChanges(want).isEmpty)
+        want[.baseNote] = 60
+        XCTAssertTrue(session.apply(want, now: now))
+        XCTAssertEqual(sent.count, 1)
+        XCTAssertEqual(sent[0].count, 7 + 3 + 1, "page-0 change only")
+        pump()
+        XCTAssertEqual(device.config[.baseNote], 60)
+        XCTAssertEqual(device.config[.mode], 0)
+        XCTAssertFalse(session.perform(.zeroOrientation, now: now))
+        XCTAssertTrue(sent.isEmpty)
+        XCTAssertFalse(session.log.contains { $0.isError })
+    }
+
+    func testRestoreDefaultsRereadsPageOne() {
+        device.pages = true
+        session.connect(now: now); pump()
+        var want = DeviceConfig.firmwareDefaults
+        want[.mode] = 2
+        session.apply(want, now: now); pump()
+        XCTAssertEqual(session.acknowledged?[.mode], 2)
+        session.perform(.restoreDefaults, now: now); pump()
+        XCTAssertEqual(session.acknowledged, .firmwareDefaults)
+        XCTAssertTrue(session.perform(.zeroOrientation, now: now)); pump()
+        XCTAssertEqual(device.actions, [.restoreDefaults, .zeroOrientation])
     }
 }

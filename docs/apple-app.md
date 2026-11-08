@@ -112,10 +112,16 @@ There is no App Store or TestFlight build. The code is GPL-3.0-only, and App Sto
 3. **Device tab:**
    - The monitor source is preselected to port 1. The configuration source and destination are preselected to port 2.
    - Press **Connect**. The status shows the firmware version, the protocol, and "Settings are kept in device RAM only".
-4. **Mapping tab:** edit, then press **Apply to device**. Orange "device:" badges show what the device last acknowledged. A sounding note is released when a change is applied.
+4. **Mapping tab:** load a built-in preset or edit, then press **Apply to device**. Orange "device:" badges show what the device last acknowledged. Sounding notes are released and changed controllers return to 0 when a change is applied.
+   - **Built-in presets:** Default (touch + motion), Tilt scale, Theremin, Expressive controllers, Tap percussion, Flick gestures (experimental). Loading only fills the editor.
+   - **Sensor mode** (touch / tilt notes / theremin), **controllers A and B** (source, CC number, deadzone, smoothing), **tap sensitivity and cooldown**, **flick gestures** (off by default) and **Set current orientation as level** need firmware 0.4.0. With 0.3.0 or older they are disabled, the tab says so, and the app never sends them (the device would reject the whole request). They are tested against simulated devices only, not on hardware yet.
+   - Theremin: set your synth's pitch-bend range to the value shown (default ±24).
+   - Circle and twirl gestures, yaw/heading and position are not available (no magnetometer, and position cannot be tracked from this IMU).
 5. **Presets:** keep mappings across device restarts. Export or import them as `.trill.json` files.
 6. **Sensors tab:** move the board and watch acceleration, rotation and orientation; touch the Trill. The banner says whether data is live, stale, paused (the device keeps streaming) or unsupported.
-7. **MIDI tab:** watch and log what the instrument sends.
+7. **MIDI tab:** watch and log what the instrument sends. Pick **port 1** as the monitor source (Device tab): it carries the instrument notes and controllers. Port 2 carries only configuration and the 50 Hz sensor stream. Trill sensor SysEx is counted but hidden from the log by default ("Hide Trill sensor SysEx"), so tap notes stay visible while the Sensors tab streams. The channel picker only chooses which channel's state is *displayed*. The line under it shows the channels the device *sends* on (notes on the touch channel, taps and flicks on the percussion channel, 10 by default) and the channels that actually had activity.
+
+   In a DAW (GarageBand, Logic): enable the `…Port 1` input (GarageBand: Settings › Audio/MIDI; Logic: MIDI inputs, all enabled by default), put a software-instrument track in record/monitor, and for taps use a drum kit on, or a track receiving, channel 10. Port 2 should not be routed to an instrument.
 
 A diagnostics terminal (`screen /dev/cu.usbmodem…`) is optional. The protocol does not use it.
 
@@ -132,4 +138,4 @@ A diagnostics terminal (`screen /dev/cu.usbmodem…`) is optional. The protocol 
 }
 ```
 
-Import rejects files that are the wrong format or version, have unknown keys, or have out-of-range values. Missing keys take the firmware defaults. Presets are stored in the app's own container (`Application Support/Trill/presets.json`).
+Import rejects files that are the wrong format or version, have unknown keys, or have out-of-range values. Missing keys take the firmware defaults, so 0.3.0 presets load in 0.4.0 unchanged. Presets saved by app 0.4.0 include the page-1 keys (`mode`, `cc_a_source`, `cc_a_number`, `cc_b_source`, `cc_b_number`, `cc_deadzone_percent`, `cc_smoothing_ms`, `tilt_span_deg`, `gate_deg`, `step_hysteresis_percent`, `expression_cc`, `tap_threshold_cg`, `tap_cooldown_ms`, `gesture_axis`, `gesture_threshold_dps`, `gesture_cooldown_ms`, `gesture_base_note`), so app 0.3.0 rejects them as unknown keys. Presets are stored in the app's own container (`Application Support/Trill/presets.json`).

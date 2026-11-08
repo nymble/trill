@@ -91,6 +91,19 @@ public struct MonitorModel: Sendable {
     /// Events per second over the most recent second of host time.
     public private(set) var rate = 0.0
     public var hideRealtime = true
+    /// Trill configuration / sensor-telemetry SysEx received (counted always).
+    public private(set) var trillSysExCount = 0
+    /// Keep Trill SysEx (the 50 Hz sensor stream on Port 2) out of the log so
+    /// instrument notes and controllers stay visible. On by default.
+    public var hideTrillSysEx = true
+    /// Channels (0-based) that carried a channel message since the last clear.
+    public var activeChannels: [Int] { channels.indices.filter { channels[$0].lastActivity > 0 } }
+
+    /// True for a Trill protocol message (config reply or telemetry frame).
+    public static func isTrillSysEx(_ m: MIDIMessage) -> Bool {
+        if case let .sysex(bytes, _) = m { return TrillCodec.isTrillSysEx(bytes) }
+        return false
+    }
     private var recent: [Double] = []
 
     public init(historyLimit: Int = 500) { self.historyLimit = max(historyLimit, 1) }
@@ -102,13 +115,18 @@ public struct MonitorModel: Sendable {
             update(e)
             if case .realtime = e.message { realtimeCount += 1 }
             if case .sysex = e.message { sysexCount += 1 }
+            if Self.isTrillSysEx(e.message) { trillSysExCount += 1 }
             recent.append(e.hostTime)
         }
         if let last = recent.last {
             if let i = recent.firstIndex(where: { $0 > last - 1 }), i > 0 { recent.removeFirst(i) }
             rate = Double(recent.count)
         }
-        let kept = hideRealtime ? events.filter { if case .realtime = $0.message { return false }; return true } : events
+        let kept = events.filter { e in
+            if hideRealtime, case .realtime = e.message { return false }
+            if hideTrillSysEx, Self.isTrillSysEx(e.message) { return false }
+            return true
+        }
         history.append(contentsOf: kept.suffix(historyLimit))
         if history.count > historyLimit { history.removeFirst(history.count - historyLimit) }
     }
@@ -135,6 +153,7 @@ public struct MonitorModel: Sendable {
         total = 0
         realtimeCount = 0
         sysexCount = 0
+        trillSysExCount = 0
         rate = 0
         recent.removeAll()
     }

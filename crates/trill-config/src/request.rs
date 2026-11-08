@@ -32,9 +32,16 @@ pub fn hello(req: u8) -> Reply {
     end(r)
 }
 
-/// `GET_CONFIG`.
+/// `GET_CONFIG` for page 0 (works with every firmware).
 pub fn get_config(req: u8) -> Reply {
     end(start(msg::GET_CONFIG, req))
+}
+
+/// `GET_CONFIG` for `page` (needs `CAP_CONFIG_PAGES` for pages other than 0).
+pub fn get_config_page(req: u8, page: u8) -> Reply {
+    let mut r = start(msg::GET_CONFIG, req);
+    let _ = r.push(page & 0x7F);
+    end(r)
 }
 
 /// `SET_CONFIG` with up to [`MAX_SET_PARAMS`] `(param, value)` pairs.

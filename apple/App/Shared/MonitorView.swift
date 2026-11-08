@@ -19,6 +19,7 @@ struct MonitorView: View {
                     .frame(maxWidth: 160)
                     Toggle("Pause", isOn: $model.monitorPaused)
                     Toggle("Hide clock / real-time", isOn: Binding(get: { model.monitor.hideRealtime }, set: { model.setHideRealtime($0) }))
+                    Toggle("Hide Trill sensor SysEx", isOn: Binding(get: { model.monitor.hideTrillSysEx }, set: { model.setHideTrillSysEx($0) }))
                     Button("Clear") { model.clearMonitor() }
                     Button("Export…") {
                         exporting = CSVDocument(text: model.monitor.csv(port: portName))
@@ -31,9 +32,10 @@ struct MonitorView: View {
                 if model.monitorSourceID == nil {
                     Text("Select a source on the Device tab.").foregroundStyle(.secondary)
                 }
+                Text(channelLine).font(.caption).foregroundStyle(.secondary)
                 ChannelPanel(state: model.monitor.channels[model.monitorChannel],
                              bendRange: model.session.acknowledged?[.bendRange] ?? model.draft[.bendRange])
-                Text("Values are the standard MIDI messages the instrument sends (touch size arrives as channel pressure; rotation and tilt as CC74 / CC1). Raw sensor values are on the Sensors tab. Times are CoreMIDI timestamps; SysEx is summarized to its first 24 bytes. Nothing is routed elsewhere.")
+                Text("Values are the standard MIDI messages the instrument sends on Port 1 (notes, channel pressure, pitch bend and the controllers chosen on the Mapping tab). Port 2 carries only configuration and the sensor stream; Trill sensor SysEx is counted but hidden from the log unless you untick the option. Raw sensor values are on the Sensors tab. Times are CoreMIDI timestamps; SysEx is summarized to its first 24 bytes. Nothing is routed elsewhere.")
                     .font(.caption).foregroundStyle(.secondary)
                 EventList(events: model.monitor.history)
             }
@@ -42,6 +44,19 @@ struct MonitorView: View {
             .fileExporter(isPresented: $showExporter, document: exporting, contentType: .commaSeparatedText,
                           defaultFilename: "trill-midi-log.csv") { _ in exporting = nil }
         }
+    }
+}
+
+extension MonitorView {
+    /// Display channel versus what the device sends (1-based, as DAWs show).
+    var channelLine: String {
+        let cfg = model.session.acknowledged ?? model.draft
+        var parts = ["Showing channel \(model.monitorChannel + 1)",
+                     "device sends notes on ch \(cfg[.channel] + 1)",
+                     "taps\(cfg[.gestureAxis] != 0 ? " and flicks" : "") on ch \(cfg[.percussionChannel] + 1)"]
+        let active = model.monitor.activeChannels.map { "\($0 + 1)" }
+        parts.append(active.isEmpty ? "no channel activity yet" : "activity on ch " + active.joined(separator: ", "))
+        return parts.joined(separator: " · ") + "\(model.monitor.trillSysExCount > 0 ? " · \(model.monitor.trillSysExCount) Trill SysEx (is this Port 2? pick Port 1 for the instrument)" : "")"
     }
 }
 
@@ -77,8 +92,9 @@ struct ChannelPanel: View {
             let semis = state.bendSemitones(range: bendRange)
             Meter(label: "Pitch bend", value: (Double(state.pitchBend) / 16383), text: String(format: "%+.2f st", semis))
             Meter(label: "Pressure", value: Double(state.pressure) / 127, text: "\(state.pressure)")
-            Meter(label: "CC74 (rotation)", value: Double(state.controllers[74] ?? 0) / 127, text: "\(state.controllers[74] ?? 0)")
-            Meter(label: "CC1 (tilt)", value: Double(state.controllers[1] ?? 0) / 127, text: "\(state.controllers[1] ?? 0)")
+            ForEach(state.controllers.keys.filter { $0 < 120 }.sorted(), id: \.self) { cc in
+                Meter(label: "CC\(cc)", value: Double(state.controllers[cc] ?? 0) / 127, text: "\(state.controllers[cc] ?? 0)")
+            }
         }
     }
 }

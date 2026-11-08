@@ -30,6 +30,8 @@ pub struct MotionFrame {
     pub tap: Option<f32>,
     /// True once the gyro bias has been estimated.
     pub calibrated: bool,
+    /// Unsmoothed bias-corrected angular rate per sensor axis (dps).
+    pub gyro_dps: [f32; 3],
 }
 
 /// Tunables. Defaults suit a hand-held instrument at 416 Hz.
@@ -206,7 +208,15 @@ impl MotionProcessor {
             rotation_dps: self.rotation,
             tap,
             calibrated: self.calib.bias().is_some(),
+            gyro_dps: gyro,
         }
+    }
+
+    /// Change tap sensitivity (g above the high-passed baseline) and the
+    /// minimum time between taps. Takes effect from the next sample.
+    pub fn set_tap(&mut self, threshold_g: f32, refractory_us: u64) {
+        self.cfg.tap_threshold_g = threshold_g;
+        self.cfg.tap_refractory_us = refractory_us;
     }
 
     /// Current gyro bias estimate.

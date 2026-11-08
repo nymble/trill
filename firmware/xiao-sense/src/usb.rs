@@ -306,7 +306,14 @@ async fn config_request(msg: &[u8], truncated: bool) {
         }
         Some(trill_config::Action::RecalibrateGyro) => RECALIBRATE.store(true, Ordering::Relaxed),
         Some(trill_config::Action::LedSelfTest) => LED_COMMAND.store(b'L', Ordering::Relaxed),
-        Some(trill_config::Action::RestoreDefaults) | None => {}
+        Some(trill_config::Action::ZeroOrientation) => {
+            // Ignored (still acknowledged) until the IMU is calibrated.
+            let _ = with_engine(|e| e.zero_orientation());
+        }
+        Some(trill_config::Action::RestoreDefaults) => {
+            let _ = with_engine(|e| e.clear_zero());
+        }
+        None => {}
     }
     if let Some(rate) = o.telemetry {
         TELEMETRY_REQUEST.store(rate, Ordering::Relaxed);
@@ -583,7 +590,7 @@ fn midi_report(out: &mut String<OUT_LEN>) {
     };
     let _ = write!(
         out,
-        "midi: usb {:04x}:{:04x} {} | ch={} base={} range={:.0}st scale={} pitch={} bend=+-{}st | pressure=contact size (not force) | motion_cc={} (CC74 rot, CC1 tilt) | tap_perc={} (ch {} note {})\r\n",
+        "midi: usb {:04x}:{:04x} {} | ch={} base={} range={:.0}st scale={} pitch={} bend=+-{}st | pressure=contact size (not force) | mode={} motion_cc={} (A CC{} src {}, B CC{} src {}) | tap_perc={} (ch {} note {}) | flick_axis={} gestures={}\r\n",
         USB_VID,
         USB_PID,
         if MIDI_CONFIGURED.load(Ordering::Relaxed) {
@@ -603,10 +610,32 @@ fn midi_report(out: &mut String<OUT_LEN>) {
             PitchMode::Steps => "steps",
         },
         c.bend_range_semitones,
+        match c.mode {
+            instrument_events::Mode::Touch => "touch",
+            instrument_events::Mode::TiltNotes => "tilt-notes",
+            instrument_events::Mode::Theremin => "theremin",
+        },
         u8::from(c.motion_enabled),
+        c.cc_a.control,
+        instrument_events::CcSource::ALL
+            .iter()
+            .position(|&x| x == c.cc_a.source)
+            .unwrap_or(0),
+        c.cc_b.control,
+        instrument_events::CcSource::ALL
+            .iter()
+            .position(|&x| x == c.cc_b.source)
+            .unwrap_or(0),
         u8::from(c.percussion_enabled),
         c.percussion_channel + 1,
         c.percussion_note,
+        match c.gesture_axis {
+            None => "off",
+            Some(instrument_events::Axis::X) => "x",
+            Some(instrument_events::Axis::Y) => "y",
+            Some(instrument_events::Axis::Z) => "z",
+        },
+        st.gestures,
     );
     let _ = write!(
         out,

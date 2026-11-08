@@ -18,6 +18,8 @@ public final class ConfigSession {
     public enum Request: Equatable {
         case hello
         case getConfig
+        /// Read one page (page 1 needs firmware 0.4.0).
+        case getConfigPage(Int)
         case setConfig([TrillParam: Int])
         case action(TrillAction)
         case telemetryStart(Int)
@@ -27,6 +29,7 @@ public final class ConfigSession {
             switch self {
             case .hello: return "handshake"
             case .getConfig: return "read settings"
+            case let .getConfigPage(p): return "read settings page \(p)"
             case .setConfig: return "apply settings"
             case let .action(a): return a.title
             case let .telemetryStart(r): return "sensor stream \(r) Hz"
@@ -49,8 +52,12 @@ public final class ConfigSession {
 
     public private(set) var phase: Phase = .disconnected
     public private(set) var hello: TrillReply.Hello?
-    /// Last full parameter set the device reported.
+    /// Last parameter set the device reported. On firmware without
+    /// `capConfigPages` the page-1 values are app defaults the device does
+    /// not have; see `supportedPages`.
     public private(set) var acknowledged: DeviceConfig?
+    /// Pages received since the handshake.
+    public private(set) var receivedPages: Set<Int> = []
     public private(set) var generation: Int?
     public private(set) var pending: Pending?
     public private(set) var queue: [Request] = []
@@ -86,6 +93,7 @@ public final class ConfigSession {
         pending = nil
         queue = []
         acknowledged = nil
+        receivedPages = []
         generation = nil
         hello = nil
         deviceRestarted = false
@@ -106,24 +114,53 @@ public final class ConfigSession {
         note(now, "disconnected")
     }
 
-    public func refresh(now: TimeInterval) { enqueue(.getConfig, now: now) }
+    public func refresh(now: TimeInterval) {
+        enqueue(.getConfig, now: now)
+        if supportsConfigPages { enqueue(.getConfigPage(1), now: now) }
+    }
+
+    /// Pages this device has: page 0 always, page 1 with firmware 0.4.0+.
+    public var supportedPages: Set<Int> { supportsConfigPages ? [0, 1] : [0] }
+    public var supportsConfigPages: Bool { hello?.supportsConfigPages ?? false }
+
+    /// Parameters the connected device does not have (empty when not connected).
+    public func unsupported(_ p: TrillParam) -> Bool { hello != nil && !supportedPages.contains(p.page) }
+
+    /// Edits in `desired` that would be sent to this device.
+    public func unappliedChanges(_ desired: DeviceConfig) -> [(TrillParam, Int)] {
+        guard let ack = acknowledged else { return [] }
+        return desired.changes(from: ack, pages: supportedPages)
+    }
 
     /// Request a parameter set. Only differences from the acknowledged set
     /// are sent. Returns false if not ready or nothing changed.
     @discardableResult
     public func apply(_ desired: DeviceConfig, now: TimeInterval) -> Bool {
         guard isReady, let ack = acknowledged else { return false }
-        let diff = desired.changes(from: ack)
+        // Parameters the firmware does not have are never sent (0.3.0 would
+        // reject the whole request as unknownParam).
+        let diff = desired.changes(from: ack, pages: supportedPages)
         guard !diff.isEmpty else { return false }
-        // Replace an already queued (not yet sent) set with the newer one.
+        // Replace already queued (not yet sent) sets with the newer ones.
         queue.removeAll { if case .setConfig = $0 { return true } else { return false } }
-        enqueue(.setConfig(Dictionary(uniqueKeysWithValues: diff)), now: now)
+        // One request per page (the CONFIG reply covers the first parameter's
+        // page), at most maxSetParams each. Each request is atomic on the
+        // device; a preset touching both pages is applied as two or three.
+        for page in 0..<TrillParam.pageCount {
+            let part = diff.filter { $0.0.page == page }
+            var i = 0
+            while i < part.count {
+                let chunk = part[i..<min(i + TrillProtocol.maxSetParams, part.count)]
+                enqueue(.setConfig(Dictionary(uniqueKeysWithValues: Array(chunk))), now: now)
+                i += TrillProtocol.maxSetParams
+            }
+        }
         return true
     }
 
     @discardableResult
     public func perform(_ action: TrillAction, now: TimeInterval) -> Bool {
-        guard isReady else { return false }
+        guard isReady, !action.needsConfigPages || supportsConfigPages else { return false }
         enqueue(.action(action), now: now)
         return true
     }
@@ -177,10 +214,18 @@ public final class ConfigSession {
             hello = h
             note(now, "handshake: firmware \(h.firmwareString)\(h.isPCMSynthBuild ? " (pcm-synth)" : ""), protocol v\(h.protocolVersion), \(ms) ms")
             queue.insert(.getConfig, at: 0)
-        case let .config(_, gen, _, cfg):
-            acknowledged = cfg
+            if h.supportsConfigPages { queue.insert(.getConfigPage(1), at: 1) }
+        case let .config(_, gen, _, page, cfg):
+            var merged = acknowledged ?? DeviceConfig()
+            for param in TrillParam.params(page: page) { merged[param] = cfg[param] }
+            acknowledged = merged
+            receivedPages.insert(page)
             generation = gen
-            if phase == .handshaking { phase = .ready }
+            if phase == .handshaking, receivedPages.isSuperset(of: supportedPages) { phase = .ready }
+            // Restoring defaults replies with page 0 only: read page 1 too.
+            if p.request == .action(.restoreDefaults), supportsConfigPages {
+                queue.insert(.getConfigPage(1), at: 0)
+            }
             note(now, "\(p.request.title): acknowledged, generation \(gen), \(ms) ms")
         case let .actionAck(_, a):
             note(now, "\(a.title): acknowledged, \(ms) ms")
@@ -236,6 +281,7 @@ public final class ConfigSession {
         switch r {
         case .hello: bytes = TrillCodec.hello(id)
         case .getConfig: bytes = TrillCodec.getConfig(id)
+        case let .getConfigPage(page): bytes = TrillCodec.getConfig(id, page: page)
         case let .setConfig(v): bytes = TrillCodec.setConfig(id, v.sorted { $0.key.rawValue < $1.key.rawValue }.map { ($0.key, $0.value) })
         case let .action(a): bytes = TrillCodec.action(id, a)
         case let .telemetryStart(rate): bytes = TrillCodec.telemetryStart(id, rateHz: rate)

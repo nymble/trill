@@ -134,7 +134,7 @@ fn every_parameter_roundtrips_and_rejects_out_of_range() {
         assert!(lo <= d && d <= hi);
     }
     assert_eq!(Param::from_id(0), None);
-    assert_eq!(Param::from_id(14), None);
+    assert_eq!(Param::from_id(31), None);
 }
 
 #[test]
@@ -171,7 +171,7 @@ fn hello_reports_version_variant_caps_and_not_persistent() {
     assert_eq!(r[11], VARIANT_PCM_SYNTH);
     assert_eq!(
         r[12],
-        CAP_SET_CONFIG | CAP_ACTIONS | trill_config::CAP_TELEMETRY
+        CAP_SET_CONFIG | CAP_ACTIONS | trill_config::CAP_TELEMETRY | trill_config::CAP_CONFIG_PAGES
     );
     assert_eq!(r[12] & CAP_PERSISTENT, 0);
     assert_eq!(r[13] as usize, MAX_MESSAGE_LEN);
@@ -266,4 +266,57 @@ fn handler_rejects_garbage_without_reply() {
     ] {
         assert!(handle(m, false, &cfg, 0, &INFO).is_none(), "{m:02X?}");
     }
+}
+
+#[test]
+fn config_pages_fit_and_page0_is_the_0_3_reply() {
+    use trill_config::param::{PAGES, PAGE_MAX};
+    let cfg = Config::default();
+    let mut ids = Vec::new();
+    for page in 0..PAGES {
+        let params = Param::page_params(page).unwrap();
+        assert!(params.len() <= PAGE_MAX);
+        for p in params {
+            assert_eq!(p.page(), page);
+            ids.push(p.id());
+        }
+        let r = handle(&request::get_config_page(1, page), false, &cfg, 7, &INFO)
+            .unwrap()
+            .reply;
+        assert!(r.len() <= MAX_MESSAGE_LEN);
+        assert_eq!(r.len(), 7 + 3 + 3 * params.len() + 1);
+        assert_eq!(r[10], params[0].id());
+    }
+    assert_eq!(ids, (1..=30).collect::<Vec<u8>>());
+    // An empty GET_CONFIG (all a 0.3 host sends) is exactly page 0.
+    let plain = handle(&request::get_config(1), false, &cfg, 7, &INFO)
+        .unwrap()
+        .reply;
+    let p0 = handle(&request::get_config_page(1, 0), false, &cfg, 7, &INFO)
+        .unwrap()
+        .reply;
+    assert_eq!(plain, p0);
+    assert_eq!(plain.len(), 7 + 3 + 39 + 1);
+    let bad = handle(&request::get_config_page(1, 2), false, &cfg, 7, &INFO)
+        .unwrap()
+        .reply;
+    assert_eq!(&bad[5..9], &[msg::ERROR, 1, ErrorCode::OutOfRange as u8, 2]);
+}
+
+#[test]
+fn set_reply_is_the_page_of_the_first_parameter_and_page1_applies() {
+    let cfg = Config::default();
+    let req = request::set_config(4, &[(Param::Mode, 2), (Param::Channel, 3)]).unwrap();
+    let o = handle(&req, false, &cfg, 0, &INFO).unwrap();
+    assert_eq!(o.reply[10], Param::Mode.id());
+    let new = o.config.unwrap();
+    assert_eq!(new.mode, instrument_events::Mode::Theremin);
+    assert_eq!(new.channel, 3);
+    let req = request::set_config(5, &[(Param::Channel, 3), (Param::Mode, 2)]).unwrap();
+    let o = handle(&req, false, &cfg, 0, &INFO).unwrap();
+    assert_eq!(o.reply[10], Param::Channel.id());
+    let req = request::action(6, Action::ZeroOrientation);
+    let o = handle(&req, false, &cfg, 0, &INFO).unwrap();
+    assert_eq!(o.action, Some(Action::ZeroOrientation));
+    assert_eq!(o.reply[5], msg::ACTION_ACK);
 }

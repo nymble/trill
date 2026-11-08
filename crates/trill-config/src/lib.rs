@@ -18,6 +18,8 @@
 //! * Requests have types `0x01..=0x3F`; replies set bit 6 (`0x40`). The
 //!   device never answers a reply-typed message, so a MIDI loop that echoes
 //!   the device's own output back to it cannot cause a feedback storm.
+//! * Firmware 0.4 adds a second parameter page (see [`param`]) behind
+//!   [`CAP_CONFIG_PAGES`]; firmware 0.3 hosts see exactly the 0.3 replies.
 //! * Settings live in RAM only ([`PERSISTENT`] is `false`): a power cycle or
 //!   reset restores the firmware defaults.
 //!
@@ -57,7 +59,8 @@ pub const PERSISTENT: bool = false;
 pub mod msg {
     /// Handshake: payload = highest protocol version the host speaks.
     pub const HELLO: u8 = 0x01;
-    /// Read all parameters.
+    /// Read one page of parameters: empty payload = page 0 (all firmware 0.3
+    /// parameters), or one byte = page number (`CAP_CONFIG_PAGES` only).
     pub const GET_CONFIG: u8 = 0x02;
     /// Change parameters atomically: payload = `(id, value_hi, value_lo)*`.
     pub const SET_CONFIG: u8 = 0x03;
@@ -71,7 +74,8 @@ pub mod msg {
     pub const REPLY: u8 = 0x40;
     /// Reply to `HELLO`.
     pub const HELLO_REPLY: u8 = 0x41;
-    /// Full parameter set (reply to `GET_CONFIG`, `SET_CONFIG`, restore defaults).
+    /// One page of parameters (reply to `GET_CONFIG`, `SET_CONFIG`, restore
+    /// defaults). The page is implied by its parameter IDs.
     pub const CONFIG: u8 = 0x42;
     /// Reply to `ACTION` (except restore defaults, which sends `CONFIG`).
     pub const ACTION_ACK: u8 = 0x44;
@@ -117,8 +121,12 @@ pub enum Action {
     RecalibrateGyro = 2,
     /// Status LED self-test (R G B Y C M W off).
     LedSelfTest = 3,
-    /// Restore the firmware default mapping (RAM only). Replies with `CONFIG`.
+    /// Restore the firmware default mapping (RAM only) and clear the
+    /// orientation zero. Replies with `CONFIG` page 0.
     RestoreDefaults = 4,
+    /// Take the current pitch and roll as level (RAM only). Firmware 0.4+
+    /// (`CAP_CONFIG_PAGES`); older firmware answers `UnknownAction`.
+    ZeroOrientation = 5,
 }
 
 impl Action {
@@ -129,6 +137,7 @@ impl Action {
             2 => Self::RecalibrateGyro,
             3 => Self::LedSelfTest,
             4 => Self::RestoreDefaults,
+            5 => Self::ZeroOrientation,
             _ => return None,
         })
     }
@@ -144,6 +153,11 @@ pub const CAP_ACTIONS: u8 = 0x02;
 pub const CAP_PERSISTENT: u8 = 0x04;
 /// Capability bit: sensor telemetry (`TELEMETRY_START` / `TELEMETRY_STOP`).
 pub const CAP_TELEMETRY: u8 = 0x08;
+/// Capability bit (firmware 0.4+): paged configuration. `GET_CONFIG` takes
+/// an optional page number, parameters 14..=30 exist, and action 5
+/// (`ZeroOrientation`) is supported. Hosts must not send page-1 parameters
+/// or action 5 without it.
+pub const CAP_CONFIG_PAGES: u8 = 0x10;
 
 /// Facts reported by `HELLO_REPLY`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -208,15 +222,21 @@ pub fn error_reply(req: u8, code: ErrorCode, detail: u8) -> Reply {
     finish(r)
 }
 
-/// Encode a `CONFIG` reply with every parameter of `cfg`.
+/// Encode a `CONFIG` reply with page 0 (the firmware 0.3 parameter set).
 pub fn config_reply(req: u8, cfg: &Config, generation: u16) -> Reply {
+    config_page_reply(req, cfg, generation, 0)
+}
+
+/// Encode a `CONFIG` reply with page `page` (an unknown page encodes page 0).
+pub fn config_page_reply(req: u8, cfg: &Config, generation: u16, page: u8) -> Reply {
+    let params = Param::page_params(page).unwrap_or(Param::PAGE0);
     let mut r = header(msg::CONFIG, req);
     let _ = r.extend_from_slice(&[
         ((generation >> 7) & 0x7F) as u8,
         (generation & 0x7F) as u8,
         u8::from(PERSISTENT),
     ]);
-    for p in Param::ALL {
+    for &p in params {
         let v = p.get(cfg);
         let _ = r.extend_from_slice(&[p.id(), (v >> 7) as u8 & 0x7F, v as u8 & 0x7F]);
     }
@@ -227,8 +247,11 @@ pub fn config_reply(req: u8, cfg: &Config, generation: u16) -> Reply {
 pub fn hello_reply(req: u8, info: &DeviceInfo) -> Reply {
     let mut r = header(msg::HELLO_REPLY, req);
     let up = info.uptime_s.min(0x1F_FFFF);
-    let caps =
-        CAP_SET_CONFIG | CAP_ACTIONS | CAP_TELEMETRY | if PERSISTENT { CAP_PERSISTENT } else { 0 };
+    let caps = CAP_SET_CONFIG
+        | CAP_ACTIONS
+        | CAP_TELEMETRY
+        | CAP_CONFIG_PAGES
+        | if PERSISTENT { CAP_PERSISTENT } else { 0 };
     let _ = r.extend_from_slice(&[
         PROTOCOL_VERSION,
         info.firmware[0] & 0x7F,
@@ -322,10 +345,15 @@ pub fn handle(
             Some(plain(hello_reply(req, info)))
         }
         msg::GET_CONFIG => {
-            if !payload.is_empty() {
-                return bad_len();
+            let page = match payload {
+                [] => 0,
+                [p] => *p,
+                _ => return bad_len(),
+            };
+            if Param::page_params(page).is_none() {
+                return Some(plain(error_reply(req, ErrorCode::OutOfRange, page)));
             }
-            Some(plain(config_reply(req, cfg, generation)))
+            Some(plain(config_page_reply(req, cfg, generation, page)))
         }
         msg::SET_CONFIG => {
             if payload.is_empty() || payload.len() % 3 != 0 || payload.len() / 3 > MAX_SET_PARAMS {
@@ -333,6 +361,7 @@ pub fn handle(
             }
             let mut new = *cfg;
             let mut seen: u32 = 0;
+            let first_page = Param::from_id(payload[0]).map_or(0, Param::page);
             for t in payload.chunks_exact(3) {
                 let Some(p) = Param::from_id(t[0]) else {
                     return Some(plain(error_reply(req, ErrorCode::UnknownParam, t[0])));
@@ -354,7 +383,7 @@ pub fn handle(
                 generation
             };
             Some(Outcome {
-                reply: config_reply(req, &new, generation),
+                reply: config_page_reply(req, &new, generation, first_page),
                 config: changed.then_some(new),
                 generation,
                 action: None,

@@ -167,7 +167,7 @@ test-kit:
 	cp tools/xiao_uf2.py $(DIST)/$(KIT)/tools/
 	cp docs/test-kit.md $(DIST)/$(KIT)/README.md
 	cp docs/apple-app.md docs/config-protocol.md docs/firmware-xiao-sense.md docs/usb-midi.md LICENSE $(DIST)/$(KIT)/docs/
-	printf 'name=%s\nversion=%s\ncommit=%s\napp=Trill-macOS-unsigned-dev-%s.zip (unsigned, ad-hoc)\nfirmware=firmware/xiao-sense-fw-%s.uf2 (application-only, 0x27000+)\nminimum_firmware_for_sensors=0.3.0\nhardware_validated=no\n' \
+	printf 'name=%s\nversion=%s\ncommit=%s\napp=Trill-macOS-unsigned-dev-%s.zip (unsigned, ad-hoc)\nfirmware=firmware/xiao-sense-fw-%s.uf2 (application-only, 0x27000+)\nminimum_firmware_for_sensors=0.3.0\nminimum_firmware_for_modes_and_gestures=0.4.0\nhardware_validated=no\n' \
 	  "$(KIT)" "$(VERSION)" "$(KIT_SHA)" "$(VERSION)" "$(VERSION)" > $(DIST)/$(KIT)/MANIFEST.txt
 	cd $(DIST)/$(KIT) && find . -type f ! -name SHA256SUMS | LC_ALL=C sort | sed 's|^\./||' | xargs $(SHA256) > SHA256SUMS && cat SHA256SUMS
 	cd $(DIST) && zip -qr $(KIT).zip $(KIT) && ls -l $(KIT).zip
