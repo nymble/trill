@@ -5,7 +5,11 @@
 //! regenerates the file; `cargo test -p trill-config` checks it is current.
 
 fn main() {
-    print!("{}", trill_config_vectors::render());
+    if std::env::args().nth(1).as_deref() == Some("telemetry") {
+        print!("{}", trill_config_vectors::render_telemetry());
+    } else {
+        print!("{}", trill_config_vectors::render());
+    }
 }
 
 #[path = "../tests/support/vectors.rs"]

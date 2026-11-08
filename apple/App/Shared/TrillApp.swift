@@ -22,7 +22,8 @@ struct ContentView: View {
     var body: some View {
         TabView {
             DeviceView().tabItem { Label("Device", systemImage: "cable.connector") }
-            MonitorView().tabItem { Label("Monitor", systemImage: "waveform.path.ecg") }
+            SensorsView().tabItem { Label("Sensors", systemImage: "gyroscope") }
+            MonitorView().tabItem { Label("MIDI", systemImage: "waveform.path.ecg") }
             MappingView().tabItem { Label("Mapping", systemImage: "slider.horizontal.3") }
             PresetsView().tabItem { Label("Presets", systemImage: "square.stack") }
             FirmwareView().tabItem { Label("Firmware", systemImage: "cpu") }

@@ -172,10 +172,75 @@ impl PendingReply {
             self.next = 0;
         }
     }
+    /// Load a telemetry frame if idle and nothing else is queued.
+    fn load_telemetry(&mut self, frame: &trill_config::Reply) -> bool {
+        if !self.is_empty() || !CONFIG_REPLIES.is_empty() {
+            return false;
+        }
+        self.len =
+            trill_config::usb::encode_sysex(trill_usb::CABLE_CONFIG, frame, &mut self.packets)
+                .unwrap_or(0);
+        self.next = 0;
+        self.len > 0
+    }
     fn clear(&mut self) {
         self.len = 0;
         self.next = 0;
     }
+}
+
+/// Build one telemetry frame from the latest published sensor values.
+/// Each source is read in one short critical section; nothing here blocks
+/// the sensor tasks or allocates.
+fn telemetry_frame(
+    sched: &mut trill_config::telemetry::Schedule,
+    last_imu: &mut u32,
+) -> trill_config::Reply {
+    use trill_config::telemetry::{self, Frame, Sample};
+    let snap = SENSOR_SNAPSHOT.lock(|c| c.get());
+    let touch = TOUCH.lock(|c| c.get());
+    let imu_state = STATS.imu_state.load(Ordering::Relaxed);
+    let trill_state = STATS.trill_state.load(Ordering::Relaxed);
+    let imu_samples = STATS.imu_samples.load(Ordering::Relaxed);
+    let mut f = Frame {
+        seq: sched.next_seq(),
+        t_ms: (snap.t_us / 1000) as u32,
+        imu_state,
+        trill_state,
+        imu_samples: (imu_samples & 0x3FFF) as u16,
+        taps: (STATS.imu_taps.load(Ordering::Relaxed) & 0x3FFF) as u16,
+        calibrations: (STATS.imu_calibrations.load(Ordering::Relaxed) & 0x7F) as u8,
+        skipped: sched.skipped,
+        trill_frames: (STATS.trill_reads.load(Ordering::Relaxed) & 0x3FFF) as u16,
+        ..Frame::default()
+    };
+    if snap.calibrated {
+        f.flags |= telemetry::FLAG_CALIBRATED;
+    }
+    if imu_samples != *last_imu {
+        f.flags |= telemetry::FLAG_IMU_NEW;
+    }
+    *last_imu = imu_samples;
+    if SAFE_MODE.load(Ordering::Relaxed) {
+        f.flags |= telemetry::FLAG_SAFE_MODE;
+    }
+    let trill_running = trill_state == SensorState::Running as u8;
+    f.set_sample(
+        &Sample {
+            accel_g: snap.accel_g,
+            gyro_dps: snap.gyro_dps,
+            pitch_deg: snap.pitch_deg,
+            roll_deg: snap.roll_deg,
+            touch: if trill_running {
+                touch.location.map(|l| (l, touch.size))
+            } else {
+                None
+            },
+        },
+        imu_state == SensorState::Running as u8 && snap.t_us != 0,
+    );
+    bump(&STATS.telemetry_frames);
+    telemetry::encode(&f)
 }
 
 /// Fill `buf` with up to `MIDI_EVENTS_PER_PACKET` USB-MIDI events: the
@@ -242,6 +307,9 @@ async fn config_request(msg: &[u8], truncated: bool) {
         Some(trill_config::Action::RecalibrateGyro) => RECALIBRATE.store(true, Ordering::Relaxed),
         Some(trill_config::Action::LedSelfTest) => LED_COMMAND.store(b'L', Ordering::Relaxed),
         Some(trill_config::Action::RestoreDefaults) | None => {}
+    }
+    if let Some(rate) = o.telemetry {
+        TELEMETRY_REQUEST.store(rate, Ordering::Relaxed);
     }
     bump(&STATS.config_requests);
     CONFIG_REPLIES.send(o.reply).await;
@@ -321,6 +389,8 @@ async fn midi_loop(class: MidiClass<'static, UsbDriver>) {
     let writer = async {
         let mut buf = [0u8; MAX_PACKET];
         let mut reply = PendingReply::new();
+        let mut sched = trill_config::telemetry::Schedule::new();
+        let mut last_imu = 0u32;
         loop {
             tx.wait_connection().await;
             if !USB_READY.load(Ordering::Relaxed) {
@@ -339,6 +409,20 @@ async fn midi_loop(class: MidiClass<'static, UsbDriver>) {
                 }
                 let now = now_us32();
                 reply.refill();
+                // Telemetry: lowest priority on cable 1 (after config
+                // replies), and instrument events always fill the packet
+                // first. A frame that cannot go out in its period is
+                // skipped and counted; values are sampled when it is sent.
+                let t64 = Instant::now().as_micros();
+                let req = TELEMETRY_REQUEST.swap(TELEMETRY_NO_CHANGE, Ordering::Relaxed);
+                if req != TELEMETRY_NO_CHANGE {
+                    sched.subscribe(req, t64);
+                }
+                if reply.is_empty() && CONFIG_REPLIES.is_empty() && sched.due(t64) {
+                    let frame = telemetry_frame(&mut sched, &mut last_imu);
+                    reply.load_telemetry(&frame);
+                }
+                TELEMETRY_RATE.store(sched.rate_hz(), Ordering::Relaxed);
                 let (n, note_on) = with_engine(|e| {
                     if MIDI_REQUEST.swap(0, Ordering::Relaxed) & MIDI_REQ_PANIC != 0 {
                         e.panic(now);
@@ -351,6 +435,8 @@ async fn midi_loop(class: MidiClass<'static, UsbDriver>) {
                     let _ = select(MIDI_WAKE.wait(), Timer::after_millis(MIDI_TICK_MS)).await;
                     continue;
                 }
+                // `n` can be non-zero with only telemetry in it; that is a
+                // normal packet on cable 1.
                 if note_on {
                     crate::timing::note_write(true);
                 }
@@ -370,8 +456,12 @@ async fn midi_loop(class: MidiClass<'static, UsbDriver>) {
             // while unplugged are the host's responsibility.
             MIDI_CONFIGURED.store(false, Ordering::Relaxed);
             with_engine(|e| e.disconnect());
-            // Replies to a previous connection are meaningless now.
+            // Replies to a previous connection are meaningless now, and a
+            // telemetry subscription ends with the connection.
             reply.clear();
+            sched.stop();
+            TELEMETRY_RATE.store(0, Ordering::Relaxed);
+            TELEMETRY_REQUEST.store(TELEMETRY_NO_CHANGE, Ordering::Relaxed);
             while CONFIG_REPLIES.try_receive().is_ok() {}
         }
     };
@@ -461,7 +551,7 @@ fn midi_summary(out: &mut String<OUT_LEN>) {
     let (note, st) = with_engine(|e| (e.active_note(), e.stats())).unwrap_or_default();
     let _ = write!(
         out,
-        " | midi={} note={} on={} off={} pk={} ev={} stall={} werr={} defer={} coal={} cfg={}/{} gen={}",
+        " | midi={} note={} on={} off={} pk={} ev={} stall={} werr={} defer={} coal={} cfg={}/{} gen={} tlm={}Hz/{}",
         if MIDI_CONFIGURED.load(Ordering::Relaxed) {
             "up"
         } else {
@@ -479,6 +569,8 @@ fn midi_summary(out: &mut String<OUT_LEN>) {
         r(&STATS.config_requests),
         r(&STATS.config_ignored),
         CONFIG_GEN.load(Ordering::Relaxed),
+        TELEMETRY_RATE.load(Ordering::Relaxed),
+        r(&STATS.telemetry_frames),
     );
 }
 

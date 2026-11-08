@@ -81,6 +81,8 @@ pub struct Stats {
     pub imu_last_error: AtomicU8,
     /// Taps detected by the motion pipeline.
     pub imu_taps: AtomicU32,
+    /// Gyro bias calibrations completed (uncalibrated -> calibrated).
+    pub imu_calibrations: AtomicU32,
     pub trill_state: AtomicU8,
     pub trill_reads: AtomicU32,
     pub trill_errors: AtomicU32,
@@ -101,6 +103,8 @@ pub struct Stats {
     pub config_requests: AtomicU32,
     /// Complete SysEx messages on cable 1 that were not ours (no reply).
     pub config_ignored: AtomicU32,
+    /// Telemetry frames handed to the USB writer (cable 1).
+    pub telemetry_frames: AtomicU32,
     pub audio_blocks: AtomicU32,
     pub audio_late: AtomicU32,
     pub audio_resyncs: AtomicU32,
@@ -126,6 +130,7 @@ pub static STATS: Stats = Stats {
     imu_power_cycles: Z,
     imu_last_error: AtomicU8::new(0),
     imu_taps: Z,
+    imu_calibrations: Z,
     trill_state: AtomicU8::new(0),
     trill_reads: Z,
     trill_errors: Z,
@@ -138,6 +143,7 @@ pub static STATS: Stats = Stats {
     midi_rx_packets: Z,
     config_requests: Z,
     config_ignored: Z,
+    telemetry_frames: Z,
     audio_blocks: Z,
     audio_late: Z,
     audio_resyncs: Z,
@@ -193,6 +199,44 @@ pub static LAST_MOTION: Mutex<CriticalSectionRawMutex, Cell<MotionFrame>> =
 
 /// Scaled IMU reading: accel (g), gyro (dps).
 pub type ImuReading = ([f32; 3], [f32; 3]);
+
+/// One IMU sample with everything derived from it, published in a single
+/// critical section so readers (telemetry) never see values from two
+/// different samples.
+#[derive(Clone, Copy)]
+pub struct SensorSnapshot {
+    /// Device time of the sample (µs since boot).
+    pub t_us: u64,
+    /// Acceleration (g).
+    pub accel_g: [f32; 3],
+    /// Angular rate (°/s).
+    pub gyro_dps: [f32; 3],
+    /// Pitch (°), complementary filter.
+    pub pitch_deg: f32,
+    /// Roll (°), complementary filter.
+    pub roll_deg: f32,
+    /// Gyro bias calibrated.
+    pub calibrated: bool,
+}
+
+/// Latest IMU sample (telemetry).
+pub static SENSOR_SNAPSHOT: Mutex<CriticalSectionRawMutex, Cell<SensorSnapshot>> =
+    Mutex::new(Cell::new(SensorSnapshot {
+        t_us: 0,
+        accel_g: [0.0; 3],
+        gyro_dps: [0.0; 3],
+        pitch_deg: 0.0,
+        roll_deg: 0.0,
+        calibrated: false,
+    }));
+
+/// Telemetry subscription change from the config reader to the MIDI
+/// writer: [`TELEMETRY_NO_CHANGE`] or a rate in Hz (0 = stop).
+pub static TELEMETRY_REQUEST: AtomicU8 = AtomicU8::new(TELEMETRY_NO_CHANGE);
+/// No pending telemetry change.
+pub const TELEMETRY_NO_CHANGE: u8 = 0xFF;
+/// Current telemetry rate (Hz, 0 = off), for diagnostics.
+pub static TELEMETRY_RATE: AtomicU8 = AtomicU8::new(0);
 
 /// Latest scaled IMU values (diagnostics only).
 pub static LAST_IMU: Mutex<CriticalSectionRawMutex, Cell<ImuReading>> =

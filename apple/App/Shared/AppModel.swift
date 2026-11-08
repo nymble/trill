@@ -20,9 +20,22 @@ final class AppModel: ObservableObject {
     @Published private(set) var midiError: String?
 
     // Monitor
-    @Published private(set) var monitor = MonitorModel(historyLimit: 400)
+    @Published private(set) var monitor = MonitorModel(historyLimit: 2000)
     @Published var monitorPaused = false
     @Published var monitorChannel = 0
+
+    // Sensors (telemetry on the configuration port, firmware 0.3.0+)
+    /// The Sensors view is on screen; telemetry is only requested then.
+    @Published var sensorsVisible = false
+    @Published var sensorsLive = true
+    @Published var sensorsPaused = false { didSet { if !sensorsPaused { telemetry = liveTelemetry } else { framesAtPause = liveTelemetry.framesReceived } } }
+    @Published var telemetryRateHz = TelemetryFrame.defaultRateHz
+    /// What the charts show (frozen while paused).
+    @Published private(set) var telemetry = TelemetryModel(window: 10)
+    /// Always-updating model; differs from `telemetry` only while paused.
+    private(set) var liveTelemetry = TelemetryModel(window: 10)
+    private(set) var framesAtPause = 0
+    @Published private(set) var clock: TimeInterval = 0
 
     // Configuration
     @Published private(set) var sessionRevision = 0
@@ -33,6 +46,7 @@ final class AppModel: ObservableObject {
     @Published var presetError: String?
 
     let events = EventBuffer(capacity: 4096)
+    let telemetryBuffer = TelemetryBuffer(capacity: 512)
     private(set) var client: MIDIClient?
     private(set) var session: ConfigSession!
     private var timer: Timer?
@@ -48,7 +62,7 @@ final class AppModel: ObservableObject {
             return c.send(sysex: bytes, to: d)
         }
         do {
-            let c = try MIDIClient(name: "Trill", events: events)
+            let c = try MIDIClient(name: "Trill", events: events, telemetry: telemetryBuffer)
             c.onSetupChanged = { [weak self] in self?.refreshEndpoints() }
             c.onConfigMessage = { [weak self] bytes, _ in self?.configMessage(bytes) }
             client = c
@@ -114,6 +128,8 @@ final class AppModel: ObservableObject {
 
     func disconnectConfig() {
         guard session.phase != .disconnected else { return }
+        // Best effort; the device also drops the stream when its 5 s lease ends.
+        session.maintainTelemetry(desiredRate: nil, now: now)
         session.disconnect(now: now)
         sessionRevision += 1
     }
@@ -155,12 +171,33 @@ final class AppModel: ObservableObject {
         if !monitorPaused, !newEvents.isEmpty || dropped > 0 {
             monitor.apply(newEvents, dropped: dropped)
         }
+        monitor.idle(now: now)
+        let (frames, lost) = telemetryBuffer.drain()
+        if !frames.isEmpty || lost > 0 {
+            liveTelemetry.apply(frames, dropped: lost)
+            if !sensorsPaused { telemetry = liveTelemetry }
+        }
+        if sensorsVisible { clock = MIDIClient.now() }
         let pending = session.pending
         session.tick(now: now)
+        session.maintainTelemetry(desiredRate: sensorsVisible && sensorsLive ? telemetryRateHz : nil, now: now)
         if pending != session.pending { sessionRevision += 1 }
     }
 
     func clearMonitor() { monitor.clear() }
+
+    func setHideRealtime(_ on: Bool) { monitor.hideRealtime = on }
+
+    func resetSensors() {
+        liveTelemetry.reset()
+        telemetry = liveTelemetry
+        framesAtPause = 0
+    }
+
+    func retryTelemetry() {
+        session.retryTelemetry()
+        sessionRevision += 1
+    }
 
     // MARK: Presets
 

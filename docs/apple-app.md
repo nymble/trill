@@ -2,20 +2,21 @@
 
 `apple/` contains **Trill**, a SwiftUI companion app for Mac, iPhone and iPad. It monitors and configures the XIAO nRF52840 Sense instrument over class-compliant USB MIDI. **You do not need the app to play.** The instrument is a standard USB-MIDI device and plays straight into GarageBand, Logic, AUM or any CoreMIDI app.
 
-> **Status:** CI builds the macOS app and the iOS app for the Simulator and for devices (compile check, unsigned). The TrillKit tests run on macOS (32 tests; this includes two CoreMIDI loopback tests against a simulated Trill on virtual endpoints) and on the iOS Simulator (same 32 tests; the two loopback tests are skipped there because the Simulator refuses virtual MIDI endpoints, OSStatus -10844). On both, the real-firmware UF2 check is skipped unless `dist/*.uf2` was built first. **The app has not been used with a real Trill.** It needs firmware 0.2.0 or newer, and that firmware has not run on hardware either.
+> **Status:** CI builds the macOS app and the iOS app for the Simulator and for devices (compile check, unsigned). The TrillKit tests run on macOS (41 tests; this includes two CoreMIDI loopback tests against a simulated Trill on virtual endpoints) and on the iOS Simulator (same tests; the two loopback tests are skipped there because the Simulator refuses virtual MIDI endpoints, OSStatus -10844). On both, the real-firmware UF2 check is skipped unless `dist/*.uf2` was built first. Firmware 0.2.0 has run on a real XIAO Sense with a hardware harness on a Mac (handshake, set/readback/restore, errors, panic, and an ERROR UnknownType answer to the 0.3.0 telemetry request). **Sensor telemetry (firmware 0.3.0) and the app's Sensors tab have not yet run on hardware.** Configuration needs firmware 0.2.0 or newer; the Sensors tab needs 0.3.0 or newer.
 
 ## What it does
 
 | Area | Implemented | Notes |
 |---|---|---|
 | Endpoints | Lists MIDI sources and destinations and follows hot-plug (CoreMIDI setup notifications). Shows device name, port number and offline state | Suggests the Trill's port 1 for monitoring and port 2 for configuration. **Sends nothing until you press Connect**, and then only to the one destination you selected |
-| Monitor | Notes, pitch bend (in semitones), channel pressure, CC74 and CC1 per channel, plus an event list with host timestamps | Shows only standard MIDI messages. Touch size arrives as channel pressure. Raw IMU or Trill values are not in the MIDI stream and are not shown |
+| Sensors | Live acceleration (X/Y/Z, \|a\|, g), rotation rate (°/s), pitch/roll, Trill touch position and size, IMU/calibration/safe-mode state, tap and calibration events, IMU rate (device clock), frame rate, sequence gaps, skipped/dropped frames, data age. 10 s rolling charts redrawn at 30 Hz, pause/reset, CSV export | Needs firmware 0.3.0+ ([telemetry](config-protocol.md#sensor-telemetry-firmware-030)); older firmware gets an explanation, not empty charts. Streams only while the tab is open (lease renewed every ~2 s). Series are labelled and dashed, not colour-only. Lines break at gaps and invalid samples and stop at the last real frame. "Trill not detected" is shown separately from "no touch". Microphone, battery and yaw are listed as unavailable |
+| MIDI monitor | Notes, pitch bend (in semitones), channel pressure, CC74 and CC1 per channel, plus a bounded log (2000 events) with CoreMIDI timestamps, port, channel and decoded names | Real-time/clock filter (still counted), events/s, SysEx counts and summaries (first 24 bytes), pause, clear, CSV export. Never routes MIDI anywhere |
 | Configuration | Handshake, read and apply the 13 mapping parameters ([protocol](config-protocol.md)), with "device:" badges for values not yet acknowledged | One request in flight, 1 s timeout, request IDs. Detects a device restart from its boot ID |
 | Actions | MIDI panic, gyro recalibration, LED self-test, restore defaults (with confirmation) | Each is a real firmware command and is acknowledged |
 | Presets | Named presets saved in the app, JSON export and import through the system file dialogs | Ranges are validated on import. Loading a preset fills the editor; **Apply** sends it |
 | Firmware (Mac only) | Read-only assistant: validates a UF2 you pick, reads `INFO_UF2.TXT` from the bootloader drive you pick, then shows the exact `tools/xiao_uf2.py` commands with Copy buttons | **It never writes to the board.** The checks are the same as in `xiao_uf2.py`: nRF52840 family, application window `0x27000–0xEC000`, vector table, bootloader images refused, SoftDevice S140 7.3.0. SHA-256 is an integrity check, not a signature |
 
-**Not in this version:** Bluetooth MIDI or any wireless link (the firmware has no BLE, and the app asks for no Bluetooth permission); over-the-air updates; an iPhone firmware updater; settings stored on the device (they are RAM only); raw sensor streaming; host-side processing or virtual MIDI ports; MPE. Virtual endpoints are left out on purpose for now. A processed route would need an off-by-default virtual source with loop prevention, and on iOS the app's lifetime limits it.
+**Not in this version:** Bluetooth MIDI or any wireless link (the firmware has no BLE, and the app asks for no Bluetooth permission); over-the-air updates; an iPhone firmware updater; settings stored on the device (they are RAM only); microphone audio, battery level and heading (not measured by the firmware/board); host-side processing or virtual MIDI ports; MPE. Virtual endpoints are left out on purpose for now. A processed route would need an off-by-default virtual source with loop prevention, and on iOS the app's lifetime limits it.
 
 ## How it fits together
 
@@ -100,18 +101,21 @@ No team, certificate or profile is committed, and CI never signs.
 - `Trill-iOS-Simulator-<version>.zip`: for the Simulator only. Install it with `xcrun simctl install booted Trill.app`. It cannot be installed on a device.
 - `README.txt` with this disclaimer, and `SHA256SUMS` (for the zips).
 
+**Test kit:** the artifact `trill-test-kit-unsigned-dev` holds `Trill-<version>-<commit>.zip`: the macOS app zip and the application-only firmware UF2 from the same CI run, `tools/xiao_uf2.py`, docs, `MANIFEST.txt` and `SHA256SUMS` ([kit README](test-kit.md)). Locally on a Mac: `make apple-mac apple-dist fw-uf2 test-kit`.
+
 There is no App Store or TestFlight build. The code is GPL-3.0-only, and App Store distribution of GPL software has known licence conflicts, so any store release would need a decision under the commercial licence ([COMMERCIAL-LICENSE.md](../COMMERCIAL-LICENSE.md)).
 
 ## Using it
 
-1. **Load firmware 0.2.0 or newer** ([loading](firmware-xiao-sense.md#loading-over-usb-explicit-steps-only)). Earlier firmware has one MIDI port and ignores configuration. The handshake then times out and the app says so.
+1. **Load firmware 0.3.0 or newer** for the Sensors tab ([loading](firmware-xiao-sense.md#loading-over-usb-explicit-steps-only)); 0.2.0 is enough for configuration and the MIDI monitor. Firmware before 0.2.0 has one MIDI port and ignores configuration. The handshake then times out and the app says so.
 2. Plug in the Trill. Audio MIDI Setup shows `Trill XIAO MIDI (dev)` with two ports.
 3. **Device tab:**
    - The monitor source is preselected to port 1. The configuration source and destination are preselected to port 2.
    - Press **Connect**. The status shows the firmware version, the protocol, and "Settings are kept in device RAM only".
 4. **Mapping tab:** edit, then press **Apply to device**. Orange "device:" badges show what the device last acknowledged. A sounding note is released when a change is applied.
 5. **Presets:** keep mappings across device restarts. Export or import them as `.trill.json` files.
-6. **Monitor tab:** watch what the instrument sends.
+6. **Sensors tab:** move the board and watch acceleration, rotation and orientation; touch the Trill. The banner says whether data is live, stale, paused (the device keeps streaming) or unsupported.
+7. **MIDI tab:** watch and log what the instrument sends.
 
 A diagnostics terminal (`screen /dev/cu.usbmodem…`) is optional. The protocol does not use it.
 

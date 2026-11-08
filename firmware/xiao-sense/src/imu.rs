@@ -63,6 +63,7 @@ pub async fn imu_task(
             set_state(&STATS.imu_state, SensorState::Running);
             backoff_ms = 100;
             let mut consecutive = 0u32;
+            let mut was_calibrated = false;
             loop {
                 if with_timeout(
                     Duration::from_millis(IMU_DRDY_TIMEOUT_MS),
@@ -89,6 +90,10 @@ pub async fn imu_task(
                         if frame.tap.is_some() {
                             bump(&STATS.imu_taps);
                         }
+                        if frame.calibrated && !was_calibrated {
+                            bump(&STATS.imu_calibrations);
+                        }
+                        was_calibrated = frame.calibrated;
                         with_engine(|e| {
                             e.motion(
                                 t_us as u32,
@@ -105,6 +110,16 @@ pub async fn imu_task(
                         crate::audio::post_controls(&frame, t_us);
                         LAST_MOTION.lock(|m| m.set(frame));
                         LAST_IMU.lock(|m| m.set((s.accel_g, s.gyro_dps)));
+                        SENSOR_SNAPSHOT.lock(|m| {
+                            m.set(SensorSnapshot {
+                                t_us,
+                                accel_g: s.accel_g,
+                                gyro_dps: s.gyro_dps,
+                                pitch_deg: frame.pitch_deg,
+                                roll_deg: frame.roll_deg,
+                                calibrated: frame.calibrated,
+                            })
+                        });
                     }
                     Err(e) => {
                         bump(&STATS.imu_errors);

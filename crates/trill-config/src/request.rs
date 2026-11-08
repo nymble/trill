@@ -57,3 +57,15 @@ pub fn action(req: u8, a: Action) -> Reply {
     let _ = r.push(a as u8);
     end(r)
 }
+
+/// `TELEMETRY_START` at `rate_hz` (not range checked here).
+pub fn telemetry_start(req: u8, rate_hz: u8) -> Reply {
+    let mut r = start(msg::TELEMETRY_START, req);
+    let _ = r.push(rate_hz & 0x7F);
+    end(r)
+}
+
+/// `TELEMETRY_STOP`.
+pub fn telemetry_stop(req: u8) -> Reply {
+    end(start(msg::TELEMETRY_STOP, req))
+}

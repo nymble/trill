@@ -31,6 +31,7 @@
 
 pub mod param;
 pub mod request;
+pub mod telemetry;
 pub mod usb;
 
 use heapless::Vec;
@@ -62,6 +63,10 @@ pub mod msg {
     pub const SET_CONFIG: u8 = 0x03;
     /// Run an action: payload = action code.
     pub const ACTION: u8 = 0x04;
+    /// Start or renew sensor telemetry: payload = rate in Hz (1..=100).
+    pub const TELEMETRY_START: u8 = 0x05;
+    /// Stop sensor telemetry: no payload.
+    pub const TELEMETRY_STOP: u8 = 0x06;
     /// Reply bit.
     pub const REPLY: u8 = 0x40;
     /// Reply to `HELLO`.
@@ -70,6 +75,11 @@ pub mod msg {
     pub const CONFIG: u8 = 0x42;
     /// Reply to `ACTION` (except restore defaults, which sends `CONFIG`).
     pub const ACTION_ACK: u8 = 0x44;
+    /// Reply to `TELEMETRY_START` / `TELEMETRY_STOP`: rate (0 = off),
+    /// lease seconds, frame length, frame format.
+    pub const TELEMETRY_ACK: u8 = 0x45;
+    /// Unsolicited sensor frame (request id 0), see [`crate::telemetry`].
+    pub const TELEMETRY: u8 = 0x50;
     /// Error reply: payload = error code, detail.
     pub const ERROR: u8 = 0x7F;
 }
@@ -86,7 +96,8 @@ pub enum ErrorCode {
     BadLength = 3,
     /// Unknown parameter ID (detail = the ID). Nothing was changed.
     UnknownParam = 4,
-    /// Value out of range (detail = parameter ID). Nothing was changed.
+    /// Value out of range (detail = parameter ID, or the requested rate for
+    /// `TELEMETRY_START`). Nothing was changed.
     OutOfRange = 5,
     /// Message longer than [`MAX_MESSAGE_LEN`] (detail = 0).
     TooLong = 6,
@@ -131,6 +142,8 @@ pub const CAP_SET_CONFIG: u8 = 0x01;
 pub const CAP_ACTIONS: u8 = 0x02;
 /// Capability bit: settings persist across reset (never set by this firmware).
 pub const CAP_PERSISTENT: u8 = 0x04;
+/// Capability bit: sensor telemetry (`TELEMETRY_START` / `TELEMETRY_STOP`).
+pub const CAP_TELEMETRY: u8 = 0x08;
 
 /// Facts reported by `HELLO_REPLY`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -159,6 +172,8 @@ pub struct Outcome {
     pub generation: u16,
     /// Side effect to perform, if any.
     pub action: Option<Action>,
+    /// New telemetry rate in Hz (`Some(0)` = stop), if the request changes it.
+    pub telemetry: Option<u8>,
 }
 
 /// Generations are 14-bit and wrap.
@@ -166,7 +181,7 @@ pub fn next_generation(g: u16) -> u16 {
     g.wrapping_add(1) & 0x3FFF
 }
 
-fn header(ty: u8, req: u8) -> Reply {
+pub(crate) fn header(ty: u8, req: u8) -> Reply {
     let mut r = Reply::new();
     // Infallible: HEADER_LEN - 1 < MAX_MESSAGE_LEN.
     let _ = r.extend_from_slice(&[
@@ -181,7 +196,7 @@ fn header(ty: u8, req: u8) -> Reply {
     r
 }
 
-fn finish(mut r: Reply) -> Reply {
+pub(crate) fn finish(mut r: Reply) -> Reply {
     let _ = r.push(0xF7);
     r
 }
@@ -212,7 +227,8 @@ pub fn config_reply(req: u8, cfg: &Config, generation: u16) -> Reply {
 pub fn hello_reply(req: u8, info: &DeviceInfo) -> Reply {
     let mut r = header(msg::HELLO_REPLY, req);
     let up = info.uptime_s.min(0x1F_FFFF);
-    let caps = CAP_SET_CONFIG | CAP_ACTIONS | if PERSISTENT { CAP_PERSISTENT } else { 0 };
+    let caps =
+        CAP_SET_CONFIG | CAP_ACTIONS | CAP_TELEMETRY | if PERSISTENT { CAP_PERSISTENT } else { 0 };
     let _ = r.extend_from_slice(&[
         PROTOCOL_VERSION,
         info.firmware[0] & 0x7F,
@@ -237,6 +253,7 @@ fn plain(reply: Reply) -> Outcome {
         config: None,
         generation: 0,
         action: None,
+        telemetry: None,
     }
 }
 
@@ -341,6 +358,7 @@ pub fn handle(
                 config: changed.then_some(new),
                 generation,
                 action: None,
+                telemetry: None,
             })
         }
         msg::ACTION => {
@@ -367,6 +385,7 @@ pub fn handle(
                     config: changed.then_some(new),
                     generation,
                     action: Some(a),
+                    telemetry: None,
                 });
             }
             let mut r = header(msg::ACTION_ACK, req);
@@ -376,6 +395,29 @@ pub fn handle(
                 config: None,
                 generation: 0,
                 action: Some(a),
+                telemetry: None,
+            })
+        }
+        msg::TELEMETRY_START => {
+            if payload.len() != 1 {
+                return bad_len();
+            }
+            let rate = payload[0];
+            if !(telemetry::MIN_RATE_HZ..=telemetry::MAX_RATE_HZ).contains(&rate) {
+                return Some(plain(error_reply(req, ErrorCode::OutOfRange, rate)));
+            }
+            Some(Outcome {
+                telemetry: Some(rate),
+                ..plain(telemetry::ack(req, rate))
+            })
+        }
+        msg::TELEMETRY_STOP => {
+            if !payload.is_empty() {
+                return bad_len();
+            }
+            Some(Outcome {
+                telemetry: Some(0),
+                ..plain(telemetry::ack(req, 0))
             })
         }
         other => Some(plain(error_reply(req, ErrorCode::UnknownType, other))),

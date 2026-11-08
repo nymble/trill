@@ -43,8 +43,10 @@ The device **never answers a reply-typed message** (`type & 0x40`), anything wit
 | `02` GET_CONFIG | none | `42` CONFIG |
 | `03` SET_CONFIG | 1–16 × `(param, hi, lo)` | `42` CONFIG with the values now in effect, or `7F` ERROR |
 | `04` ACTION | action code (1 byte) | `44` ACTION_ACK `<code>`. Restore-defaults answers with `42` CONFIG |
+| `05` TELEMETRY_START | rate in Hz, 1–100 (1 byte) | `45` TELEMETRY_ACK, then `50` TELEMETRY frames (firmware 0.3.0+, [below](#sensor-telemetry-firmware-030)) |
+| `06` TELEMETRY_STOP | none | `45` TELEMETRY_ACK with rate 0 |
 
-**HELLO_REPLY payload** (13 bytes): protocol version, firmware major, minor, patch, variant (bit 0 = `pcm-synth` build), capabilities (bit 0 SET_CONFIG, bit 1 ACTION, bit 2 persistent settings: **never set by this firmware**), max message length (64), parameter count (13), uptime in seconds (3 bytes, 21 bits, saturating), boot ID (2 bytes, 14 bits). The boot ID is drawn from the nRF52840 hardware RNG at reset. A changed boot ID means the device restarted and its settings went back to defaults.
+**HELLO_REPLY payload** (13 bytes): protocol version, firmware major, minor, patch, variant (bit 0 = `pcm-synth` build), capabilities (bit 0 SET_CONFIG, bit 1 ACTION, bit 2 persistent settings: **never set by this firmware**, bit 3 sensor telemetry: firmware 0.3.0+), max message length (64), parameter count (13), uptime in seconds (3 bytes, 21 bits, saturating), boot ID (2 bytes, 14 bits). The boot ID is drawn from the nRF52840 hardware RNG at reset. A changed boot ID means the device restarted and its settings went back to defaults.
 
 **CONFIG payload:** generation (2 bytes, 14 bits, wraps), persistent flag (`00`: RAM only), then `(param, hi, lo)` for every parameter in ID order. The generation increases whenever the mapping changes, through this protocol or a diagnostics key. Unchanged values leave it as it is. Hosts should skip unknown parameter IDs, because a newer firmware may add some.
 
@@ -98,6 +100,50 @@ Thresholds, smoothing and timing constants are not exposed in version 1.
 
 **Settings live in RAM only.** A reset, power cycle or firmware update restores the defaults, and the device reports this (persistent flag `00`, capability bit 2 clear). Nothing is written to flash. Saving settings on the device would need a flash region that is verified not to collide with the Omi/bootloader storage partition (`0xEC000`–`0xF4000`) and a power-loss-safe write scheme. Neither exists yet. Keep settings as host presets instead ([Apple app](apple-app.md#presets)).
 
+## Sensor telemetry (firmware 0.3.0+)
+
+A host can subscribe to a low-rate snapshot of the sensors on the same
+configuration port. It is for display and logging; it never changes the
+sound or the mapping. Firmware that does not set capability bit 3 answers
+TELEMETRY_START with ERROR UnknownType (2); hosts should check the bit and
+explain that a firmware update is needed.
+
+- **Subscription is a lease.** TELEMETRY_START (rate 1–100 Hz; anything else is
+  ERROR OutOfRange with the rate as detail) starts or re-arms it. The stream
+  stops by itself 5 s after the last START, on TELEMETRY_STOP, on USB
+  disconnect and on reset. Hosts renew about every 2 s while they display it.
+- **TELEMETRY_ACK payload** (4 bytes): rate now in effect (0 = off), lease in
+  seconds (5), frame length (54), frame format (1).
+- **Lossy and lowest priority.** Frames go out on cable 1 only when no reply is
+  waiting and instrument events have been sent first. A period that cannot be
+  sent is counted as skipped, never queued, and values are sampled when the
+  frame is built. The rate is the snapshot rate, not the IMU rate (416 Hz ODR).
+- **TELEMETRY frame** (`50`, request ID 0, 54 bytes, payload 46 bytes). Signed
+  16-bit values use 3 bytes (bits 15–14, 13–7, 6–0); 14-bit values use 2.
+
+| Offset | Size | Field |
+|---|---|---|
+| 0 | 1 | format (1) |
+| 1 | 2 | sequence, 14 bits, wraps |
+| 3 | 3 | device time of the IMU sample, ms, 21 bits, wraps |
+| 6 | 1 | flags: 1 IMU valid, 2 gyro calibrated, 4 touching, 8 new IMU sample since the previous frame, 16 safe mode |
+| 7 | 1 | IMU state, 8: Trill state (0 off, 1 starting, 2 running, 3 not detected / retrying, 4 disabled) |
+| 9 | 9 | acceleration X, Y, Z in mg (i16) |
+| 18 | 9 | rotation rate X, Y, Z in 0.1 °/s (i16) |
+| 27 | 6 | pitch, roll in 0.01° (i16) |
+| 33 | 4 | touch position, touch size, 0–16383 = 0–1 (meaningful only with flag 4) |
+| 37 | 2 | IMU samples counter, 14 bits |
+| 39 | 2 | tap counter, 14 bits |
+| 41 | 1 | gyro calibration counter, 7 bits |
+| 42 | 2 | skipped frames, 14 bits |
+| 44 | 2 | Trill frames counter, 14 bits |
+
+Values saturate at the i16 range. When the IMU is not running or a value is
+not finite, flag 1 is clear and the IMU fields are 0; hosts must not plot
+them. Pitch = atan2(−ax, √(ay²+az²)) (±90°) and roll = atan2(ay, az) (±180°)
+in the IMU's own axes, smoothed with the gyro; there is no yaw (no
+magnetometer). Shared fixtures: `protocol/telemetry-v1-frames.txt`.
+
 ## Safety properties
 
 - A message can only read or change the 13 parameters above and trigger the 4 actions. No message addresses memory, pins or flash.
@@ -109,6 +155,7 @@ Thresholds, smoothing and timing constants are not exposed in version 1.
 - Use one request in flight. Match replies by request ID and give up after a timeout (the app uses 1 s). Late replies with an old ID are ignored.
 - Send only to the destination the user selected. Do not broadcast SysEx to every destination.
 - Start with HELLO. If the reply's version is not 1, stop.
+- Send each SysEx as one message (CoreMIDI: `MIDISendEventList` with sysex7 UMPs). Real-time bytes between UMPs are handled. In a hardware test on macOS 26, a single legacy `MIDIPacket` with an `F8` byte embedded inside the SysEx bytes never reached the device intact (no reply), while the same request as sysex7 UMPs with a separate real-time UMP between them was answered. The firmware's handling is unchanged; this is a host-side packaging rule.
 
 ## Example
 

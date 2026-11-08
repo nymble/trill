@@ -4,7 +4,7 @@ members = ["crates/trill-driver", "crates/trill-cli", "crates/lsm6ds3trc", "crat
 exclude = ["firmware/xiao-sense"]
 
 [workspace.package]
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 license = "GPL-3.0-only"
 repository = "https://github.com/nymble/trill"

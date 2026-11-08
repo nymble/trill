@@ -39,6 +39,8 @@ public final class MIDIClient {
 
     /// Instrument messages from the monitor source.
     public let events: EventBuffer
+    /// Sensor telemetry frames from the configuration source (bounded; drained by the UI).
+    public let telemetry: TelemetryBuffer
     /// Called on the main queue after CoreMIDI reports a setup change
     /// (device plugged/unplugged, endpoint renamed or taken offline).
     public var onSetupChanged: (() -> Void)?
@@ -61,8 +63,9 @@ public final class MIDIClient {
         return Double(info.numer) / Double(info.denom) / 1e9
     }()
 
-    public init(name: String = "Trill", events: EventBuffer) throws {
+    public init(name: String = "Trill", events: EventBuffer, telemetry: TelemetryBuffer = TelemetryBuffer()) throws {
         self.events = events
+        self.telemetry = telemetry
         var status = MIDIClientCreateWithBlock(name as CFString, &client) { [weak self] note in
             switch note.pointee.messageID {
             case .msgSetupChanged, .msgObjectAdded, .msgObjectRemoved, .msgPropertyChanged:
@@ -231,6 +234,12 @@ public final class MIDIClient {
             lock.unlock()
             if config {
                 for case let .sysex(bytes, truncated) in messages where !truncated && TrillCodec.isTrillSysEx(bytes) {
+                    // Telemetry (up to 100 Hz) goes to a bounded buffer the UI
+                    // drains at its own rate, never one main-queue hop per frame.
+                    if TelemetryFrame.isTelemetry(bytes) {
+                        if let f = TelemetryFrame.decode(bytes) { telemetry.append(f, hostTime: t) }
+                        continue
+                    }
                     DispatchQueue.main.async { [weak self] in self?.onConfigMessage?(bytes, t) }
                 }
             } else if !messages.isEmpty {

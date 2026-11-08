@@ -10,6 +10,8 @@ final class FakeTrill {
     var bootID = 100
     var silent = false
     var actions: [TrillAction] = []
+    var telemetry = false
+    var telemetryRate = 0
 
     func reply(to m: [UInt8]) -> [UInt8]? {
         guard !silent, TrillCodec.isTrillSysEx(m), m.count >= 8 else { return nil }
@@ -17,7 +19,7 @@ final class FakeTrill {
         let hdr = { (t: UInt8) in [0xF0, 0x7D, 0x54, 0x52, 0x01, t, id] as [UInt8] }
         switch m[5] {
         case 0x01:
-            return hdr(0x41) + [1, 0, 2, 0, 0, 3, 64, 13, 0, 0, 5, UInt8(bootID >> 7), UInt8(bootID & 0x7F), 0xF7]
+            return hdr(0x41) + [1, 0, telemetry ? 3 : 2, 0, 0, telemetry ? 0x0B : 3, 64, 13, 0, 0, 5, UInt8(bootID >> 7), UInt8(bootID & 0x7F), 0xF7]
         case 0x02:
             return configReply(hdr)
         case 0x03:
@@ -35,6 +37,13 @@ final class FakeTrill {
             actions.append(a)
             if a == .restoreDefaults { config = .firmwareDefaults; return configReply(hdr) }
             return hdr(0x44) + [a.rawValue, 0xF7]
+        case 0x05 where telemetry:
+            guard (1...100).contains(Int(m[7])) else { return hdr(0x7F) + [5, m[7], 0xF7] }
+            telemetryRate = Int(m[7])
+            return hdr(0x45) + [m[7], 5, 54, 1, 0xF7]
+        case 0x06 where telemetry:
+            telemetryRate = 0
+            return hdr(0x45) + [0, 5, 54, 1, 0xF7]
         default:
             return hdr(0x7F) + [2, m[5], 0xF7]
         }

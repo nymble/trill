@@ -544,7 +544,7 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "instrument-events"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "heapless",
 ]
@@ -594,7 +594,7 @@ dependencies = [
 
 [[package]]
 name = "lsm6ds3trc"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "embedded-hal 1.0.0",
 ]
@@ -616,7 +616,7 @@ checksum = "cf8baf1c55e62ffcace7a9f06f4bd9cd3f0c4beb022d3b367256b91b87513d98"
 
 [[package]]
 name = "motion-synth"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "libm",
 ]
@@ -809,7 +809,7 @@ dependencies = [
 
 [[package]]
 name = "status-led"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "embedded-hal 1.0.0",
 ]
@@ -914,7 +914,7 @@ dependencies = [
 
 [[package]]
 name = "trill-config"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "heapless",
  "instrument-events",
@@ -922,14 +922,14 @@ dependencies = [
 
 [[package]]
 name = "trill-driver"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "embedded-hal 1.0.0",
 ]
 
 [[package]]
 name = "trill-usb"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "embassy-usb",
 ]
@@ -1049,7 +1049,7 @@ dependencies = [
 
 [[package]]
 name = "xiao-sense-fw"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "cortex-m",
  "cortex-m-rt",

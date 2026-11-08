@@ -4,32 +4,43 @@ import TrillKit
 
 struct MonitorView: View {
     @EnvironmentObject var model: AppModel
+    @State private var exporting: CSVDocument?
+    @State private var showExporter = false
+
+    private var portName: String { model.source(model.monitorSourceID)?.name ?? "none" }
 
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 12) {
-                HStack {
+                ScrollView(.horizontal, showsIndicators: false) { HStack {
                     Picker("Channel", selection: $model.monitorChannel) {
                         ForEach(0..<16, id: \.self) { Text("Ch \($0 + 1)").tag($0) }
                     }
                     .frame(maxWidth: 160)
                     Toggle("Pause", isOn: $model.monitorPaused)
+                    Toggle("Hide clock / real-time", isOn: Binding(get: { model.monitor.hideRealtime }, set: { model.setHideRealtime($0) }))
                     Button("Clear") { model.clearMonitor() }
-                    Spacer()
-                    Text("\(model.monitor.total) events\(model.monitor.dropped > 0 ? " · \(model.monitor.dropped) dropped (UI buffer full)" : "")")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
+                    Button("Export…") {
+                        exporting = CSVDocument(text: model.monitor.csv(port: portName))
+                        showExporter = true
+                    }
+                    .disabled(model.monitor.history.isEmpty)
+                } }
+                Text("Port: \(portName) · \(String(format: "%.0f", model.monitor.rate)) events/s · \(model.monitor.total) total · \(model.monitor.realtimeCount) real-time · \(model.monitor.sysexCount) SysEx\(model.monitor.dropped > 0 ? " · \(model.monitor.dropped) dropped (UI buffer full)" : "") · log keeps the last \(model.monitor.historyLimit)\(model.monitorPaused ? " · PAUSED (not recording)" : "")")
+                    .font(.caption).foregroundStyle(.secondary)
                 if model.monitorSourceID == nil {
                     Text("Select a source on the Device tab.").foregroundStyle(.secondary)
                 }
                 ChannelPanel(state: model.monitor.channels[model.monitorChannel],
                              bendRange: model.session.acknowledged?[.bendRange] ?? model.draft[.bendRange])
-                Text("Values are the standard MIDI messages the instrument sends (touch size arrives as channel pressure; rotation and tilt as CC74 / CC1). Raw sensor values are not part of the MIDI stream.")
+                Text("Values are the standard MIDI messages the instrument sends (touch size arrives as channel pressure; rotation and tilt as CC74 / CC1). Raw sensor values are on the Sensors tab. Times are CoreMIDI timestamps; SysEx is summarized to its first 24 bytes. Nothing is routed elsewhere.")
                     .font(.caption).foregroundStyle(.secondary)
                 EventList(events: model.monitor.history)
             }
             .padding()
-            .navigationTitle("Monitor")
+            .navigationTitle("MIDI Monitor")
+            .fileExporter(isPresented: $showExporter, document: exporting, contentType: .commaSeparatedText,
+                          defaultFilename: "trill-midi-log.csv") { _ in exporting = nil }
         }
     }
 }

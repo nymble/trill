@@ -20,6 +20,8 @@ public final class ConfigSession {
         case getConfig
         case setConfig([TrillParam: Int])
         case action(TrillAction)
+        case telemetryStart(Int)
+        case telemetryStop
 
         var title: String {
             switch self {
@@ -27,6 +29,8 @@ public final class ConfigSession {
             case .getConfig: return "read settings"
             case .setConfig: return "apply settings"
             case let .action(a): return a.title
+            case let .telemetryStart(r): return "sensor stream \(r) Hz"
+            case .telemetryStop: return "stop sensor stream"
             }
         }
     }
@@ -54,6 +58,11 @@ public final class ConfigSession {
     /// Set when the device's boot ID changed between handshakes: it restarted
     /// and its RAM-only settings went back to firmware defaults.
     public private(set) var deviceRestarted = false
+    /// Telemetry rate the device acknowledged (0 = off, nil = unknown).
+    public private(set) var telemetryRate: Int?
+    public private(set) var telemetryLease: TimeInterval = 5
+    public private(set) var telemetryAckAt: TimeInterval?
+    public private(set) var telemetryError: String?
 
     public let timeout: TimeInterval
     public let maxQueue = 8
@@ -80,6 +89,9 @@ public final class ConfigSession {
         generation = nil
         hello = nil
         deviceRestarted = false
+        telemetryRate = nil
+        telemetryAckAt = nil
+        telemetryError = nil
         phase = .handshaking
         note(now, "handshake: HELLO sent")
         transmit(.hello, now: now)
@@ -88,6 +100,8 @@ public final class ConfigSession {
     public func disconnect(now: TimeInterval) {
         pending = nil
         queue = []
+        telemetryRate = nil
+        telemetryAckAt = nil
         phase = .disconnected
         note(now, "disconnected")
     }
@@ -112,6 +126,35 @@ public final class ConfigSession {
         guard isReady else { return false }
         enqueue(.action(action), now: now)
         return true
+    }
+
+    /// The device streams sensor telemetry (HELLO capability, firmware 0.3.0+).
+    public var supportsTelemetry: Bool { hello?.supportsTelemetry ?? false }
+
+    /// Keep the telemetry subscription in the wanted state: start it, renew
+    /// the lease before it expires (half the lease), or stop it. Call from
+    /// the UI timer. `desiredRate` nil = off. Does nothing on firmware
+    /// without telemetry.
+    public func maintainTelemetry(desiredRate: Int?, now: TimeInterval) {
+        guard isReady, supportsTelemetry, telemetryError == nil else { return }
+        let inFlight = (pending.map { Self.isTelemetry($0.request) } ?? false) || queue.contains(where: Self.isTelemetry)
+        guard !inFlight else { return }
+        if let rate = desiredRate {
+            let due = telemetryRate != rate || (telemetryAckAt.map { now - $0 >= telemetryLease / 2 } ?? true)
+            if due { enqueue(.telemetryStart(rate), now: now) }
+        } else if (telemetryRate ?? 0) != 0 {
+            enqueue(.telemetryStop, now: now)
+        }
+    }
+
+    /// Clear a telemetry error so `maintainTelemetry` tries again.
+    public func retryTelemetry() { telemetryError = nil }
+
+    static func isTelemetry(_ r: Request) -> Bool {
+        switch r {
+        case .telemetryStart, .telemetryStop: return true
+        default: return false
+        }
     }
 
     /// Feed every complete SysEx message received from the config source.
@@ -141,6 +184,11 @@ public final class ConfigSession {
             note(now, "\(p.request.title): acknowledged, generation \(gen), \(ms) ms")
         case let .actionAck(_, a):
             note(now, "\(a.title): acknowledged, \(ms) ms")
+        case let .telemetryAck(_, rate, lease, _, _):
+            if telemetryRate != rate { note(now, rate == 0 ? "sensor stream stopped" : "sensor stream on at \(rate) Hz (lease \(lease) s), \(ms) ms") }
+            telemetryRate = rate
+            telemetryLease = TimeInterval(max(lease, 1))
+            telemetryAckAt = now
         case let .error(_, code, detail):
             let c = TrillErrorCode(rawValue: code)
             var text = "\(p.request.title): device error \(code) (\(c?.summary ?? "unknown"))"
@@ -148,6 +196,7 @@ public final class ConfigSession {
                 text += ", parameter \(TrillParam(rawValue: detail).map { $0.key } ?? String(detail))"
             }
             note(now, text, error: true)
+            if Self.isTelemetry(p.request) { telemetryError = text }
             if phase == .handshaking { fail(now, text); return }
         }
         sendNext(now: now)
@@ -163,6 +212,7 @@ public final class ConfigSession {
             return
         }
         note(now, text, error: true)
+        if Self.isTelemetry(p.request) { telemetryError = text }
         sendNext(now: now)
     }
 
@@ -188,6 +238,8 @@ public final class ConfigSession {
         case .getConfig: bytes = TrillCodec.getConfig(id)
         case let .setConfig(v): bytes = TrillCodec.setConfig(id, v.sorted { $0.key.rawValue < $1.key.rawValue }.map { ($0.key, $0.value) })
         case let .action(a): bytes = TrillCodec.action(id, a)
+        case let .telemetryStart(rate): bytes = TrillCodec.telemetryStart(id, rateHz: rate)
+        case .telemetryStop: bytes = TrillCodec.telemetryStop(id)
         }
         guard let b = bytes, send(b) else {
             note(now, "\(r.title): could not send", error: true)

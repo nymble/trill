@@ -22,9 +22,13 @@ public enum TrillProtocol {
         case getConfig = 0x02
         case setConfig = 0x03
         case action = 0x04
+        case telemetryStart = 0x05
+        case telemetryStop = 0x06
         case helloReply = 0x41
         case config = 0x42
         case actionAck = 0x44
+        case telemetryAck = 0x45
+        case telemetry = 0x50
         case error = 0x7F
     }
 
@@ -32,6 +36,10 @@ public enum TrillProtocol {
     public static let capSetConfig: UInt8 = 0x01
     public static let capActions: UInt8 = 0x02
     public static let capPersistent: UInt8 = 0x04
+    /// Sensor telemetry (firmware 0.3.0 and newer).
+    public static let capTelemetry: UInt8 = 0x08
+    /// Oldest firmware that streams sensor telemetry.
+    public static let telemetryMinimumFirmware = "0.3.0"
 }
 
 /// Device-side error codes.
@@ -160,6 +168,7 @@ public enum TrillReply: Equatable, Sendable {
         public var firmwareString: String { "\(firmware.0).\(firmware.1).\(firmware.2)" }
         public var isPCMSynthBuild: Bool { variant & TrillProtocol.variantPCMSynth != 0 }
         public var persistent: Bool { capabilities & TrillProtocol.capPersistent != 0 }
+        public var supportsTelemetry: Bool { capabilities & TrillProtocol.capTelemetry != 0 }
         public static func == (a: Hello, b: Hello) -> Bool {
             a.protocolVersion == b.protocolVersion && a.firmware == b.firmware && a.variant == b.variant
                 && a.capabilities == b.capabilities && a.maxMessageLength == b.maxMessageLength
@@ -170,11 +179,14 @@ public enum TrillReply: Equatable, Sendable {
     case hello(requestID: UInt8, Hello)
     case config(requestID: UInt8, generation: Int, persistent: Bool, DeviceConfig)
     case actionAck(requestID: UInt8, TrillAction)
+    /// Telemetry subscription state: rate (0 = stopped), lease, frame length, format.
+    case telemetryAck(requestID: UInt8, rateHz: Int, leaseSeconds: Int, frameLength: Int, format: Int)
     case error(requestID: UInt8, code: UInt8, detail: UInt8)
 
     public var requestID: UInt8 {
         switch self {
-        case let .hello(id, _), let .config(id, _, _, _), let .actionAck(id, _), let .error(id, _, _): return id
+        case let .hello(id, _), let .config(id, _, _, _), let .actionAck(id, _), let .error(id, _, _),
+             let .telemetryAck(id, _, _, _, _): return id
         }
     }
 }
@@ -188,6 +200,12 @@ public enum TrillCodec {
     public static func hello(_ id: UInt8) -> [UInt8] { header(.hello, id) + [TrillProtocol.version, 0xF7] }
     public static func getConfig(_ id: UInt8) -> [UInt8] { header(.getConfig, id) + [0xF7] }
     public static func action(_ id: UInt8, _ a: TrillAction) -> [UInt8] { header(.action, id) + [a.rawValue, 0xF7] }
+    /// `nil` if the rate is outside 1...100 Hz.
+    public static func telemetryStart(_ id: UInt8, rateHz: Int) -> [UInt8]? {
+        guard TelemetryFrame.rateRange.contains(rateHz) else { return nil }
+        return header(.telemetryStart, id) + [UInt8(rateHz), 0xF7]
+    }
+    public static func telemetryStop(_ id: UInt8) -> [UInt8] { header(.telemetryStop, id) + [0xF7] }
 
     /// `nil` if empty, too many values, or a value is out of range (the app
     /// never sends a request the device would reject for range).
@@ -237,6 +255,9 @@ public enum TrillCodec {
         case .actionAck:
             guard p.count == 1, let a = TrillAction(rawValue: p[0]) else { return nil }
             return .actionAck(requestID: id, a)
+        case .telemetryAck:
+            guard p.count == 4 else { return nil }
+            return .telemetryAck(requestID: id, rateHz: Int(p[0]), leaseSeconds: Int(p[1]), frameLength: Int(p[2]), format: Int(p[3]))
         case .error:
             guard p.count == 2 else { return nil }
             return .error(requestID: id, code: p[0], detail: p[1])

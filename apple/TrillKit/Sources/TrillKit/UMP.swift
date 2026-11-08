@@ -81,7 +81,9 @@ public enum MIDIMessage: Equatable, Sendable {
         case let .sysex(b, t):
             let hex = b.prefix(24).map { String(format: "%02X", $0) }.joined(separator: " ")
             return "SysEx \(b.count) bytes\(t ? " (truncated)" : ""): \(hex)\(b.count > 24 ? " …" : "")"
-        case let .realtime(s): return String(format: "Real-time %02X", s)
+        case let .realtime(s):
+            let names: [UInt8: String] = [0xF8: "Clock", 0xFA: "Start", 0xFB: "Continue", 0xFC: "Stop", 0xFE: "Active Sensing", 0xFF: "Reset"]
+            return String(format: "Real-time %02X", s) + (names[s].map { " \($0)" } ?? "")
         case let .systemCommon(s, a, b): return String(format: "System %02X %02X %02X", s, a, b)
         case let .other(w): return String(format: "UMP %08X", w)
         }

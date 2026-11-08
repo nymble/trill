@@ -5,6 +5,9 @@ All notable changes to this project are documented here. Versions follow [Semant
 ## [Unreleased]
 
 ### Added
+- Sensor telemetry (protocol v1 messages `05`/`06`/`45`/`50`, capability bit 3, firmware 0.3.0): lease-based subscription (5 s), 1–100 Hz (default 50), 54-byte frames with accel, gyro, pitch/roll, touch, states and counters; lowest priority on cable 1, skipped rather than queued; `tlm=` in the status line. Shared fixtures `protocol/telemetry-v1-frames.txt` tested in Rust and Swift.
+- Apple app: Sensors tab (live charts that break at gaps, orientation, touch, stream health, events, CSV export, unsupported-firmware state) and a MIDI monitor with real-time filter, rates, SysEx counts and CSV export.
+- `make test-kit` and CI artifact `trill-test-kit-unsigned-dev`: Mac app + matching application-only UF2 + tool + docs + manifest + checksums.
 - Raspberry Pi and Seeed XIAO nRF52840 wiring designs for Trill Flex (proposals, not hardware-validated).
 - `trill-driver`: `no_std` embedded-hal 1.0 driver with Identify, configuration commands, acknowledgement polling, and 1-axis centroid and 16-bit channel decoding.
 - `trill-cli`: Linux `trill identify` / `trill read` bring-up tool.
@@ -28,5 +31,5 @@ All notable changes to this project are documented here. Versions follow [Semant
 - Docs: Apple app, configuration protocol.
 
 ### Changed
-- USB layout: two MIDI cables per direction; `bcdDevice` 0x0200. Workspace version 0.2.0.
+- USB layout: two MIDI cables per direction; `bcdDevice` 0x0200. Workspace version 0.3.0 (0.2.0 added configuration; `bcdDevice` stays 0x0200 because the USB layout did not change).
 - XIAO Sense firmware: the on-board synth, its high-priority audio task and the PCM CDC port moved behind the optional `pcm-synth` feature. The default build renders no audio. USB PID changed from 1209:0001 to 1209:0002 (default) / 1209:0003 (`pcm-synth`).

@@ -24,7 +24,7 @@ final class VectorTests: XCTestCase {
 
     func testRequestsMatchRustEncoder() throws {
         let v = try Self.loadVectors()
-        XCTAssertEqual(v.count, 17)
+        XCTAssertEqual(v.count, 24)
         XCTAssertEqual(TrillCodec.hello(1), v["hello"]!.request)
         XCTAssertEqual(TrillCodec.getConfig(2), v["get_config"]!.request)
         XCTAssertEqual(TrillCodec.setConfig(3, [(.channel, 2), (.pitchMode, 1)]), v["set_channel_steps"]!.request)
@@ -42,7 +42,8 @@ final class VectorTests: XCTestCase {
         guard case let .hello(id, h)? = TrillCodec.decodeReply(v["hello"]!.reply!) else { return XCTFail("hello") }
         XCTAssertEqual(id, 1)
         XCTAssertEqual(h.protocolVersion, 1)
-        XCTAssertEqual(h.firmwareString, "0.2.0")
+        XCTAssertEqual(h.firmwareString, "0.3.0")
+        XCTAssertTrue(h.supportsTelemetry)
         XCTAssertEqual(h.uptimeSeconds, 1234)
         XCTAssertEqual(h.bootID, 0x1555)
         XCTAssertEqual(h.paramCount, TrillParam.allCases.count)
@@ -79,7 +80,7 @@ final class VectorTests: XCTestCase {
             XCTAssertEqual(d, detail, name)
         }
         guard case .actionAck(9, .panic)? = TrillCodec.decodeReply(v["action_panic"]!.reply!) else { return XCTFail("ack") }
-        for name in ["ignored_reply_echo", "ignored_other_7d", "ignored_universal"] {
+        for name in ["ignored_reply_echo", "ignored_other_7d", "ignored_universal", "ignored_telemetry_echo"] {
             XCTAssertNil(v[name]!.reply, name)
         }
         // Requests are never mistaken for replies (loop safety on the host).

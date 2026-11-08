@@ -44,6 +44,7 @@ The CLI only works on Linux. On macOS it compiles to a stub that exits with an e
 | iOS app for the Simulator | `make apple-ios-sim` | no | same artifact (`Trill-iOS-Simulator-<version>.zip`) |
 | iOS app for devices | `make apple-ios-device` | no: compile check only, **not installable** | – |
 | Everything Apple | `make apple` (then `make apple-dist`) | | |
+| Test kit: Mac app + matching firmware UF2 + `xiao_uf2.py` + docs + `MANIFEST.txt` + `SHA256SUMS` | `make test-kit` after `apple-mac apple-dist fw-uf2` (or set `KIT_APP`, `KIT_UF2`) → `dist/Trill-<version>-<commit>.zip` | app: ad-hoc only | `trill-test-kit-unsigned-dev` |
 
 Sign and install on your own devices from Xcode with your own team ([apple-app.md](apple-app.md#run-and-install)). No signing identity, team or profile is stored in the repository or used by CI.
 

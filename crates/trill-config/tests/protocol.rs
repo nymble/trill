@@ -169,7 +169,10 @@ fn hello_reports_version_variant_caps_and_not_persistent() {
     assert_eq!(r[6], 3);
     assert_eq!(&r[7..11], &[PROTOCOL_VERSION, 0, 2, 0]);
     assert_eq!(r[11], VARIANT_PCM_SYNTH);
-    assert_eq!(r[12], CAP_SET_CONFIG | CAP_ACTIONS);
+    assert_eq!(
+        r[12],
+        CAP_SET_CONFIG | CAP_ACTIONS | trill_config::CAP_TELEMETRY
+    );
     assert_eq!(r[12] & CAP_PERSISTENT, 0);
     assert_eq!(r[13] as usize, MAX_MESSAGE_LEN);
     assert_eq!(r[14] as usize, Param::ALL.len());

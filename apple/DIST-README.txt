@@ -23,7 +23,9 @@ Trill-iOS-Simulator-<version>.zip
   It cannot be installed on an iPhone or iPad. For a device, build from
   source in Xcode with your own team.
 
-The app talks to Trill firmware 0.2.0 or newer over USB MIDI. Neither the
-app nor that firmware has been tested with real hardware yet. The app never
+The app talks to Trill firmware 0.2.0 or newer over USB MIDI; its Sensors
+tab needs firmware 0.3.0 or newer. Firmware 0.2.0 has been checked on one
+XIAO Sense from a Mac; firmware 0.3.0 telemetry and the Sensors tab have not
+run on hardware yet. The app never
 writes firmware: its Mac firmware page only checks a UF2 file and shows
 commands for you to run.

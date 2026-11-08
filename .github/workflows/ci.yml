@@ -38,12 +38,14 @@ jobs:
         run: |
           cargo run -q --locked -p trill-config --example vectors > /tmp/vectors.txt
           diff -u protocol/config-v1-vectors.txt /tmp/vectors.txt
+          cargo run -q --locked -p trill-config --example vectors -- telemetry > /tmp/telemetry.txt
+          diff -u protocol/telemetry-v1-frames.txt /tmp/telemetry.txt
       - name: Tool tests (UF2 safety checks, PCM stream parser)
         run: python3 -m unittest discover -s tools -p 'test_*.py' -v
       - name: Motion synth demo render
         run: cargo run --release --locked -p motion-synth --example render_wav -- /tmp/motion-synth-demo.wav
       - name: Makefile parses
-        run: make --dry-run ci pi-zero dist fw-uf2 synth-demo protocol-vectors apple >/dev/null
+        run: make --dry-run ci pi-zero dist fw-uf2 synth-demo protocol-vectors apple test-kit >/dev/null
 
   firmware:
     name: XIAO nRF52840 Sense firmware (link + UF2 check)
@@ -140,6 +142,36 @@ jobs:
         with:
           name: trill-apple-apps-unsigned-dev
           path: dist/apple/
+          retention-days: 14
+
+  test-kit:
+    name: Test kit (Mac app + matching firmware, one commit)
+    runs-on: ubuntu-latest
+    needs: [firmware, apple]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: trill-apple-apps-unsigned-dev
+          path: in/apple
+      - uses: actions/download-artifact@v4
+        with:
+          name: xiao-sense-fw-unvalidated-on-hardware
+          path: in/fw
+      - name: Package (no build, inputs verified against their SHA256SUMS)
+        env:
+          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          (cd in/apple && sha256sum -c SHA256SUMS)
+          (cd in/fw && sha256sum -c SHA256SUMS)
+          v=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          make test-kit KIT_SHA="${SHA::7}" KIT_APP="in/apple/Trill-macOS-unsigned-dev-$v.zip" KIT_UF2=in/fw/xiao-sense-fw.uf2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trill-test-kit-unsigned-dev
+          path: dist/Trill-*.zip
           retention-days: 14
 
   cross:

@@ -2,7 +2,7 @@
 
 Open hardware designs and Rust software for using [Bela Trill](https://bela.io/trill) capacitive touch sensors, starting with **Trill Flex**, as a musical instrument controller.
 
-> **Status (0.2.0, unreleased):** the wiring designs are proposals and have **not been validated on hardware**. The Rust driver, Linux CLI, IMU driver, MIDI event engine, configuration protocol, motion synth and XIAO Sense USB-MIDI firmware build and pass host tests, and the firmware links for the nRF52840. The Mac and iPhone companion app (TrillKit + SwiftUI) builds unsigned and its tests run in CI on macOS. Nothing has been run on a physical sensor, board, Mac-with-device or iPhone yet. See [design status](docs/roadmap.md#design-status).
+> **Status (0.3.0, unreleased):** the wiring designs are proposals. The Rust driver, Linux CLI, IMU driver, MIDI event engine, configuration protocol, motion synth and XIAO Sense USB-MIDI firmware build and pass host tests. The Mac and iPhone companion app (TrillKit + SwiftUI) builds unsigned in CI and has a live **Sensors** tab (acceleration, rotation, orientation, touch, stream health) and a MIDI monitor/log; CI also produces a test kit with the Mac app and the matching firmware ([kit](docs/test-kit.md)). Firmware 0.2.0 has run on one XIAO nRF52840 Sense (IMU working, USB-MIDI and configuration protocol checked from a Mac; no Trill sensor attached). The 0.3.0 sensor telemetry, the Sensors tab and the iPhone app have not run on hardware yet. See [design status](docs/roadmap.md#design-status).
 
 ## Designs
 
