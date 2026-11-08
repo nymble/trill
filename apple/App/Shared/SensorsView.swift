@@ -271,7 +271,7 @@ struct StatusBanner: View {
         if !s.supportsTelemetry {
             let fw: String = s.hello?.firmwareString ?? "?"
             return Info(title: "Sensors unsupported until the firmware is updated",
-                        detail: "This device reports firmware \(fw); live sensor data needs \(TrillCodec.telemetryMinimumFirmware) or newer. Install the matching UF2 (double-press RESET to show the XIAO-SENSE drive; see the Firmware tab). MIDI keeps working on the current firmware.",
+                        detail: "This device reports firmware \(fw); live sensor data needs \(TrillProtocol.telemetryMinimumFirmware) or newer. Install the matching UF2 (double-press RESET to show the XIAO-SENSE drive; see the Firmware tab). MIDI keeps working on the current firmware.",
                         icon: "exclamationmark.triangle", color: .orange)
         }
         if let e = s.telemetryError {
