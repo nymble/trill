@@ -230,50 +230,73 @@ struct SensorsView: View {
 struct StatusBanner: View {
     @EnvironmentObject var model: AppModel
 
-    var body: some View {
-        let s = model.session!
-        let t = model.telemetry
-        Group {
-            if !s.isReady {
-                note("Not connected", "Connect to the Trill on the Device tab. Sensor data comes from the device's configuration port.", "cable.connector", .secondary)
-            } else if !s.supportsTelemetry {
-                note("Sensors unsupported until the firmware is updated",
-                     "This device reports firmware \(s.hello?.firmwareString ?? "?"); live sensor data needs \(TrillCodec.telemetryMinimumFirmware) or newer. Install the matching UF2 from the Firmware tab (double-press RESET to show the XIAO-SENSE drive). MIDI keeps working on the current firmware.",
-                     "exclamationmark.triangle", .orange)
-            } else if let e = s.telemetryError {
-                VStack(alignment: .leading) {
-                    note("The device refused the sensor stream", e, "xmark.octagon", .red)
-                    Button("Try again") { model.retryTelemetry() }
-                }
-            } else if model.sensorsPaused {
-                note("Display paused",
-                     "The device is still streaming: \(model.liveTelemetry.framesReceived - model.framesAtPause) frames received since pausing. Resume to see them.",
-                     "pause.circle", .blue)
-            } else if !model.sensorsLive {
-                note("Stream off", "Turn on Stream to request sensor data.", "stop.circle", .secondary)
-            } else if t.isStale(now: model.clock, rateHz: s.telemetryRate ?? model.telemetryRateHz) {
-                note(t.lastHostTime == nil ? "Waiting for sensor data…" : "Sensor data is stale",
-                     t.age(now: model.clock).map { String(format: "No frame for %.1f s. Values shown are the last ones received.", $0) } ?? "Requested \(model.telemetryRateHz) Hz.",
-                     "hourglass", .orange)
-            } else {
-                note("Live", String(format: "%d Hz requested, %.0f frames/s arriving. Telemetry is a sampled snapshot of the %.0f Hz IMU, not every sample.",
-                                    s.telemetryRate ?? model.telemetryRateHz, t.frameRate, t.imuRate),
-                     "dot.radiowaves.left.and.right", .green)
-            }
-        }
+    private struct Info {
+        let title: String
+        let detail: String
+        let icon: String
+        let color: Color
     }
 
-    private func note(_ title: String, _ detail: String, _ icon: String, _ color: Color) -> some View {
-        Label {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.headline)
-                Text(detail).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+    var body: some View {
+        let info = current()
+        let failed = model.session.isReady && model.session.supportsTelemetry && model.session.telemetryError != nil
+        VStack(alignment: .leading, spacing: 6) {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(info.title).font(.headline)
+                    Text(info.detail).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                }
+            } icon: {
+                Image(systemName: info.icon).foregroundStyle(info.color)
             }
-        } icon: { Image(systemName: icon).foregroundStyle(color) }
+            if failed {
+                Button("Try again") { model.retryTelemetry() }
+            }
+        }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(color.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
+        .background(info.color.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
         .accessibilityElement(children: .combine)
+    }
+
+    private func current() -> Info {
+        let s: ConfigSession = model.session
+        let t: TelemetryModel = model.telemetry
+        let requested: Int = s.telemetryRate ?? model.telemetryRateHz
+        if !s.isReady {
+            return Info(title: "Not connected",
+                        detail: "Connect to the Trill on the Device tab. Sensor data comes from the device's configuration port.",
+                        icon: "cable.connector", color: .secondary)
+        }
+        if !s.supportsTelemetry {
+            let fw: String = s.hello?.firmwareString ?? "?"
+            return Info(title: "Sensors unsupported until the firmware is updated",
+                        detail: "This device reports firmware \(fw); live sensor data needs \(TrillCodec.telemetryMinimumFirmware) or newer. Install the matching UF2 (double-press RESET to show the XIAO-SENSE drive; see the Firmware tab). MIDI keeps working on the current firmware.",
+                        icon: "exclamationmark.triangle", color: .orange)
+        }
+        if let e = s.telemetryError {
+            return Info(title: "The device refused the sensor stream", detail: e, icon: "xmark.octagon", color: .red)
+        }
+        if model.sensorsPaused {
+            let n: Int = model.liveTelemetry.framesReceived - model.framesAtPause
+            return Info(title: "Display paused",
+                        detail: "The device is still streaming: \(n) frames received since pausing. Resume to see them.",
+                        icon: "pause.circle", color: .blue)
+        }
+        if !model.sensorsLive {
+            return Info(title: "Stream off", detail: "Turn on Stream to request sensor data.", icon: "stop.circle", color: .secondary)
+        }
+        if t.isStale(now: model.clock, rateHz: requested) {
+            if let age = t.age(now: model.clock) {
+                return Info(title: "Sensor data is stale",
+                            detail: String(format: "No frame for %.1f s. Values shown are the last ones received.", age),
+                            icon: "hourglass", color: .orange)
+            }
+            return Info(title: "Waiting for sensor data…", detail: "Requested \(requested) Hz.", icon: "hourglass", color: .orange)
+        }
+        let detail: String = String(format: "%ld Hz requested, %.0f frames/s arriving. Telemetry is a sampled snapshot of the %.0f Hz IMU, not every sample.",
+                                    requested, t.frameRate, t.imuRate)
+        return Info(title: "Live", detail: detail, icon: "dot.radiowaves.left.and.right", color: .green)
     }
 }
 
