@@ -52,7 +52,7 @@ Design estimates for motion → sound, derived from the configuration. **These a
 | Output buffer (I²S double buffer, future) | 2.0 ms | one block |
 | **Total (I²S path)** | **≈ 2.5–7 ms** | under a 10 ms target for percussive gestures |
 
-Parameter smoothing adds a 4 ms time constant to continuous changes, but not to the onset of a pluck. The USB PCM stream adds host-side buffering that the device does not control, so do not use it for latency claims. The firmware's `ctl_age` counter measures the first three stages on the device. Touch currently reaches the synth only through the IMU task, and the Trill scan is longer than its poll period; see [current-design.md](current-design.md#known-limitations-found-while-reviewing-to-fix-before-latency-work).
+Parameter smoothing adds a 4 ms time constant to continuous changes, but not to the onset of a pluck. The USB PCM stream adds host-side buffering that the device does not control, so do not use it for latency claims. The firmware's `ctl_age` counter measures the first three stages on the device. Earlier limitations (touch coupled to the IMU task, Trill scan longer than its poll period) were fixed in PR #3; see [current-design.md](current-design.md#known-limitations-found-while-reviewing-to-fix-before-latency-work) for the original review.
 
 ## Output paths
 
