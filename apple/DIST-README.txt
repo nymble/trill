@@ -1,11 +1,11 @@
-Trill companion app: unsigned development builds
-================================================
+Trillium (companion app for the Trill instrument): unsigned development builds
+=============================================================================
 
 These files come from the CI workflow of https://github.com/nymble/trill.
 They are development builds, not releases. Licence: GPL-3.0-only (see the
 repository; commercial terms in COMMERCIAL-LICENSE.md).
 
-Trill-macOS-unsigned-dev-<version>.zip
+Trillium-macOS-unsigned-dev-<version>.zip
   Universal (Apple Silicon + Intel) macOS 13+ app. NOT notarized and NOT
   signed with a Developer ID: it carries only the linker's ad-hoc
   signature, so its entitlements (App Sandbox) are not applied.
@@ -13,13 +13,13 @@ Trill-macOS-unsigned-dev-<version>.zip
   build and have checked SHA256SUMS:
     - macOS 15 or newer: try to open it once, then System Settings >
       Privacy & Security > "Open Anyway".
-    - macOS 13/14: right-click Trill.app > Open.
-    - or: xattr -dr com.apple.quarantine Trill.app
+    - macOS 13/14: right-click Trillium.app > Open.
+    - or: xattr -dr com.apple.quarantine Trillium.app
   For a sandboxed build signed by you, build it from source in Xcode with
   your own team (docs/apple-app.md).
 
-Trill-iOS-Simulator-<version>.zip
-  For the iOS Simulator only (xcrun simctl install booted Trill.app).
+Trillium-iOS-Simulator-<version>.zip
+  For the iOS Simulator only (xcrun simctl install booted Trillium.app).
   It cannot be installed on an iPhone or iPad. For a device, build from
   source in Xcode with your own team.
 

@@ -40,11 +40,11 @@ The CLI only works on Linux. On macOS it compiles to a stub that exits with an e
 | Default USB-MIDI firmware UF2 (application-only) | `make fw-uf2` → `dist/xiao-sense-fw-<version>.uf2` | n/a (SHA-256 only) | `xiao-sense-fw-unvalidated-on-hardware` (`xiao-sense-fw.uf2`) |
 | `pcm-synth` debug firmware UF2 | `make fw-uf2-pcm` | n/a | same artifact (`xiao-sense-fw-pcm-synth.uf2`) |
 | TrillKit tests (host / iOS Simulator) | `make apple-test`, `make apple-test-ios-sim` | no | – |
-| macOS app (Release, universal) | `make apple-mac` | ad-hoc linker signature only | `trill-apple-apps-unsigned-dev` (`Trill-macOS-unsigned-dev-<version>.zip`) |
-| iOS app for the Simulator | `make apple-ios-sim` | no | same artifact (`Trill-iOS-Simulator-<version>.zip`) |
+| macOS app (Release, universal) | `make apple-mac` | ad-hoc linker signature only | `trillium-apple-apps-unsigned-dev` (`Trillium-macOS-unsigned-dev-<version>.zip`) |
+| iOS app for the Simulator | `make apple-ios-sim` | no | same artifact (`Trillium-iOS-Simulator-<version>.zip`) |
 | iOS app for devices | `make apple-ios-device` | no: compile check only, **not installable** | – |
 | Everything Apple | `make apple` (then `make apple-dist`) | | |
-| Test kit: Mac app + matching firmware UF2 + `xiao_uf2.py` + docs + `MANIFEST.txt` + `SHA256SUMS` | `make test-kit` after `apple-mac apple-dist fw-uf2` (or set `KIT_APP`, `KIT_UF2`) → `dist/Trill-<version>-<commit>.zip` | app: ad-hoc only | `trill-test-kit-unsigned-dev` |
+| Test kit: Mac app + matching firmware UF2 + `xiao_uf2.py` + docs + `MANIFEST.txt` + `SHA256SUMS` | `make test-kit` after `apple-mac apple-dist fw-uf2` (or set `KIT_APP`, `KIT_UF2`) → `dist/Trillium-<version>-<commit>.zip` | app: ad-hoc only | `trillium-test-kit-unsigned-dev` |
 
 Sign and install on your own devices from Xcode with your own team ([apple-app.md](apple-app.md#run-and-install)). No signing identity, team or profile is stored in the repository or used by CI.
 

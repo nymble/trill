@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Shared build settings for the Trill apps. Signing identity and team are
+// Shared build settings for the Trillium apps. Signing identity and team are
 // never committed: put your own in Config/Local.xcconfig (git-ignored), see
 // docs/apple-app.md. CI builds unsigned (CODE_SIGNING_ALLOWED=NO).
 

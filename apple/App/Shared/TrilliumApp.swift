@@ -2,7 +2,7 @@
 import SwiftUI
 
 @main
-struct TrillApp: App {
+struct TrilliumApp: App {
     @StateObject private var model = AppModel()
 
     var body: some Scene {

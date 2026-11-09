@@ -4,6 +4,9 @@ All notable changes to this project are documented here. Versions follow [Semant
 
 ## [Unreleased]
 
+### Changed
+- The Apple companion app is now named **Trillium** (`Trillium.app`, schemes `TrilliumMac`/`TrilliumIOS`, artifacts `Trillium-macOS-…`, `trillium-*` CI artifacts, test kit `Trillium-<version>-<commit>`). Trill remains the name of the Bela sensor, the firmware, USB device, protocol, `TrillKit` package and repository. Bundle ID unchanged (`com.nymble.trill`).
+
 ### Fixed
 - **Tap percussion stopped after 35.8 min** of continuous calibration (and returned 35.8 min later): the 1 s arm delay used a signed `u32` µs comparison that flips at 2³¹ µs. Now a latch. The same class of bug could hold a controller unchanged for over 35.8 min, or a sensor returning after a 35.8 min gap; elapsed times are now `wrapping_sub` intervals and only samples up to 1 s older are treated as backwards. Tests at 37/60/72/100/150 min and across the u32 wrap. (Firmware 0.4.0; not yet run on hardware.)
 

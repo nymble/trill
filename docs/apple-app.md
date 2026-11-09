@@ -1,6 +1,8 @@
-# Apple app (macOS and iOS)
+# Apple app: Trillium (macOS and iOS)
 
-`apple/` contains **Trill**, a SwiftUI companion app for Mac, iPhone and iPad. It monitors and configures the XIAO nRF52840 Sense instrument over class-compliant USB MIDI. **You do not need the app to play.** The instrument is a standard USB-MIDI device and plays straight into GarageBand, Logic, AUM or any CoreMIDI app.
+The app is named **Trillium** (bundle `Trillium.app`). *Trill* is Bela's touch-sensor product; the hardware, firmware, USB device name (`Trill XIAO MIDI (dev)`), protocol, the `TrillKit` Swift package and the repository keep the Trill name.
+
+`apple/` contains **Trillium**, a SwiftUI companion app for Mac, iPhone and iPad. It monitors and configures the XIAO nRF52840 Sense instrument over class-compliant USB MIDI. **You do not need the app to play.** The instrument is a standard USB-MIDI device and plays straight into GarageBand, Logic, AUM or any CoreMIDI app.
 
 > **Status:** CI builds the macOS app and the iOS app for the Simulator and for devices (compile check, unsigned). The TrillKit tests run on macOS (41 tests; this includes two CoreMIDI loopback tests against a simulated Trill on virtual endpoints) and on the iOS Simulator (same tests; the two loopback tests are skipped there because the Simulator refuses virtual MIDI endpoints, OSStatus -10844). On both, the real-firmware UF2 check is skipped unless `dist/*.uf2` was built first. Firmware 0.2.0 has run on a real XIAO Sense with a hardware harness on a Mac (handshake, set/readback/restore, errors, panic, and an ERROR UnknownType answer to the 0.3.0 telemetry request). **Sensor telemetry (firmware 0.3.0) and the app's Sensors tab have not yet run on hardware.** Configuration needs firmware 0.2.0 or newer; the Sensors tab needs 0.3.0 or newer.
 
@@ -23,7 +25,7 @@
 ```text
 Trill XIAO ──USB-MIDI──► CoreMIDI ──► DAW / synth            (no app needed)
    port 1: instrument (notes, bend, pressure, CC74, CC1)
-   port 2: configuration SysEx only  ◄──► Trill app (optional)
+   port 2: configuration SysEx only  ◄──► Trillium app (optional)
 ```
 
 - **TrillKit** (`apple/TrillKit`, Swift package, Apple frameworks only) holds:
@@ -62,8 +64,8 @@ Trill XIAO ──USB-MIDI──► CoreMIDI ──► DAW / synth            (no
 The Xcode project is generated from `apple/project.yml` and is not committed:
 
 ```sh
-make apple-project        # apple/Trill.xcodeproj (schemes TrillMac, TrillIOS)
-open apple/Trill.xcodeproj
+make apple-project        # apple/Trillium.xcodeproj (schemes TrilliumMac, TrilliumIOS)
+open apple/Trillium.xcodeproj
 ```
 
 The same builds CI runs (unsigned, `CODE_SIGNING_ALLOWED=NO`, output in `build/apple`):
@@ -83,7 +85,7 @@ On Linux, `make apple-test` runs the platform-independent TrillKit tests (protoc
 ## Run and install
 
 **Mac, from Xcode:**
-1. Select the **TrillMac** scheme and press Run.
+1. Select the **TrilliumMac** scheme and press Run.
 2. The project signs Mac builds ad hoc ("Sign to Run Locally"), so no account is needed.
 3. The app runs in the App Sandbox. Its only entitlement is access to files you pick in open/save dialogs.
 
@@ -91,17 +93,17 @@ On Linux, `make apple-test` runs the platform-independent TrillKit tests (protoc
 1. Add your Apple ID in *Xcode › Settings › Accounts*.
 2. Copy `apple/Config/Local.xcconfig.example` to `apple/Config/Local.xcconfig`. That file is git-ignored.
 3. In it, set `DEVELOPMENT_TEAM` to your team ID. If `com.nymble.trill` is not available to your team, set `TRILL_BUNDLE_ID` to your own reverse-DNS ID. Run `make apple-project` again afterwards. Alternatively, choose the team in *Signing & Capabilities* for this session only.
-4. Connect the device, enable *Settings › Privacy & Security › Developer Mode*, select the **TrillIOS** scheme and the device, then press Run.
+4. Connect the device, enable *Settings › Privacy & Security › Developer Mode*, select the **TrilliumIOS** scheme and the device, then press Run.
 5. With a free Personal Team the provisioning profile expires after about a week, and Apple limits how many apps and devices it can be used with. Re-run from Xcode to renew it. A paid membership removes these limits but is not needed for development.
 
 No team, certificate or profile is committed, and CI never signs.
 
-**CI artifacts:** the workflow artifact `trill-apple-apps-unsigned-dev` holds:
-- `Trill-macOS-unsigned-dev-<version>.zip`: the macOS app. It is not notarized and carries only the linker's ad-hoc signature, so entitlements (sandbox) are not applied. Gatekeeper blocks it after download. Only if you trust the build and its checksum: on macOS 15 try to open it once, then use *System Settings › Privacy & Security › Open Anyway*; on macOS 13/14 use *right-click › Open*; or run `xattr -dr com.apple.quarantine Trill.app`.
-- `Trill-iOS-Simulator-<version>.zip`: for the Simulator only. Install it with `xcrun simctl install booted Trill.app`. It cannot be installed on a device.
+**CI artifacts:** the workflow artifact `trillium-apple-apps-unsigned-dev` holds:
+- `Trillium-macOS-unsigned-dev-<version>.zip`: the macOS app. It is not notarized and carries only the linker's ad-hoc signature, so entitlements (sandbox) are not applied. Gatekeeper blocks it after download. Only if you trust the build and its checksum: on macOS 15 try to open it once, then use *System Settings › Privacy & Security › Open Anyway*; on macOS 13/14 use *right-click › Open*; or run `xattr -dr com.apple.quarantine Trillium.app`.
+- `Trillium-iOS-Simulator-<version>.zip`: for the Simulator only. Install it with `xcrun simctl install booted Trillium.app`. It cannot be installed on a device.
 - `README.txt` with this disclaimer, and `SHA256SUMS` (for the zips).
 
-**Test kit:** the artifact `trill-test-kit-unsigned-dev` holds `Trill-<version>-<commit>.zip`: the macOS app zip and the application-only firmware UF2 from the same CI run, `tools/xiao_uf2.py`, docs, `MANIFEST.txt` and `SHA256SUMS` ([kit README](test-kit.md)). Locally on a Mac: `make apple-mac apple-dist fw-uf2 test-kit`.
+**Test kit:** the artifact `trillium-test-kit-unsigned-dev` holds `Trillium-<version>-<commit>.zip`: the macOS app zip and the application-only firmware UF2 from the same CI run, `tools/xiao_uf2.py`, docs, `MANIFEST.txt` and `SHA256SUMS` ([kit README](test-kit.md)). Locally on a Mac: `make apple-mac apple-dist fw-uf2 test-kit`.
 
 There is no App Store or TestFlight build. The code is GPL-3.0-only, and App Store distribution of GPL software has known licence conflicts, so any store release would need a decision under the commercial licence ([COMMERCIAL-LICENSE.md](../COMMERCIAL-LICENSE.md)).
 

@@ -62,7 +62,7 @@ final class AppModel: ObservableObject {
             return c.send(sysex: bytes, to: d)
         }
         do {
-            let c = try MIDIClient(name: "Trill", events: events, telemetry: telemetryBuffer)
+            let c = try MIDIClient(name: "Trillium", events: events, telemetry: telemetryBuffer)
             c.onSetupChanged = { [weak self] in self?.refreshEndpoints() }
             c.onConfigMessage = { [weak self] bytes, _ in self?.configMessage(bytes) }
             client = c

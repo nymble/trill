@@ -26,7 +26,7 @@ public struct Preset: Codable, Equatable, Identifiable, Sendable {
         case notAPreset, unsupportedVersion(Int), outOfRange(String, Int), unknownParameter(String)
         public var errorDescription: String? {
             switch self {
-            case .notAPreset: return "Not a Trill preset file."
+            case .notAPreset: return "Not a Trillium preset file."
             case let .unsupportedVersion(v): return "Unsupported preset version \(v)."
             case let .outOfRange(k, v): return "Value \(v) for \(k) is out of range."
             case let .unknownParameter(k): return "Unknown parameter \(k)."

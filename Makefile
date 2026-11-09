@@ -110,11 +110,11 @@ dist:
 APPLE    := apple
 APPLE_DD := build/apple
 XCODEGEN ?= xcodegen
-XCB      := xcodebuild -project $(APPLE)/Trill.xcodeproj -derivedDataPath $(APPLE_DD) CODE_SIGNING_ALLOWED=NO
+XCB      := xcodebuild -project $(APPLE)/Trillium.xcodeproj -derivedDataPath $(APPLE_DD) CODE_SIGNING_ALLOWED=NO
 
 apple: apple-test apple-mac apple-ios-sim apple-ios-device apple-dist
 
-# Generate apple/Trill.xcodeproj from apple/project.yml (not committed).
+# Generate apple/Trillium.xcodeproj from apple/project.yml (not committed).
 apple-project:
 	cd $(APPLE) && $(XCODEGEN) generate --spec project.yml
 
@@ -127,19 +127,19 @@ apple-test-ios-sim:
 	cd $(APPLE)/TrillKit && xcodebuild test -scheme TrillKit -destination "id=$$(python3 ../scripts/pick_simulator.py)" CODE_SIGNING_ALLOWED=NO
 
 apple-mac: apple-project
-	$(XCB) -scheme TrillMac -configuration Release -destination 'generic/platform=macOS' build
+	$(XCB) -scheme TrilliumMac -configuration Release -destination 'generic/platform=macOS' build
 
 apple-ios-sim: apple-project
-	$(XCB) -scheme TrillIOS -configuration Debug -destination 'generic/platform=iOS Simulator' build
+	$(XCB) -scheme TrilliumIOS -configuration Debug -destination 'generic/platform=iOS Simulator' build
 
 apple-ios-device: apple-project
-	$(XCB) -scheme TrillIOS -configuration Release -destination 'generic/platform=iOS' build
+	$(XCB) -scheme TrilliumIOS -configuration Release -destination 'generic/platform=iOS' build
 
 # Zip the built apps into dist/apple with SHA-256 sums.
 apple-dist:
 	rm -rf $(DIST)/apple && mkdir -p $(DIST)/apple
-	ditto -c -k --keepParent $(APPLE_DD)/Build/Products/Release/Trill.app $(DIST)/apple/Trill-macOS-unsigned-dev-$(VERSION).zip
-	ditto -c -k --keepParent $(APPLE_DD)/Build/Products/Debug-iphonesimulator/Trill.app $(DIST)/apple/Trill-iOS-Simulator-$(VERSION).zip
+	ditto -c -k --keepParent $(APPLE_DD)/Build/Products/Release/Trillium.app $(DIST)/apple/Trillium-macOS-unsigned-dev-$(VERSION).zip
+	ditto -c -k --keepParent $(APPLE_DD)/Build/Products/Debug-iphonesimulator/Trillium.app $(DIST)/apple/Trillium-iOS-Simulator-$(VERSION).zip
 	cp $(APPLE)/DIST-README.txt $(DIST)/apple/README.txt
 	cd $(DIST)/apple && shasum -a 256 *.zip > SHA256SUMS && cat SHA256SUMS
 
@@ -147,12 +147,12 @@ apple-dist:
 # Packages already-built inputs (no build, no device access):
 #   KIT_APP  macOS app zip   (make apple-mac apple-dist, macOS only)
 #   KIT_UF2  application-only UF2 for the same commit (make fw-uf2)
-# into dist/Trill-<version>-<commit>/ plus a zip of it. The kit holds only
+# into dist/Trillium-<version>-<commit>/ plus a zip of it. The kit holds only
 # repository build outputs, tools and docs; never add device backups.
 KIT_SHA ?= $(shell git rev-parse --short=7 HEAD 2>/dev/null || echo unknown)
-KIT_APP ?= $(DIST)/apple/Trill-macOS-unsigned-dev-$(VERSION).zip
+KIT_APP ?= $(DIST)/apple/Trillium-macOS-unsigned-dev-$(VERSION).zip
 KIT_UF2 ?= $(FW_UF2)
-KIT     := Trill-$(VERSION)-$(KIT_SHA)
+KIT     := Trillium-$(VERSION)-$(KIT_SHA)
 SHA256  := $(shell command -v sha256sum >/dev/null 2>&1 && echo sha256sum || echo shasum -a 256)
 
 test-kit:
@@ -161,13 +161,13 @@ test-kit:
 	@grep -q "^MARKETING_VERSION = $(VERSION)$$" $(APPLE)/Config/Base.xcconfig || { echo "app MARKETING_VERSION != $(VERSION)"; exit 1; }
 	rm -rf $(DIST)/$(KIT) $(DIST)/$(KIT).zip
 	mkdir -p $(DIST)/$(KIT)/firmware $(DIST)/$(KIT)/tools $(DIST)/$(KIT)/docs
-	cp "$(KIT_APP)" $(DIST)/$(KIT)/Trill-macOS-unsigned-dev-$(VERSION).zip
+	cp "$(KIT_APP)" $(DIST)/$(KIT)/Trillium-macOS-unsigned-dev-$(VERSION).zip
 	cp "$(KIT_UF2)" $(DIST)/$(KIT)/firmware/xiao-sense-fw-$(VERSION).uf2
 	python3 tools/xiao_uf2.py inspect $(DIST)/$(KIT)/firmware/xiao-sense-fw-$(VERSION).uf2
 	cp tools/xiao_uf2.py $(DIST)/$(KIT)/tools/
 	cp docs/test-kit.md $(DIST)/$(KIT)/README.md
 	cp docs/apple-app.md docs/config-protocol.md docs/firmware-xiao-sense.md docs/usb-midi.md LICENSE $(DIST)/$(KIT)/docs/
-	printf 'name=%s\nversion=%s\ncommit=%s\napp=Trill-macOS-unsigned-dev-%s.zip (unsigned, ad-hoc)\nfirmware=firmware/xiao-sense-fw-%s.uf2 (application-only, 0x27000+)\nminimum_firmware_for_sensors=0.3.0\nminimum_firmware_for_modes_and_gestures=0.4.0\nhardware_validated=no\n' \
+	printf 'name=%s\nversion=%s\ncommit=%s\napp=Trillium-macOS-unsigned-dev-%s.zip (unsigned, ad-hoc)\nfirmware=firmware/xiao-sense-fw-%s.uf2 (application-only, 0x27000+)\nminimum_firmware_for_sensors=0.3.0\nminimum_firmware_for_modes_and_gestures=0.4.0\nhardware_validated=no\n' \
 	  "$(KIT)" "$(VERSION)" "$(KIT_SHA)" "$(VERSION)" "$(VERSION)" > $(DIST)/$(KIT)/MANIFEST.txt
 	cd $(DIST)/$(KIT) && find . -type f ! -name SHA256SUMS | LC_ALL=C sort | sed 's|^\./||' | xargs $(SHA256) > SHA256SUMS && cat SHA256SUMS
 	cd $(DIST) && zip -qr $(KIT).zip $(KIT) && ls -l $(KIT).zip

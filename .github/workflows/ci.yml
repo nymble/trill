@@ -133,14 +133,14 @@ jobs:
       - name: Package and inspect
         run: |
           make apple-dist
-          app=build/apple/Build/Products/Release/Trill.app
-          lipo -info "$app/Contents/MacOS/Trill"
+          app=build/apple/Build/Products/Release/Trillium.app
+          lipo -info "$app/Contents/MacOS/Trillium"
           plutil -p "$app/Contents/Info.plist"
           codesign -dv "$app" 2>&1 || true
-          unzip -l dist/apple/Trill-iOS-Simulator-*.zip | tail -n 3
+          unzip -l dist/apple/Trillium-iOS-Simulator-*.zip | tail -n 3
       - uses: actions/upload-artifact@v4
         with:
-          name: trill-apple-apps-unsigned-dev
+          name: trillium-apple-apps-unsigned-dev
           path: dist/apple/
           retention-days: 14
 
@@ -154,7 +154,7 @@ jobs:
           persist-credentials: false
       - uses: actions/download-artifact@v4
         with:
-          name: trill-apple-apps-unsigned-dev
+          name: trillium-apple-apps-unsigned-dev
           path: in/apple
       - uses: actions/download-artifact@v4
         with:
@@ -167,11 +167,11 @@ jobs:
           (cd in/apple && sha256sum -c SHA256SUMS)
           (cd in/fw && sha256sum -c SHA256SUMS)
           v=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
-          make test-kit KIT_SHA="${SHA::7}" KIT_APP="in/apple/Trill-macOS-unsigned-dev-$v.zip" KIT_UF2=in/fw/xiao-sense-fw.uf2
+          make test-kit KIT_SHA="${SHA::7}" KIT_APP="in/apple/Trillium-macOS-unsigned-dev-$v.zip" KIT_UF2=in/fw/xiao-sense-fw.uf2
       - uses: actions/upload-artifact@v4
         with:
-          name: trill-test-kit-unsigned-dev
-          path: dist/Trill-*.zip
+          name: trillium-test-kit-unsigned-dev
+          path: dist/Trillium-*.zip
           retention-days: 14
 
   cross:

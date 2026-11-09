@@ -25,6 +25,12 @@ Never force-push or rewrite pushed history. Revert with new commits.
 
 Open hardware designs and Rust software for using a **Bela Trill Flex** capacitive strip as a musical controller. The current target is a **Seeed XIAO nRF52840 Sense** (onboard LSM6DS3TR-C IMU) acting as a class-compliant USB-MIDI device. There is also a **companion app for macOS 13+ and iOS 16+** (SwiftUI + CoreMIDI) for configuration, monitoring and sensor visualisation.
 
+**Naming (decided by Paul, 2026-11-08):**
+- **The app is "Trillium"**: `Trillium.app`, display name, schemes `TrilliumMac`/`TrilliumIOS`, `Trillium.xcodeproj`, artifacts `Trillium-macOS-unsigned-dev-<v>.zip` / `Trillium-iOS-Simulator-<v>.zip`, CI artifacts `trillium-apple-apps-unsigned-dev` / `trillium-test-kit-unsigned-dev`, test kit `Trillium-<v>-<sha>`.
+- **"Trill" is only Bela's sensor name.** It stays for the hardware, firmware (`xiao-sense-fw`), the USB product string `Trill XIAO MIDI (dev)` and USB IDs, the protocol, Rust crates, the `TrillKit` Swift package (kept to avoid churn), internal Swift type names, the preset format id `trill-preset`, the preset storage folder, and the repository `nymble/trill`.
+- **The rename is app-only.** The firmware did not change, so the board does not need a reflash.
+- **Bundle ID left as `com.nymble.trill`.** Nothing is published, and changing it is an open App Store decision for Paul (see section 9).
+
 Licence: **GPL-3.0-only**, plus a separate commercial licence offer (`LICENSE`, `COMMERCIAL-LICENSE.md`, `NOTICE.md`). Keep that model; do not import incompatible or ambiguously licensed code.
 
 ## 3. Where to start Claude (directories)
@@ -32,7 +38,8 @@ Licence: **GPL-3.0-only**, plus a separate commercial licence offer (`LICENSE`, 
 | Place | Exists? | What |
 |---|---|---|
 | `~/Developer/trill` on the Mac | **No, recommended.** No repository checkout exists on the Mac today | Clone here for Claude Code |
-| `~/Downloads/Trill-0.4.0-0670634/` | Yes | Distribution kit only (app, UF2, tool, docs, checksums). Not a repository |
+| `~/Downloads/Trillium-0.4.0-<sha>/` | Yes (from the rename commit) | Current distribution kit (Trillium.app, UF2, tool, docs, checksums). Not a repository |
+| `~/Downloads/Trill-0.4.0-0670634/` | Yes | Previous kit (app still named Trill), kept untouched |
 | `~/Downloads/Trill-hwtest-20261107/` | Yes | Hardware-test tools (`tools/`) and **firmware backups** (`backup/`). Never commit or publish these |
 
 ```sh
@@ -79,7 +86,7 @@ make apple-test         # swift test for TrillKit (macOS: also CoreMIDI loopback
 make apple-project      # xcodegen generate
 make apple-mac apple-ios-sim apple-dist   # unsigned builds + zips in dist/apple
 make fw-uf2             # dist/xiao-sense-fw-<version>.uf2 (never written to a device)
-make test-kit           # dist/Trill-<version>-<sha>/ (needs the app zip and UF2 from the same commit)
+make test-kit           # dist/Trillium-<version>-<sha>/ (needs the app zip and UF2 from the same commit)
 ```
 
 Versions move together: root `Cargo.toml`, `firmware/xiao-sense/Cargo.toml`, and `MARKETING_VERSION` in `apple/Config/Base.xcconfig` (`make test-kit` checks the app version).
@@ -155,7 +162,7 @@ Backups on the Mac, under `~/Downloads/Trill-hwtest-20261107/backup/`:
 **Today:** there is **no App Store, TestFlight or notarized build**. CI produces unsigned / ad-hoc-signed development builds only, for Mac and the iOS Simulator. "A new version on the App Store" therefore means a **first submission**. All of the following are unverified and need the user (or their organisation) to confirm or provide them. Do not assume any from memory:
 
 1. **Apple Developer Program:** enrolment (individual or organisation), team ID, and the user's App Store Connect role (Account Holder/Admin/App Manager).
-2. **Bundle ID ownership:** `com.nymble.trill` is configured (`apple/Config/Base.xcconfig`, `TRILL_BUNDLE_ID`); whether it is registered to the user's team is unknown. There is no team in the repo; `Config/Local.xcconfig` is git-ignored.
+2. **Bundle ID:** still `com.nymble.trill` after the rename to Trillium. Whether to keep it or move to e.g. a `…trillium` ID is Paul's decision before the first App Store record (it cannot change after publishing). It is configured (`apple/Config/Base.xcconfig`, `TRILL_BUNDLE_ID`); whether it is registered to the user's team is unknown. There is no team in the repo; `Config/Local.xcconfig` is git-ignored.
 3. **App Store Connect app record(s):** macOS and iOS (or one universal purchase), name availability, SKU, pricing/free.
 4. **Signing and provisioning:**
    - Distribution certificates and profiles.
