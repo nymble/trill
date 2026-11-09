@@ -5,3 +5,4 @@
 firmware/xiao-sense/target
 __pycache__/
 /build
+/apple/*.xcodeproj

@@ -10,7 +10,7 @@ struct MonitorView: View {
     private var portName: String { model.source(model.monitorSourceID)?.name ?? "none" }
 
     var body: some View {
-        NavigationStack {
+        Group {
             VStack(alignment: .leading, spacing: 12) {
                 ScrollView(.horizontal, showsIndicators: false) { HStack {
                     Picker("Channel", selection: $model.monitorChannel) {
@@ -30,12 +30,12 @@ struct MonitorView: View {
                 Text("Port: \(portName) · \(String(format: "%.0f", model.monitor.rate)) events/s · \(model.monitor.total) total · \(model.monitor.realtimeCount) real-time · \(model.monitor.sysexCount) SysEx\(model.monitor.dropped > 0 ? " · \(model.monitor.dropped) dropped (UI buffer full)" : "") · log keeps the last \(model.monitor.historyLimit)\(model.monitorPaused ? " · PAUSED (not recording)" : "")")
                     .font(.caption).foregroundStyle(.secondary)
                 if model.monitorSourceID == nil {
-                    Text("Select a source on the Device tab.").foregroundStyle(.secondary)
+                    Text("Choose the instrument port in Settings › Connection.").foregroundStyle(.secondary)
                 }
                 Text(channelLine).font(.caption).foregroundStyle(.secondary)
                 ChannelPanel(state: model.monitor.channels[model.monitorChannel],
                              bendRange: model.session.acknowledged?[.bendRange] ?? model.draft[.bendRange])
-                Text("Values are the standard MIDI messages the instrument sends on Port 1 (notes, channel pressure, pitch bend and the controllers chosen on the Mapping tab). Port 2 carries only configuration and the sensor stream; Trill sensor SysEx is counted but hidden from the log unless you untick the option. Raw sensor values are on the Sensors tab. Times are CoreMIDI timestamps; SysEx is summarized to its first 24 bytes. Nothing is routed elsewhere.")
+                Text("Values are the standard MIDI messages the instrument sends on Port 1 (notes, channel pressure, pitch bend and the controllers chosen in Sound & mapping). Port 2 carries only configuration and the sensor stream; Trill sensor SysEx is counted but hidden from the log unless you untick the option. Raw sensor values are on the Sensors tab. Times are CoreMIDI timestamps; SysEx is summarized to its first 24 bytes. Nothing is routed elsewhere.")
                     .font(.caption).foregroundStyle(.secondary)
                 EventList(events: model.monitor.history)
             }

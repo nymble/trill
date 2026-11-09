@@ -24,8 +24,10 @@ Default build (USB-MIDI + diagnostics):
 | Executor (NVIC priority) | Task | Rate / deadline |
 |---|---|---|
 | Medium (`EGU0_SWI0`, P6) | USB device, diagnostics port, MIDI writer (engine tick, packet fill, IN-endpoint write) | USB full speed; writer wakes on new input or every 2 ms |
-| Thread (lowest) | IMU: data-ready wait, 14-byte burst read, motion processing, engine `motion()` | **416 Hz ODR**; every sample is read and processed (~2.4 ms period) |
+| IMU (`EGU2_SWI2`, P7) | IMU: data-ready wait, 14-byte burst read, motion processing, engine `motion()` | **833 Hz ODR** (0.5.0; was 416 Hz), accelerometer ±8 g (was ±4 g), gyro ±1000 °/s; every sample is read and processed (~1.2 ms period) |
 | Thread | Trill: identify, configure (ultra-fast, 10 bit), status + centroid read, engine `touch()` for new frames only | Poll every 5 ms; frame ID filters repeats |
+
+**Why the IMU has its own executor (0.5.0).** Every I²C transaction is a blocking busy-wait (bounded by a 5 ms timeout). A Trill status + centroid read takes about 2.3 ms at 100 kHz. When the IMU task shared thread mode with the Trill task, a sample that became ready during a Trill read waited for it, adding up to one 416 Hz sample period of delay and jitter to taps, strikes and motion controllers. At P7 the IMU task preempts the Trill read and is itself preempted by USB (P6). State shared across executors goes through critical-section mutexes and atomics, as before. Together with 833 Hz, the worst-case wait from motion to the sample that sees it falls from about 2.4 ms + up to 2.3 ms (Trill read) to about 1.2 ms. **This is a design calculation; it has not been measured on hardware.** The Trill bus stays at 100 kHz: 400 kHz would cut each touch read to about 0.6 ms but depends on the external pull-ups and wiring, so it needs a hardware check first.
 | Thread | [Status LED](#status-led): select indication, write pins on change; crash-counter reset after 30 s | 50 Hz tick (20 ms) |
 
 With `--features pcm-synth` a high-priority executor (`EGU1_SWI1`, P5) also runs the audio task (64 samples @ 32 kHz = 2 ms blocks) and a second CDC port streams the PCM. The default build has no high-priority executor and renders no audio.
@@ -219,7 +221,7 @@ Record the result of each step in the PR or issue that marks this design validat
 1. `xiao_uf2.py info` output (Board-ID, bootloader version, SoftDevice).
 2. Enumeration: one CDC port and one MIDI port (`lsusb -v -d 1209:0002`, macOS System Information, or Audio MIDI Setup). Then run the [USB-MIDI acceptance procedure](usb-midi.md#hardware-acceptance-procedure).
 3. Diagnostics banner: `consecutive_crashes=0`, `safe_mode=0`.
-4. IMU: `imu=run`, `n` increasing by about 416 per second, `err=0`. Flat on a table: `a≈[0,0,1]g`. Hold still for 1 s: `cal=1`, `rot` near 0.
+4. IMU: `imu=run`, `n` increasing by about 833 per second, `err=0`. Flat on a table: `a≈[0,0,1]g`. Hold still for 1 s: `cal=1`, `rot` near 0.
 5. Axis signs: tilt the USB end down, then up, and note the sign of `pitch`. Roll left and right and note `roll`. Fix the mapping in `motion-synth` if the instrument should respond the other way.
 6. Trill (if fitted): `trill=run`, `touch=yes` while touching, `reads` rising by ~200/s, `stale` small compared with `reads` (a large ratio means the scan is slower than the poll).
 7. Audio (`pcm-synth` build only): `late=0`, `resync=0`, render time well below 2000 µs. Capture 10 s with `pcm_capture.py`: `crc_errors 0`, `seq_gaps 0`, measured rate within 0.1 % of 32000 Hz.

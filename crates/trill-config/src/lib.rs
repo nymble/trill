@@ -158,6 +158,9 @@ pub const CAP_TELEMETRY: u8 = 0x08;
 /// (`ZeroOrientation`) is supported. Hosts must not send page-1 parameters
 /// or action 5 without it.
 pub const CAP_CONFIG_PAGES: u8 = 0x10;
+/// Capability bit (firmware 0.5+): directional strikes. Page 2 (parameters
+/// 31..=37) exists. Hosts must not send page-2 parameters without it.
+pub const CAP_STRIKES: u8 = 0x20;
 
 /// Facts reported by `HELLO_REPLY`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -251,6 +254,7 @@ pub fn hello_reply(req: u8, info: &DeviceInfo) -> Reply {
         | CAP_ACTIONS
         | CAP_TELEMETRY
         | CAP_CONFIG_PAGES
+        | CAP_STRIKES
         | if PERSISTENT { CAP_PERSISTENT } else { 0 };
     let _ = r.extend_from_slice(&[
         PROTOCOL_VERSION,
@@ -360,13 +364,13 @@ pub fn handle(
                 return bad_len();
             }
             let mut new = *cfg;
-            let mut seen: u32 = 0;
+            let mut seen: u64 = 0;
             let first_page = Param::from_id(payload[0]).map_or(0, Param::page);
             for t in payload.chunks_exact(3) {
                 let Some(p) = Param::from_id(t[0]) else {
                     return Some(plain(error_reply(req, ErrorCode::UnknownParam, t[0])));
                 };
-                let bit = 1u32 << p.id();
+                let bit = 1u64 << p.id();
                 if seen & bit != 0 {
                     return Some(plain(error_reply(req, ErrorCode::DuplicateParam, p.id())));
                 }

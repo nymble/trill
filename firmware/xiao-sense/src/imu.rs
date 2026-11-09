@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! IMU task: power, init, data-ready-paced reads (416 Hz ODR; every sample
+//! IMU task: power, init, data-ready-paced reads (833 Hz ODR; every sample
 //! is read and processed), motion processing, hand-off to the event engine,
 //! with bounded fault recovery (power-cycle + exponential backoff). Touch
 //! does not depend on this task.
@@ -9,7 +9,9 @@ use core::sync::atomic::Ordering;
 use embassy_nrf::gpio::{Input, Output};
 use embassy_nrf::twim::Twim;
 use embassy_time::{with_timeout, Delay, Duration, Instant, Timer};
-use lsm6ds3trc::{Config, Error, Lsm6ds3trc, ADDRESS_SA0_LOW, TURN_ON_MS};
+use lsm6ds3trc::{
+    AccelScale, Config, Error, GyroScale, Lsm6ds3trc, Odr, ADDRESS_SA0_LOW, TURN_ON_MS,
+};
 use motion_synth::motion::{MotionConfig, MotionProcessor, MotionSample};
 
 use crate::board::*;
@@ -37,13 +39,28 @@ fn motion_lost() {
     MIDI_WAKE.signal(());
 }
 
+/// 833 Hz (1.2 ms per sample, half the 416 Hz wait) and ±8 g so hard taps
+/// do not clip (velocity and strike direction need the unclipped spike).
+/// Gyro ±1000 dps as before.
+const IMU_CONFIG: Config = Config {
+    accel_odr: Odr::Hz833,
+    accel_scale: AccelScale::G8,
+    gyro_odr: Odr::Hz833,
+    gyro_scale: GyroScale::Dps1000,
+    int1_drdy_accel: true,
+};
+
 #[embassy_executor::task]
 pub async fn imu_task(
     mut twim: Twim<'static>,
     mut power: Output<'static>,
     mut int1: Input<'static>,
 ) {
-    let mut motion = MotionProcessor::new(MotionConfig::default());
+    let mut motion = MotionProcessor::new(MotionConfig {
+        // ≈ 1 s of stillness at 833 Hz, as 400 samples were at 416 Hz.
+        calib_samples: 800,
+        ..MotionConfig::default()
+    });
     let mut backoff_ms: u64 = 100;
     let timeout = Duration::from_millis(I2C_TIMEOUT_MS);
 
@@ -53,7 +70,7 @@ pub async fn imu_task(
         Timer::after_millis(TURN_ON_MS as u64 + 5).await;
 
         let mut imu = Lsm6ds3trc::new(TimeoutI2c::new(&mut twim, timeout), ADDRESS_SA0_LOW);
-        if let Err(e) = imu.init(&mut Delay, Config::default()) {
+        if let Err(e) = imu.init(&mut Delay, IMU_CONFIG) {
             motion_lost();
             STATS
                 .imu_last_error
@@ -105,6 +122,7 @@ pub async fn imu_task(
                                     roll_deg: frame.roll_deg,
                                     gyro_dps: frame.gyro_dps,
                                     tap: frame.tap,
+                                    tap_dir: frame.tap_dir,
                                 },
                             );
                             (e.config().tap_threshold_g, e.config().tap_cooldown_us)

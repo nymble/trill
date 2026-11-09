@@ -115,7 +115,13 @@ fn every_parameter_roundtrips_and_rejects_out_of_range() {
     for p in Param::ALL {
         assert_eq!(Param::from_id(p.id()), Some(p));
         let (lo, hi) = p.range();
-        for v in [lo, (lo + hi) / 2, hi] {
+        // Strike directions take only even values.
+        let mid = if p == Param::StrikeDirections {
+            4
+        } else {
+            (lo + hi) / 2
+        };
+        for v in [lo, mid, hi] {
             let mut c = Config::default();
             p.set(&mut c, v).unwrap();
             assert_eq!(p.get(&c), v, "{p:?}");
@@ -134,7 +140,7 @@ fn every_parameter_roundtrips_and_rejects_out_of_range() {
         assert!(lo <= d && d <= hi);
     }
     assert_eq!(Param::from_id(0), None);
-    assert_eq!(Param::from_id(31), None);
+    assert_eq!(Param::from_id(38), None);
 }
 
 #[test]
@@ -171,7 +177,11 @@ fn hello_reports_version_variant_caps_and_not_persistent() {
     assert_eq!(r[11], VARIANT_PCM_SYNTH);
     assert_eq!(
         r[12],
-        CAP_SET_CONFIG | CAP_ACTIONS | trill_config::CAP_TELEMETRY | trill_config::CAP_CONFIG_PAGES
+        CAP_SET_CONFIG
+            | CAP_ACTIONS
+            | trill_config::CAP_TELEMETRY
+            | trill_config::CAP_CONFIG_PAGES
+            | trill_config::CAP_STRIKES
     );
     assert_eq!(r[12] & CAP_PERSISTENT, 0);
     assert_eq!(r[13] as usize, MAX_MESSAGE_LEN);
@@ -287,7 +297,7 @@ fn config_pages_fit_and_page0_is_the_0_3_reply() {
         assert_eq!(r.len(), 7 + 3 + 3 * params.len() + 1);
         assert_eq!(r[10], params[0].id());
     }
-    assert_eq!(ids, (1..=30).collect::<Vec<u8>>());
+    assert_eq!(ids, (1..=37).collect::<Vec<u8>>());
     // An empty GET_CONFIG (all a 0.3 host sends) is exactly page 0.
     let plain = handle(&request::get_config(1), false, &cfg, 7, &INFO)
         .unwrap()
@@ -297,10 +307,10 @@ fn config_pages_fit_and_page0_is_the_0_3_reply() {
         .reply;
     assert_eq!(plain, p0);
     assert_eq!(plain.len(), 7 + 3 + 39 + 1);
-    let bad = handle(&request::get_config_page(1, 2), false, &cfg, 7, &INFO)
+    let bad = handle(&request::get_config_page(1, 3), false, &cfg, 7, &INFO)
         .unwrap()
         .reply;
-    assert_eq!(&bad[5..9], &[msg::ERROR, 1, ErrorCode::OutOfRange as u8, 2]);
+    assert_eq!(&bad[5..9], &[msg::ERROR, 1, ErrorCode::OutOfRange as u8, 3]);
 }
 
 #[test]
@@ -319,4 +329,28 @@ fn set_reply_is_the_page_of_the_first_parameter_and_page1_applies() {
     let o = handle(&req, false, &cfg, 0, &INFO).unwrap();
     assert_eq!(o.action, Some(Action::ZeroOrientation));
     assert_eq!(o.reply[5], msg::ACTION_ACK);
+}
+
+#[test]
+fn strike_directions_reject_odd_values_and_page2_sets_atomically() {
+    let mut c = Config::default();
+    for v in [1, 3, 5] {
+        assert!(Param::StrikeDirections.set(&mut c, v).is_err());
+    }
+    assert_eq!(c, Config::default());
+    // A SET_CONFIG on page 2 replies with page 2 and changes the engine.
+    let req = request::set_config(
+        4,
+        &[(Param::StrikeDirections, 6), (Param::StrikeNoteBack, 70)],
+    );
+    let o = handle(&req.unwrap(), false, &c, 1, &INFO).unwrap();
+    assert_eq!(o.reply[10], Param::StrikeDirections.id());
+    let new = o.config.unwrap();
+    assert_eq!(new.strike_directions, 6);
+    assert_eq!(new.strike_notes[5], 70);
+    // Parameter IDs above 31 are tracked for duplicates too.
+    let dup = request::set_config(5, &[(Param::StrikeNoteBack, 1), (Param::StrikeNoteBack, 2)]);
+    let o = handle(&dup.unwrap(), false, &c, 1, &INFO).unwrap();
+    assert_eq!(o.reply[5], msg::ERROR);
+    assert!(o.config.is_none());
 }

@@ -14,8 +14,10 @@ final class FakeTrill {
     var telemetryRate = 0
     /// Firmware 0.4.0 behaviour: paged configuration, params 14...30, action 5.
     var pages = false
+    /// Firmware 0.5.0 behaviour: page 2 (directional strikes). Implies `pages`.
+    var strikes = false { didSet { if strikes { pages = true } } }
 
-    func known(_ p: TrillParam) -> Bool { pages || p.page == 0 }
+    func known(_ p: TrillParam) -> Bool { p.page == 0 || (pages && p.page == 1) || (strikes && p.page == 2) }
 
     func reply(to m: [UInt8]) -> [UInt8]? {
         guard !silent, TrillCodec.isTrillSysEx(m), m.count >= 8 else { return nil }
@@ -23,21 +25,22 @@ final class FakeTrill {
         let hdr = { (t: UInt8) in [0xF0, 0x7D, 0x54, 0x52, 0x01, t, id] as [UInt8] }
         switch m[5] {
         case 0x01:
-            let minor: UInt8 = pages ? 4 : telemetry ? 3 : 2
-            let caps: UInt8 = (telemetry ? 0x0B : 3) | (pages ? 0x10 : 0)
-            return hdr(0x41) + [1, 0, minor, 0, 0, caps, 64, pages ? 30 : 13, 0, 0, 5, UInt8(bootID >> 7), UInt8(bootID & 0x7F), 0xF7]
+            let minor: UInt8 = strikes ? 5 : pages ? 4 : telemetry ? 3 : 2
+            let caps: UInt8 = (telemetry ? 0x0B : 3) | (pages ? 0x10 : 0) | (strikes ? 0x20 : 0)
+            let count: UInt8 = strikes ? 37 : pages ? 30 : 13
+            return hdr(0x41) + [1, 0, minor, 0, 0, caps, 64, count, 0, 0, 5, UInt8(bootID >> 7), UInt8(bootID & 0x7F), 0xF7]
         case 0x02:
             let payload = Array(m[7..<(m.count - 1)])
             if payload.isEmpty { return configReply(hdr, page: 0) }
             guard pages else { return hdr(0x7F) + [3, UInt8(payload.count), 0xF7] }
-            guard payload.count == 1, payload[0] < 2 else { return hdr(0x7F) + [5, payload[0], 0xF7] }
+            guard payload.count == 1, payload[0] < (strikes ? 3 : 2) else { return hdr(0x7F) + [5, payload[0], 0xF7] }
             return configReply(hdr, page: Int(payload[0]))
         case 0x03:
             var new = config
             for i in stride(from: 7, to: m.count - 1, by: 3) {
                 guard let p = TrillParam(rawValue: m[i]), known(p) else { return hdr(0x7F) + [4, m[i], 0xF7] }
                 let v = Int(m[i + 1]) << 7 | Int(m[i + 2])
-                guard p.range.contains(v) else { return hdr(0x7F) + [5, p.rawValue, 0xF7] }
+                guard p.accepts(v) else { return hdr(0x7F) + [5, p.rawValue, 0xF7] }
                 new[p] = v
             }
             if new != config { generation = (generation + 1) & 0x3FFF; config = new }
@@ -260,5 +263,40 @@ final class SessionTests: XCTestCase {
         XCTAssertEqual(session.acknowledged, .firmwareDefaults)
         XCTAssertTrue(session.perform(.zeroOrientation, now: now)); pump()
         XCTAssertEqual(device.actions, [.restoreDefaults, .zeroOrientation])
+    }
+}
+
+extension SessionTests {
+    func testStrikesFirmwareReadsThreePagesAndAppliesPageTwo() {
+        device.telemetry = true
+        device.strikes = true
+        device.config[.strikeDirections] = 6
+        session.connect(now: now); pump()
+        XCTAssertEqual(session.phase, .ready)
+        XCTAssertTrue(session.supportsStrikes)
+        XCTAssertEqual(session.receivedPages, [0, 1, 2])
+        XCTAssertEqual(session.acknowledged, device.config)
+        var want = device.config
+        want[.strikeDirections] = 2
+        want[.strikeNoteUp] = 57
+        want[.channel] = 4
+        XCTAssertTrue(session.apply(want, now: now)); pump()
+        XCTAssertEqual(device.config, want)
+        XCTAssertEqual(session.acknowledged, want)
+        // Restore defaults re-reads pages 1 and 2.
+        session.perform(.restoreDefaults, now: now); pump()
+        XCTAssertEqual(session.acknowledged, .firmwareDefaults)
+    }
+
+    func testFirmware04NeverGetsPageTwo() {
+        device.pages = true
+        session.connect(now: now); pump()
+        XCTAssertEqual(session.receivedPages, [0, 1])
+        XCTAssertFalse(session.supportsStrikes)
+        XCTAssertTrue(session.unsupported(.strikeDirections))
+        var want = DeviceConfig.firmwareDefaults
+        want[.strikeDirections] = 4
+        XCTAssertFalse(session.apply(want, now: now), "page-2 edit only: nothing sent")
+        XCTAssertTrue(sent.isEmpty)
     }
 }

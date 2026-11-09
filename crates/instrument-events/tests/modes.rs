@@ -425,3 +425,90 @@ fn zero_orientation_rebases_pitch_and_roll() {
     e.motion(30_000, m(10.0, 178.0));
     assert_eq!(ccs(&drain(&mut e, 30_000), 10), vec![0]);
 }
+
+// ---- Directional strikes (0.5.0) ----
+
+fn strike(e: &mut Engine, t: u32, dir: [f32; 3]) -> Vec<(u8, u8)> {
+    e.motion(
+        t,
+        MotionSample {
+            calibrated: true,
+            tap: Some(1.0),
+            tap_dir: dir,
+            ..Default::default()
+        },
+    );
+    notes_on(&drain(e, t))
+}
+
+#[test]
+fn classify_strike_axes_margin_and_counts() {
+    use instrument_events::{classify_strike, StrikeDirection as D};
+    assert_eq!(classify_strike([1.0, 0.0, 0.0], 2), Some(D::Down));
+    assert_eq!(classify_strike([-0.9, 0.3, 0.0], 2), Some(D::Up));
+    // Mostly sideways: no vertical class in 2-direction mode.
+    assert_eq!(classify_strike([0.3, 0.0, 0.95], 2), None);
+    assert_eq!(classify_strike([0.3, 0.0, 0.95], 4), Some(D::Right));
+    assert_eq!(classify_strike([0.0, 0.0, -1.0], 4), Some(D::Left));
+    // Forward only counts in 6-direction mode.
+    assert_eq!(classify_strike([0.2, 0.97, 0.0], 4), None);
+    assert_eq!(classify_strike([0.2, 0.97, 0.0], 6), Some(D::Forward));
+    assert_eq!(classify_strike([0.0, -1.0, 0.0], 6), Some(D::Back));
+    // Diagonal: inside the margin, ambiguous.
+    assert_eq!(classify_strike([0.70, 0.0, 0.71], 4), None);
+    // Off, unknown and zero.
+    assert_eq!(classify_strike([1.0, 0.0, 0.0], 0), None);
+    assert_eq!(classify_strike([1.0, 0.0, 0.0], 3), None);
+    assert_eq!(classify_strike([0.0; 3], 6), None);
+}
+
+#[test]
+fn strikes_pick_notes_by_direction_and_fall_back_when_ambiguous() {
+    let cfg = Config {
+        percussion_enabled: true,
+        strike_directions: 4,
+        ..Config::default()
+    };
+    let mut e = running(cfg, 0);
+    let mut t = still(&mut e, 0, 2_000_000);
+    let ch = cfg.percussion_channel;
+    let [down, up, left, right, _, _] = cfg.strike_notes;
+    for (dir, note) in [
+        ([1.0, 0.0, 0.0], down),
+        ([-1.0, 0.0, 0.0], up),
+        ([0.0, 0.0, -1.0], left),
+        ([0.0, 0.0, 1.0], right),
+        ([0.7, 0.0, 0.7], cfg.percussion_note),
+        ([0.0; 3], cfg.percussion_note),
+    ] {
+        t += 200_000;
+        assert_eq!(strike(&mut e, t, dir), vec![(ch, note)], "{dir:?}");
+    }
+    assert_eq!(e.stats().strikes_ambiguous, 2);
+}
+
+#[test]
+fn strikes_off_play_the_single_note_and_bad_input_is_rejected() {
+    let cfg = Config {
+        percussion_enabled: true,
+        ..Config::default()
+    };
+    let mut e = running(cfg, 0);
+    let t = still(&mut e, 0, 2_000_000);
+    assert_eq!(
+        strike(&mut e, t + 200_000, [1.0, 0.0, 0.0]),
+        vec![(cfg.percussion_channel, cfg.percussion_note)]
+    );
+    let before = e.stats().invalid_inputs;
+    assert!(strike(&mut e, t + 400_000, [f32::NAN, 0.0, 0.0]).is_empty());
+    assert_eq!(e.stats().invalid_inputs, before + 1);
+    // Sanitising rounds odd direction counts up and clamps notes.
+    let s = Config {
+        strike_directions: 3,
+        strike_notes: [200; 6],
+        ..Config::default()
+    }
+    .sanitized();
+    assert_eq!(s.strike_directions, 4);
+    assert_eq!(s.strike_notes, [127; 6]);
+}

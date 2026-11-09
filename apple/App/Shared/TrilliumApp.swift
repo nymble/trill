@@ -16,18 +16,66 @@ struct TrilliumApp: App {
     }
 }
 
+enum AppTab: Hashable {
+    case home, presets, sensors, settings
+}
+
+/// Four simple top-level screens; everything detailed lives under Settings.
 struct ContentView: View {
     @EnvironmentObject var model: AppModel
+    @State private var showSplash = true
 
     var body: some View {
-        TabView {
-            DeviceView().tabItem { Label("Device", systemImage: "cable.connector") }
-            SensorsView().tabItem { Label("Sensors", systemImage: "gyroscope") }
-            MonitorView().tabItem { Label("MIDI", systemImage: "waveform.path.ecg") }
-            MappingView().tabItem { Label("Mapping", systemImage: "slider.horizontal.3") }
-            PresetsView().tabItem { Label("Presets", systemImage: "square.stack") }
-            FirmwareView().tabItem { Label("Firmware", systemImage: "cpu") }
-            AboutView().tabItem { Label("About", systemImage: "info.circle") }
+        ZStack {
+            TabView(selection: $model.tab) {
+                HomeView().tabItem { Label("Home", systemImage: "house") }.tag(AppTab.home)
+                PresetsView().tabItem { Label("Presets", systemImage: "square.grid.2x2") }.tag(AppTab.presets)
+                SensorsView().tabItem { Label("Sensors", systemImage: "gyroscope") }.tag(AppTab.sensors)
+                SettingsView().tabItem { Label("Settings", systemImage: "gearshape") }.tag(AppTab.settings)
+            }
+            if showSplash {
+                SplashView()
+                    .transition(.opacity)
+                    .zIndex(1)
+            }
+        }
+        .task {
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            withAnimation(.easeOut(duration: 0.4)) { showSplash = false }
+        }
+    }
+}
+
+/// Three-petal mark drawn in SwiftUI (no image assets).
+struct TrilliumMark: View {
+    var size: CGFloat = 64
+
+    var body: some View {
+        ZStack {
+            ForEach(0..<3) { i in
+                Ellipse()
+                    .fill(LinearGradient(colors: [.purple.opacity(0.85), .pink.opacity(0.75)],
+                                         startPoint: .bottom, endPoint: .top))
+                    .frame(width: size * 0.42, height: size * 0.62)
+                    .offset(y: -size * 0.24)
+                    .rotationEffect(.degrees(Double(i) * 120))
+            }
+            Circle().fill(.yellow.opacity(0.9)).frame(width: size * 0.16, height: size * 0.16)
+        }
+        .frame(width: size, height: size)
+        .accessibilityHidden(true)
+    }
+}
+
+struct SplashView: View {
+    var body: some View {
+        ZStack {
+            Rectangle().fill(.background).ignoresSafeArea()
+            VStack(spacing: 16) {
+                TrilliumMark(size: 110)
+                Text("Trillium").font(.largeTitle.weight(.semibold))
+                Text("Touch and motion, played as MIDI").foregroundStyle(.secondary)
+            }
         }
     }
 }

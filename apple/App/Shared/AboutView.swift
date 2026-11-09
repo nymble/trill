@@ -10,22 +10,29 @@ struct AboutView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Trillium \(version)") {
-                    Text("Trillium monitors and configures the Trill Flex + XIAO nRF52840 Sense instrument over class-compliant USB MIDI. Configuration protocol v\(TrillProtocol.version).")
-                    Text("Trill is the Bela sensor; Trillium is this app. Development build. The SysEx manufacturer ID 0x7D and the USB IDs 1209:0002/1209:0003 are development/test identifiers, not product identifiers.")
-                        .foregroundStyle(.secondary)
+        Form {
+            Section {
+                HStack(spacing: 14) {
+                    TrilliumMark(size: 48)
+                    VStack(alignment: .leading) {
+                        Text("Trillium").font(.title2.weight(.semibold))
+                        Text("Version \(version)").foregroundStyle(.secondary)
+                    }
                 }
-                Section("Not in this version") {
-                    Text("Bluetooth MIDI or any wireless connection (the firmware has no BLE), over-the-air updates, settings saved on the device, and host-side MIDI processing or virtual MIDI ports.")
-                }
-                Section("License") {
-                    Text("GPL-3.0-only. A separate commercial license is available from the copyright holder; see COMMERCIAL-LICENSE.md. Source: github.com/nymble/trill")
-                }
+                Text("Trillium is a small instrument that turns touch and movement into MIDI. Slide along its touch strip, tilt, turn, tap or strike it, and it plays any synth or music app over a USB cable.")
+                Text("This app chooses Trillium's sound, shows its sensors live and lets you fine-tune every mapping.")
+                    .foregroundStyle(.secondary)
             }
-            .formStyle(.grouped)
-            .navigationTitle("About")
+            Section("Hardware") {
+                Text("A Bela Trill Flex touch sensor and a Seeed XIAO nRF52840 Sense board with a motion sensor (accelerometer and gyroscope), connected as a standard USB MIDI device.")
+                Text("Development build: the SysEx ID 0x7D and USB IDs 1209:0002/1209:0003 are test identifiers.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            Section("License") {
+                Text("GPL-3.0-only. A separate commercial license is available from the copyright holder; see COMMERCIAL-LICENSE.md. Source: github.com/nymble/trill")
+            }
         }
+        .formStyle(.grouped)
+        .navigationTitle("About")
     }
 }

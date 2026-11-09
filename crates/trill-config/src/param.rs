@@ -7,9 +7,10 @@
 //! message (at most [`PAGE_MAX`] parameters each). Page 0 (IDs 1..=13) is
 //! exactly the firmware 0.3 parameter set; page 1 (IDs 14..=30) was added in
 //! firmware 0.4 and is only present when `HELLO_REPLY` advertises
-//! `CAP_CONFIG_PAGES`.
+//! `CAP_CONFIG_PAGES`; page 2 (IDs 31..=37, directional strikes) was added in
+//! firmware 0.5 and is only present with `CAP_STRIKES`.
 
-use instrument_events::{Axis, CcSource, Config, Mode, PitchMode, Scale};
+use instrument_events::{Axis, CcSource, Config, Mode, PitchMode, Scale, StrikeDirection};
 
 /// One configurable engine parameter.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -76,12 +77,28 @@ pub enum Param {
     GestureCooldownMs = 29,
     /// Flick note: negative = base, positive = base+1, zig-zag = base+2.
     GestureBaseNote = 30,
+    /// Directional strikes: 0 = off (every tap plays `PercussionNote`),
+    /// 2 = down/up, 4 = + left/right, 6 = + forward/back. 1, 3 and 5 are
+    /// out of range.
+    StrikeDirections = 31,
+    /// Note for a strike moving down.
+    StrikeNoteDown = 32,
+    /// Note for a strike moving up.
+    StrikeNoteUp = 33,
+    /// Note for a strike moving left.
+    StrikeNoteLeft = 34,
+    /// Note for a strike moving right.
+    StrikeNoteRight = 35,
+    /// Note for a strike moving forward.
+    StrikeNoteForward = 36,
+    /// Note for a strike moving back.
+    StrikeNoteBack = 37,
 }
 
 /// Most parameters in one page (a `CONFIG` reply is 7 + 3 + 3·n + 1 bytes).
 pub const PAGE_MAX: usize = 17;
 /// Number of pages.
-pub const PAGES: u8 = 2;
+pub const PAGES: u8 = 3;
 
 /// A value outside the parameter's range.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -89,7 +106,7 @@ pub struct OutOfRange;
 
 impl Param {
     /// Every parameter, in ID order.
-    pub const ALL: [Param; 30] = [
+    pub const ALL: [Param; 37] = [
         Param::Channel,
         Param::BaseNote,
         Param::RangeSemitones,
@@ -120,25 +137,39 @@ impl Param {
         Param::GestureThresholdDps,
         Param::GestureCooldownMs,
         Param::GestureBaseNote,
+        Param::StrikeDirections,
+        Param::StrikeNoteDown,
+        Param::StrikeNoteUp,
+        Param::StrikeNoteLeft,
+        Param::StrikeNoteRight,
+        Param::StrikeNoteForward,
+        Param::StrikeNoteBack,
     ];
 
     /// Page 0: the firmware 0.3 parameters, in ID order.
     pub const PAGE0: &'static [Param] = Self::ALL.split_at(13).0;
     /// Page 1: added in firmware 0.4.
-    pub const PAGE1: &'static [Param] = Self::ALL.split_at(13).1;
+    pub const PAGE1: &'static [Param] = Self::ALL.split_at(30).0.split_at(13).1;
+    /// Page 2: added in firmware 0.5 (directional strikes).
+    pub const PAGE2: &'static [Param] = Self::ALL.split_at(30).1;
 
     /// Parameters of page `p`, if it exists.
     pub fn page_params(p: u8) -> Option<&'static [Param]> {
         match p {
             0 => Some(Self::PAGE0),
             1 => Some(Self::PAGE1),
+            2 => Some(Self::PAGE2),
             _ => None,
         }
     }
 
     /// Page holding this parameter.
     pub fn page(self) -> u8 {
-        u8::from(self.id() > 13)
+        match self.id() {
+            0..=13 => 0,
+            14..=30 => 1,
+            _ => 2,
+        }
     }
 
     /// Wire ID.
@@ -178,6 +209,13 @@ impl Param {
             Param::GestureThresholdDps => (100, 2000),
             Param::GestureCooldownMs => (100, 2000),
             Param::GestureBaseNote => (0, 125),
+            Param::StrikeDirections => (0, 6),
+            Param::StrikeNoteDown
+            | Param::StrikeNoteUp
+            | Param::StrikeNoteLeft
+            | Param::StrikeNoteRight
+            | Param::StrikeNoteForward
+            | Param::StrikeNoteBack => (0, 127),
         }
     }
 
@@ -238,6 +276,11 @@ impl Param {
             Param::GestureThresholdDps => f(cfg.gesture_threshold_dps),
             Param::GestureCooldownMs => f(cfg.gesture_cooldown_us as f32 / 1000.0),
             Param::GestureBaseNote => u16::from(cfg.gesture_base_note).min(125),
+            Param::StrikeDirections => u16::from(cfg.strike_directions).min(6),
+            _ => match self.strike_index() {
+                Some(i) => u16::from(cfg.strike_notes[i]).min(127),
+                None => 0,
+            },
         }
     }
 
@@ -245,6 +288,9 @@ impl Param {
     pub fn set(self, cfg: &mut Config, v: u16) -> Result<(), OutOfRange> {
         let (lo, hi) = self.range();
         if v < lo || v > hi {
+            return Err(OutOfRange);
+        }
+        if self == Param::StrikeDirections && v % 2 == 1 {
             return Err(OutOfRange);
         }
         let b = v as u8; // every u8 field has hi <= 127
@@ -304,8 +350,28 @@ impl Param {
             Param::GestureThresholdDps => cfg.gesture_threshold_dps = f32::from(v),
             Param::GestureCooldownMs => cfg.gesture_cooldown_us = u32::from(v) * 1000,
             Param::GestureBaseNote => cfg.gesture_base_note = b,
+            Param::StrikeDirections => cfg.strike_directions = b,
+            _ => {
+                if let Some(i) = self.strike_index() {
+                    cfg.strike_notes[i] = b;
+                }
+            }
         }
         Ok(())
+    }
+
+    /// Index into `Config::strike_notes` for the strike note parameters.
+    fn strike_index(self) -> Option<usize> {
+        let d = match self {
+            Param::StrikeNoteDown => StrikeDirection::Down,
+            Param::StrikeNoteUp => StrikeDirection::Up,
+            Param::StrikeNoteLeft => StrikeDirection::Left,
+            Param::StrikeNoteRight => StrikeDirection::Right,
+            Param::StrikeNoteForward => StrikeDirection::Forward,
+            Param::StrikeNoteBack => StrikeDirection::Back,
+            _ => return None,
+        };
+        Some(d as usize)
     }
 }
 

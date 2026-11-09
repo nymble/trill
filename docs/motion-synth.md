@@ -8,7 +8,7 @@
 
 | Domain | Rate | Work | Code |
 |---|---|---|---|
-| Control | IMU ODR, 416 Hz default (104–833 Hz supported by the driver) | gyro bias calibration, complementary-filter pitch/roll, rotation speed, tap detection, mapping to synth parameters | `motion`, `mapping` |
+| Control | IMU ODR: the driver default is 416 Hz; the XIAO firmware runs 833 Hz from 0.5.0 | gyro bias calibration, complementary-filter pitch/roll, rotation speed, tap detection, mapping to synth parameters | `motion`, `mapping` |
 | Audio | 16, 32 (firmware default) or 48 kHz, fixed blocks (64 samples = 2 ms at 32 kHz) | oscillators, filter, envelope, soft clip | `synth` |
 
 Per-sample synthesis never waits on sensors. Control frames land in a fixed-size [`ControlMailbox`](../crates/motion-synth/src/mailbox.rs). The audio task takes one snapshot at each block boundary. Continuous parameters are latest-wins and then **smoothed per sample** (4 ms one-pole), so a 416 Hz control stream against 500 Hz blocks gives neither zipper noise nor clicks. Triggers (taps) accumulate between blocks, so none is lost. Render cost per block is O(block length) and independent of parameters and signal.
@@ -16,7 +16,7 @@ Per-sample synthesis never waits on sensors. Control frames land in a fixed-size
 ## Motion processing (`motion`)
 
 - **Timestamps:** every sample carries a microsecond timestamp from the producer. A gap longer than 50 ms, or a timestamp that goes backwards, re-seeds orientation from gravity instead of integrating a bogus dt.
-- **Gyro bias:** averaged over 400 consecutive stationary samples (|ω| < 3 dps and ||a| − 1 g| < 0.05 g, about 1 s at 416 Hz). Any motion restarts the run. After an IMU power cycle the bias is discarded, and the `c` diagnostics command forces recalibration.
+- **Gyro bias:** averaged over 400 consecutive stationary samples (|ω| < 3 dps and ||a| − 1 g| < 0.05 g, about 1 s at 416 Hz; the 0.5.0 firmware uses 800 samples at 833 Hz). Any motion restarts the run. After an IMU power cycle the bias is discarded, and the `c` diagnostics command forces recalibration.
 - **Orientation:** complementary filter with τ = 0.5 s. Gravity is trusted only while |a| is within 0.3 g of 1 g, so shakes do not tilt the estimate. Roll is unwrapped across ±180°.
 - **Rotation energy:** smoothed magnitude of bias-corrected angular rate (τ = 30 ms).
 - **Taps:** |a| minus its slow baseline crossing 0.8 g, with a 120 ms refractory period. Strength is the excess in g.
@@ -45,7 +45,7 @@ Design estimates for motion → sound, derived from the configuration. **These a
 
 | Stage | Estimate | Basis |
 |---|---|---|
-| Wait for next IMU sample | 0–2.4 ms | 416 Hz ODR (plus sensor digital filter delay, not characterised here) |
+| Wait for next IMU sample | 0–1.2 ms | 833 Hz ODR from firmware 0.5.0 (0–2.4 ms at 416 Hz), plus sensor digital filter delay, not characterised here |
 | I²C burst read (14 bytes, 400 kHz) + wake | ≈ 0.4 ms | 17 bytes × 9 bits / 400 kHz |
 | Processing + mapping | µs range | to be measured on target |
 | Wait for next block boundary | 0–2.0 ms | 64 samples @ 32 kHz |

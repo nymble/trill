@@ -245,6 +245,78 @@ pub struct Config {
     /// Negative flick → this note, positive → +1, zig-zag → +2 (percussion
     /// channel, `percussion_len_us` long).
     pub gesture_base_note: u8,
+    /// Directional strikes: how many tap directions pick their own note
+    /// (0 = off: every tap plays `percussion_note`; 2 = down/up; 4 = +
+    /// left/right; 6 = + forward/back). A tap whose direction is ambiguous
+    /// plays `percussion_note`.
+    pub strike_directions: u8,
+    /// Note per direction, in [`StrikeDirection`] order.
+    pub strike_notes: [u8; 6],
+}
+
+/// Direction of travel of a tap, relative to gravity. Index into
+/// [`Config::strike_notes`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(u8)]
+pub enum StrikeDirection {
+    /// Moving down (with gravity).
+    Down = 0,
+    /// Moving up.
+    Up = 1,
+    /// Moving left (sensor +Y side when flat).
+    Left = 2,
+    /// Moving right.
+    Right = 3,
+    /// Moving forward (sensor +X when flat).
+    Forward = 4,
+    /// Moving back.
+    Back = 5,
+}
+
+/// A strike is classified only if its main component is at least this
+/// large (unit vector; 0.55 ≈ within 57° of the axis)…
+pub const STRIKE_MIN_COMPONENT: f32 = 0.55;
+/// …and at least this many times the next largest considered component.
+pub const STRIKE_MARGIN: f32 = 1.2;
+
+/// Classify a tap travel direction `[down, forward, right]` (unit vector
+/// from the motion processor) into one of `directions` classes (2, 4 or 6).
+/// None = ambiguous or classification off.
+pub fn classify_strike(dir: [f32; 3], directions: u8) -> Option<StrikeDirection> {
+    let [down, forward, right] = dir;
+    // (component, positive class, negative class), in priority order.
+    let axes = [
+        (down, StrikeDirection::Down, StrikeDirection::Up),
+        (-right, StrikeDirection::Left, StrikeDirection::Right),
+        (forward, StrikeDirection::Forward, StrikeDirection::Back),
+    ];
+    let n = match directions {
+        2 => 1,
+        4 => 2,
+        6 => 3,
+        _ => return None,
+    };
+    let considered = &axes[..n];
+    let mut best = 0;
+    for (i, a) in considered.iter().enumerate() {
+        if a.0.abs() > considered[best].0.abs() {
+            best = i;
+        }
+    }
+    let (v, pos, neg) = considered[best];
+    if v.is_nan() || v.abs() < STRIKE_MIN_COMPONENT {
+        return None;
+    }
+    let second = considered
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| *i != best)
+        .map(|(_, a)| a.0.abs())
+        .fold(0.0f32, f32::max);
+    if n > 1 && v.abs() < STRIKE_MARGIN * second {
+        return None;
+    }
+    Some(if v > 0.0 { pos } else { neg })
 }
 
 impl Default for Config {
@@ -294,6 +366,9 @@ impl Default for Config {
             gesture_threshold_dps: 400.0,
             gesture_cooldown_us: 300_000,
             gesture_base_note: 60,
+            strike_directions: 0,
+            // GM drums: snare, crash, kick, closed hi-hat, low tom, ride.
+            strike_notes: [38, 49, 36, 42, 45, 51],
         }
     }
 }
@@ -343,6 +418,15 @@ impl Config {
             finite_or(self.gesture_threshold_dps, d.gesture_threshold_dps).clamp(100.0, 2000.0);
         self.gesture_cooldown_us = self.gesture_cooldown_us.clamp(100_000, 2_000_000);
         self.gesture_base_note = self.gesture_base_note.min(125);
+        self.strike_directions = match self.strike_directions {
+            0 => 0,
+            1 | 2 => 2,
+            3 | 4 => 4,
+            _ => 6,
+        };
+        for n in &mut self.strike_notes {
+            *n = (*n).min(127);
+        }
         self
     }
 
@@ -381,6 +465,9 @@ pub struct MotionSample {
     pub gyro_dps: [f32; 3],
     /// Tap detected in this frame: strength in g above the detector threshold.
     pub tap: Option<f32>,
+    /// With a tap: unit travel direction `[down, forward, right]` relative
+    /// to gravity (`motion_synth` `MotionFrame::tap_dir`); zero if unknown.
+    pub tap_dir: [f32; 3],
 }
 
 /// Counters for diagnostics.
@@ -410,6 +497,9 @@ pub struct Stats {
     pub motion_lost: u32,
     /// Taps that produced a percussion note.
     pub taps: u32,
+    /// Directional-strike taps whose direction was ambiguous (they played
+    /// the plain percussion note).
+    pub strikes_ambiguous: u32,
     /// Flick gestures that produced a note.
     pub gestures: u32,
     /// Transport connects.
@@ -1057,6 +1147,7 @@ impl Engine {
             || !m.roll_deg.is_finite()
             || m.gyro_dps.iter().any(|g| !g.is_finite())
             || m.tap.is_some_and(|g| !g.is_finite())
+            || m.tap_dir.iter().any(|d| !d.is_finite())
         {
             self.stats.invalid_inputs = self.stats.invalid_inputs.wrapping_add(1);
             return;
@@ -1118,7 +1209,15 @@ impl Engine {
         }
         if let Some(g) = m.tap {
             if c.percussion_enabled && g > 0.0 {
-                self.percussion_hit(t, g);
+                let note = if c.strike_directions == 0 {
+                    c.percussion_note
+                } else if let Some(d) = classify_strike(m.tap_dir, c.strike_directions) {
+                    c.strike_notes[d as usize]
+                } else {
+                    self.stats.strikes_ambiguous = self.stats.strikes_ambiguous.wrapping_add(1);
+                    c.percussion_note
+                };
+                self.percussion_hit(t, g, note);
             }
         }
         if let Some(axis) = c.gesture_axis {
@@ -1258,7 +1357,7 @@ impl Engine {
         }
     }
 
-    fn percussion_hit(&mut self, t: u32, g: f32) {
+    fn percussion_hit(&mut self, t: u32, g: f32, note: u8) {
         self.percussion_release();
         if self.free() < 1 + NOTE_OFF_RESERVE {
             self.stats.note_on_deferred = self.stats.note_on_deferred.wrapping_add(1);
@@ -1269,7 +1368,7 @@ impl Engine {
         let velocity = ((v + 0.5) as u8).clamp(1, 127);
         let _ = self.critical.push_back(MidiMessage::NoteOn {
             channel: c.percussion_channel,
-            note: c.percussion_note,
+            note,
             velocity,
         });
         self.note_high_water();
@@ -1277,7 +1376,7 @@ impl Engine {
         self.stats.taps = self.stats.taps.wrapping_add(1);
         self.percussion_off_at = Some((
             c.percussion_channel,
-            c.percussion_note,
+            note,
             t.wrapping_add(c.percussion_len_us),
         ));
     }

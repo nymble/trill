@@ -14,14 +14,14 @@ import AppKit
 
 struct FirmwareView: View {
     var body: some View {
-        NavigationStack {
+        Group {
             #if os(macOS)
             FirmwareAssistant()
                 .navigationTitle("Firmware")
             #else
             Form {
                 Section("Firmware updates need a Mac or PC") {
-                    Text("The XIAO nRF52840 Sense is updated through its UF2 bootloader drive over USB, using tools/xiao_uf2.py on a computer. There is no Bluetooth or over-the-air update path in this firmware, so this iPhone/iPad app cannot update it.")
+                    Text("Trillium's firmware is updated over USB from a computer, using the UF2 bootloader drive and tools/xiao_uf2.py. It cannot be updated from an iPhone or iPad.")
                     Text("See docs/firmware-xiao-sense.md in the repository.")
                         .foregroundStyle(.secondary)
                 }
