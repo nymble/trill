@@ -46,11 +46,13 @@ The device **never answers a reply-typed message** (`type & 0x40`), anything wit
 | `05` TELEMETRY_START | rate in Hz, 1–100 (1 byte) | `45` TELEMETRY_ACK, then `50` TELEMETRY frames (firmware 0.3.0+, [below](#sensor-telemetry-firmware-030)) |
 | `06` TELEMETRY_STOP | none | `45` TELEMETRY_ACK with rate 0 |
 
-**HELLO_REPLY payload** (13 bytes): protocol version, firmware major, minor, patch, variant (bit 0 = `pcm-synth` build), capabilities (bit 0 SET_CONFIG, bit 1 ACTION, bit 2 persistent settings: **never set by this firmware**, bit 3 sensor telemetry: firmware 0.3.0+, bit 4 paged configuration: firmware 0.4.0+), max message length (64), parameter count (13 before 0.4.0, 30 in 0.4.0), uptime in seconds (3 bytes, 21 bits, saturating), boot ID (2 bytes, 14 bits). The boot ID is drawn from the nRF52840 hardware RNG at reset. A changed boot ID means the device restarted and its settings went back to defaults.
+**HELLO_REPLY payload** (13 bytes): protocol version, firmware major, minor, patch, variant (bit 0 = `pcm-synth` build), capabilities (bit 0 SET_CONFIG, bit 1 ACTION, bit 2 persistent settings: **never set by this firmware**, bit 3 sensor telemetry: firmware 0.3.0+, bit 4 paged configuration: firmware 0.4.0+, bit 5 directional strikes: firmware 0.5.0+), max message length (64), parameter count (13 before 0.4.0, 30 in 0.4.0, 37 in 0.5.0), uptime in seconds (3 bytes, 21 bits, saturating), boot ID (2 bytes, 14 bits). The boot ID is drawn from the nRF52840 hardware RNG at reset. A changed boot ID means the device restarted and its settings went back to defaults.
 
 **CONFIG payload:** generation (2 bytes, 14 bits, wraps), persistent flag (`00`: RAM only), then `(param, hi, lo)` for every parameter of one page in ID order. The page is implied by the IDs.
 
 **Pages (firmware 0.4.0, capability bit 4 `0x10`).** One 64-byte reply holds at most 17 parameters (7 + 3 + 3n + 1 ≤ 64), so parameters are grouped in pages: page 0 = IDs 1–13, exactly the firmware 0.2/0.3 set and reply (an empty GET_CONFIG still returns it byte for byte); page 1 = IDs 14–30. A host that does not see bit 4 must not send page-1 parameters, `GET_CONFIG` with a payload or action 5: firmware 0.3.0 answers UnknownParam / BadLength / UnknownAction and changes nothing. The app enforces this (`ConfigSession.supportedPages`, tested against a fake 0.3.0 device), and sends one SET_CONFIG per page, at most 16 parameters each, so every CONFIG reply covers what it changed. The generation increases whenever the mapping changes, through this protocol or a diagnostics key. Unchanged values leave it as it is. Hosts should skip unknown parameter IDs, because a newer firmware may add some.
+
+**Page 2 (firmware 0.5.0, capability bit 5 `0x20`).** IDs 31–37, directional strikes. `HELLO_REPLY` reports 37 parameters. A host that does not see bit 5 must not send page-2 parameters or `GET_CONFIG` page 2; firmware 0.4.0 answers UnknownParam / OutOfRange and changes nothing. Parameter 31 takes only 0, 2, 4 or 6; odd values are rejected as OutOfRange.
 
 **SET_CONFIG is atomic.** All values are checked first. If any parameter is unknown, repeated or out of range, nothing changes and the reply is an ERROR naming that parameter. Values are rejected, never clamped. Applying a change releases a sounding note. The engine then waits for the finger to lift, and re-centres pitch bend and resends RPN 0 if the channel, pitch mode or bend range changed. Remapping therefore cannot leave a stuck note.
 
@@ -109,6 +111,18 @@ Page 1 (firmware 0.4.0+):
 | 29 | Minimum time between flicks, ms | 100–2000 | 300 |
 | 30 | Flick notes: negative = n, positive = n + 1, zig-zag = n + 2 | 0–125 | 60 |
 
+Page 2 (firmware 0.5.0+, [directional strikes](midi-mapping.md#directional-strikes-firmware-050)):
+
+| ID | Parameter | Range | Default |
+|---|---|---|---|
+| 31 | Strike directions: 0 off (every tap plays parameter 13), 2 down/up, 4 + left/right, 6 + forward/back | 0, 2, 4, 6 | 0 |
+| 32 | Note for a strike moving down | 0–127 | 38 |
+| 33 | Note for a strike moving up | 0–127 | 49 |
+| 34 | Note for a strike moving left | 0–127 | 36 |
+| 35 | Note for a strike moving right | 0–127 | 42 |
+| 36 | Note for a strike moving forward | 0–127 | 45 |
+| 37 | Note for a strike moving back | 0–127 | 51 |
+
 Controller sources: 0 off, 1 rotation speed (full scale = param 9), 2 pitch forward, 3 pitch back, 4 roll right, 5 roll left (full scale = param 10; "back" and "left" are the inversions), 6 pitch centred, 7 roll centred (±param 10 → 0–127, 64 level). Pitch and roll are relative to the zero set by action 5. Other thresholds and timing constants are not exposed.
 
 ## Actions
@@ -118,7 +132,7 @@ Controller sources: 0 off, 1 rotation speed (full scale = param 9), 2 pitch forw
 | 1 | Panic | Same reset sequence as diagnostics key `p` (CC123, CC120, bend centre, pressure 0, RPN 0) |
 | 2 | Recalibrate gyro | Same as key `c`. Keep the board still for about 1 s |
 | 3 | LED self-test | Same as key `L` |
-| 4 | Restore defaults | Firmware default mapping (RAM) and clears the orientation zero. Replies with CONFIG page 0; hosts with bit 4 then read page 1 |
+| 4 | Restore defaults | Firmware default mapping (RAM) and clears the orientation zero. Replies with CONFIG page 0; hosts then read the other pages they know (1, and 2 with bit 5) |
 | 5 | Zero orientation (0.4.0+) | Current pitch and roll become level for controllers and tilt modes (RAM). Ignored, but acknowledged, before gyro calibration |
 
 ## Persistence
@@ -142,7 +156,7 @@ explain that a firmware update is needed.
 - **Lossy and lowest priority.** Frames go out on cable 1 only when no reply is
   waiting and instrument events have been sent first. A period that cannot be
   sent is counted as skipped, never queued, and values are sampled when the
-  frame is built. The rate is the snapshot rate, not the IMU rate (416 Hz ODR).
+  frame is built. The rate is the snapshot rate, not the IMU rate (833 Hz ODR from firmware 0.5.0).
 - **TELEMETRY frame** (`50`, request ID 0, 54 bytes, payload 46 bytes). Signed
   16-bit values use 3 bytes (bits 15–14, 13–7, 6–0); 14-bit values use 2.
 

@@ -12,7 +12,7 @@ Transport and setup: [USB MIDI](usb-midi.md).
 |---|---|---|---|
 | Touch position | Trill Flex centroid mode, **first reported touch only**. Polled every 5 ms; only frames with a new Trill frame ID are used (*firmware*) | `location / 3712` → 0.0–1.0 along the strip, clamped | None (sensor centroid) |
 | Touch size | Same frame | Raw size / 300 at 10-bit scan (Trill-Linux factor 1/1200 at 12 bits, × 2<sup>12−bits</sup>) → ≈ 0–1, not clamped above 1 (*firmware*) | Hysteresis thresholds; one-pole smoothing for pressure |
-| Rotation | LSM6DS3TR-C gyro, every 416 Hz ODR sample (*firmware*) | Magnitude of the bias-corrected gyro vector, deg/s (sign-free) | One-pole τ = 30 ms in `motion-synth` |
+| Rotation | LSM6DS3TR-C gyro, every 833 Hz ODR sample (*firmware* 0.5.0; 416 Hz before) | Magnitude of the bias-corrected gyro vector, deg/s (sign-free) | One-pole τ = 30 ms in `motion-synth` |
 | Tilt pitch | Same IMU sample | Degrees, −90…90: `atan2(−ax, √(ay² + az²))` in the IMU's own axes, complementary filter τ = 0.5 s. Which physical tilt is positive is **not yet verified** on a board ([bring-up step 5](firmware-xiao-sense.md#hardware-bring-up-checklist)) | As left |
 | Tilt roll | Same IMU sample | Degrees, −180…180: `atan2(ay, az)`, complementary filter as pitch | As left |
 | Angular rate per axis | Same IMU sample | Bias-corrected gyro X, Y, Z, deg/s, unsmoothed (used by flick gestures) | None |
@@ -51,7 +51,7 @@ USB-MIDI 1.0 packets: `[cable << 4 | CIN, status, data1, data2]`, cable 0. Every
 
 ### Sensor modes and controllers (firmware 0.4.0)
 
-Set over SysEx (page 1, [configuration protocol](config-protocol.md#parameters)) or from the app's Mapping tab; RAM only. **Simulated and unit-tested only; not yet run on hardware.**
+Set over SysEx (page 1, [configuration protocol](config-protocol.md#parameters)) or from the app's Settings › Sound & mapping; RAM only. **Simulated and unit-tested only; not yet run on hardware.**
 
 - **Touch (default).** As above.
 - **Tilt notes.** The Trill strip is ignored. A virtual touch is made from the IMU: tilting forward past the gate (default 15°, closes 3° lower) starts a note; roll picks the position across the note range (−span → lowest note, +span → highest, default ±45°), quantised to the scale with the step hysteresis (default 20% of a step), so the note does not flicker between neighbours. Velocity and channel pressure follow how far past the gate you tilt (40–100% of full). Always stepped notes.
@@ -132,3 +132,23 @@ From `cargo run -p instrument-events --example trace`, asserted byte for byte by
 - **Touch calibration:** per-unit size scaling and thresholds from a recorded light and firm touch, stored in flash.
 - **Stored settings.** All 30 map parameters, including controller numbers (0.4.0), are configurable over SysEx, RAM only: see [configuration protocol](config-protocol.md).
 - **BLE-MIDI** transport (deferred until a licensing decision on the BLE stack, see [roadmap](roadmap.md)).
+
+## Directional strikes (firmware 0.5.0)
+
+**Simulated and unit-tested only; not yet run on hardware.** Off by default (parameter 31 = 0), so taps behave exactly as in 0.4.0.
+
+When a tap fires, the motion processor also reports the direction the board was **travelling** when it was stopped: the acceleration at the detection sample minus the gravity estimate (pitch/roll from the complementary filter, which runs gyro-only during the impact because |a| is far from 1 g), negated and normalised, expressed as `[down, forward, right]`. Down follows gravity. Forward is the sensor X axis projected onto the horizontal plane (sensor −Y turned 90° when X points nearly straight up or down), and right completes the frame. Both a strike against a surface and a stroke stopped sharply in mid-air decelerate the board, so both report the direction of travel.
+
+With 2, 4 or 6 directions, the engine picks the largest of the considered components (down/up; then left/right; then forward/back). It plays the note set for that direction on the percussion channel if that component is at least 0.55 (about 57° from the axis) and at least 1.2 times the next considered component. Otherwise the strike is ambiguous: it plays the plain percussion note (parameter 13) and counts `strikes_ambiguous`. Velocity is the tap velocity, as before. The decision is made on the detection sample, so it adds no latency. Which physical side is "left" or "forward" depends on how the board is mounted; swap the notes in the app if needed.
+
+| Direction | Parameter | Default note (GM) |
+|---|---|---|
+| Down | 32 | 38 snare |
+| Up | 33 | 49 crash |
+| Left | 34 | 36 kick |
+| Right | 35 | 42 closed hi-hat |
+| Forward | 36 | 45 low tom |
+| Back | 37 | 51 ride |
+
+The accelerometer range is ±8 g from 0.5.0 (±4 g before), so hard taps no longer clip; clipping flattened velocity and would distort the direction.
+

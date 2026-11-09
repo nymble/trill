@@ -2,7 +2,7 @@
 //! Control-rate motion processing: gyro bias calibration, complementary
 //! orientation filter, rotation energy and tap detection.
 
-use libm::{atan2f, sqrtf};
+use libm::{atan2f, cosf, sinf, sqrtf};
 
 /// One IMU sample in board axes, timestamped by the producer.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -32,9 +32,19 @@ pub struct MotionFrame {
     pub calibrated: bool,
     /// Unsmoothed bias-corrected angular rate per sensor axis (dps).
     pub gyro_dps: [f32; 3],
+    /// On a tap: unit direction the board was travelling when it was
+    /// stopped, as `[down, forward, right]` relative to gravity (forward =
+    /// the sensor X axis projected onto the horizontal plane, or sensor −Y
+    /// turned 90° when X points nearly straight up or down). Zero when no tap
+    /// fired or the direction is undefined. Derived from the impact spike
+    /// (acceleration minus the gyro-propagated gravity estimate), so both a
+    /// strike against a surface and a stroke stopped in mid-air report the
+    /// direction of travel.
+    pub tap_dir: [f32; 3],
 }
 
-/// Tunables. Defaults suit a hand-held instrument at 416 Hz.
+/// Tunables. Defaults suit a hand-held instrument at 416 Hz (firmware 0.5
+/// runs at 833 Hz and doubles `calib_samples`).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MotionConfig {
     /// Complementary filter time constant in seconds (gyro trusted below it).
@@ -168,6 +178,7 @@ impl MotionProcessor {
         self.last_t = Some(s.t_us);
 
         let mut tap = None;
+        let mut tap_dir = [0.0; 3];
         match dt_us {
             None => {
                 // First sample or gap/clock fault: re-seed from gravity.
@@ -196,6 +207,9 @@ impl MotionProcessor {
                 if ready && hp > self.cfg.tap_threshold_g {
                     tap = Some(hp - self.cfg.tap_threshold_g);
                     self.last_tap_t = Some(s.t_us);
+                    // The filter ran gyro-only during the impact (|a| far
+                    // from 1 g), so pitch/roll still describe gravity.
+                    tap_dir = travel_direction(s.accel_g, self.pitch, self.roll);
                 }
             }
         }
@@ -209,6 +223,7 @@ impl MotionProcessor {
             tap,
             calibrated: self.calib.bias().is_some(),
             gyro_dps: gyro,
+            tap_dir,
         }
     }
 
@@ -243,6 +258,55 @@ fn wrap180(mut a: f32) -> f32 {
 fn near(target: f32, reference: f32) -> f32 {
     let d = wrap180(target - reference);
     reference + d
+}
+
+/// Unit "up" vector in sensor axes for the filter's pitch/roll (the
+/// accelerometer reads +1 g along it at rest).
+fn up_vector(pitch_deg: f32, roll_deg: f32) -> [f32; 3] {
+    let (sp, cp) = (sinf(pitch_deg.to_radians()), cosf(pitch_deg.to_radians()));
+    let (sr, cr) = (sinf(roll_deg.to_radians()), cosf(roll_deg.to_radians()));
+    [-sp, cp * sr, cp * cr]
+}
+
+fn dot(a: [f32; 3], b: [f32; 3]) -> f32 {
+    a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+}
+
+fn cross(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
+    [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ]
+}
+
+/// Component of `v` perpendicular to unit `up`, normalised (None if tiny).
+fn horizontal(v: [f32; 3], up: [f32; 3]) -> Option<[f32; 3]> {
+    let k = dot(v, up);
+    let h = [v[0] - k * up[0], v[1] - k * up[1], v[2] - k * up[2]];
+    let n = norm(h);
+    (n > 0.3).then(|| [h[0] / n, h[1] / n, h[2] / n])
+}
+
+/// Direction of travel `[down, forward, right]` for an impact measured as
+/// `accel_g` (specific force) with gravity given by pitch/roll. The impact
+/// decelerates the board, so travel is opposite to the linear acceleration.
+pub fn travel_direction(accel_g: [f32; 3], pitch_deg: f32, roll_deg: f32) -> [f32; 3] {
+    let up = up_vector(pitch_deg, roll_deg);
+    let lin = [accel_g[0] - up[0], accel_g[1] - up[1], accel_g[2] - up[2]];
+    let n = norm(lin);
+    if !n.is_finite() || n < 1e-3 {
+        return [0.0; 3];
+    }
+    let (fwd, right) = match horizontal([1.0, 0.0, 0.0], up) {
+        Some(f) => (f, cross(f, up)),
+        None => match horizontal([0.0, -1.0, 0.0], up) {
+            Some(r) => (cross(up, r), r),
+            None => return [0.0; 3],
+        },
+    };
+    // travel = -lin; down = -up  =>  travel·down = lin·up.
+    [dot(lin, up) / n, -dot(lin, fwd) / n, -dot(lin, right) / n]
 }
 
 #[cfg(test)]
@@ -372,5 +436,71 @@ mod tests {
             f = p.update(&still(i * DT, a, [0.0; 3]));
         }
         assert!(f.roll_deg.abs() > 178.0, "{}", f.roll_deg);
+    }
+
+    fn close(a: [f32; 3], b: [f32; 3]) -> bool {
+        (0..3).all(|i| (a[i] - b[i]).abs() < 0.02)
+    }
+
+    #[test]
+    fn travel_direction_flat_board() {
+        // Flat, face up: up = +Z, forward = +X, right = -Y.
+        // Struck down onto a table: deceleration points up.
+        assert!(close(
+            travel_direction([0.0, 0.0, 4.0], 0.0, 0.0),
+            [1.0, 0.0, 0.0]
+        ));
+        // Stroke upward stopped in the air: acceleration points down.
+        assert!(close(
+            travel_direction([0.0, 0.0, -2.0], 0.0, 0.0),
+            [-1.0, 0.0, 0.0]
+        ));
+        // Moving forward (+X), stopped: acceleration along -X.
+        assert!(close(
+            travel_direction([-3.0, 0.0, 1.0], 0.0, 0.0),
+            [0.0, 1.0, 0.0]
+        ));
+        // Moving right (-Y), stopped: acceleration along +Y.
+        assert!(close(
+            travel_direction([0.0, 3.0, 1.0], 0.0, 0.0),
+            [0.0, 0.0, 1.0]
+        ));
+        // No linear acceleration: undefined.
+        assert_eq!(travel_direction([0.0, 0.0, 1.0], 0.0, 0.0), [0.0; 3]);
+    }
+
+    #[test]
+    fn travel_direction_is_gravity_referenced() {
+        // Rolled 90° (on its side, +Y up): a downward strike is still "down".
+        let up = up_vector(0.0, 90.0);
+        assert!(close(up, [0.0, 1.0, 0.0]));
+        let a = [
+            3.0 * up[0] + up[0],
+            3.0 * up[1] + up[1],
+            3.0 * up[2] + up[2],
+        ];
+        assert!(close(travel_direction(a, 0.0, 90.0), [1.0, 0.0, 0.0]));
+        // Pitched 90° (X pointing up): forward falls back to sensor -Y turned.
+        let d = travel_direction([4.0, 0.0, 0.0], -90.0, 0.0);
+        assert!(close(d, [1.0, 0.0, 0.0]), "{d:?}");
+        let s = travel_direction([1.0, 3.0, 0.0], -90.0, 0.0);
+        assert!(
+            (s[0]).abs() < 0.02 && (s[1].abs() + s[2].abs() - 1.0).abs() < 0.02,
+            "{s:?}"
+        );
+    }
+
+    #[test]
+    fn tap_reports_direction_through_update() {
+        let mut p = MotionProcessor::new(MotionConfig::default());
+        let flat = [0.0, 0.0, 1.0];
+        for i in 0..500 {
+            p.update(&still(i * DT, flat, [0.0; 3]));
+        }
+        let f = p.update(&still(500 * DT, [0.0, 0.0, 4.0], [0.0; 3]));
+        assert!(f.tap.is_some());
+        assert!(f.tap_dir[0] > 0.95, "{:?}", f.tap_dir);
+        let g = p.update(&still(501 * DT, flat, [0.0; 3]));
+        assert_eq!(g.tap_dir, [0.0; 3]);
     }
 }

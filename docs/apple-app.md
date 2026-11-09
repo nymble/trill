@@ -4,19 +4,25 @@ The app is named **Trillium** (bundle `Trillium.app`). *Trill* is Bela's touch-s
 
 `apple/` contains **Trillium**, a SwiftUI companion app for Mac, iPhone and iPad. It monitors and configures the XIAO nRF52840 Sense instrument over class-compliant USB MIDI. **You do not need the app to play.** The instrument is a standard USB-MIDI device and plays straight into GarageBand, Logic, AUM or any CoreMIDI app.
 
-> **Status:** CI builds the macOS app and the iOS app for the Simulator and for devices (compile check, unsigned). The TrillKit tests run on macOS (41 tests; this includes two CoreMIDI loopback tests against a simulated Trill on virtual endpoints) and on the iOS Simulator (same tests; the two loopback tests are skipped there because the Simulator refuses virtual MIDI endpoints, OSStatus -10844). On both, the real-firmware UF2 check is skipped unless `dist/*.uf2` was built first. Firmware 0.2.0 has run on a real XIAO Sense with a hardware harness on a Mac (handshake, set/readback/restore, errors, panic, and an ERROR UnknownType answer to the 0.3.0 telemetry request). **Sensor telemetry (firmware 0.3.0) and the app's Sensors tab have not yet run on hardware.** Configuration needs firmware 0.2.0 or newer; the Sensors tab needs 0.3.0 or newer.
+> **Status:** CI builds the macOS app and the iOS app for the Simulator and for devices (compile check, unsigned). The TrillKit tests run on macOS (53 tests; this includes two CoreMIDI loopback tests against a simulated Trill on virtual endpoints) and on the iOS Simulator (same tests; the two loopback tests are skipped there because the Simulator refuses virtual MIDI endpoints, OSStatus -10844). On both, the real-firmware UF2 check is skipped unless `dist/*.uf2` was built first. Firmware 0.2.0–0.4.0 has run on one XIAO Sense from a Mac (handshake, configuration, telemetry at 50 frames/s). **The 0.5.0 screens (Home, merged Presets, Settings) have only been built and unit-tested; they have not been tried against a device, and firmware 0.5.0 has not been flashed.**
 
 ## What it does
 
-| Area | Implemented | Notes |
-|---|---|---|
-| Endpoints | Lists MIDI sources and destinations and follows hot-plug (CoreMIDI setup notifications). Shows device name, port number and offline state | Suggests the Trill's port 1 for monitoring and port 2 for configuration. **Sends nothing until you press Connect**, and then only to the one destination you selected |
-| Sensors | Live acceleration (X/Y/Z, \|a\|, g), rotation rate (°/s), pitch/roll, Trill touch position and size, IMU/calibration/safe-mode state, tap and calibration events, IMU rate (device clock), frame rate, sequence gaps, skipped/dropped frames, data age. 10 s rolling charts redrawn at 30 Hz, pause/reset, CSV export | Needs firmware 0.3.0+ ([telemetry](config-protocol.md#sensor-telemetry-firmware-030)); older firmware gets an explanation, not empty charts. Streams only while the tab is open (lease renewed every ~2 s). Series are labelled and dashed, not colour-only. Lines break at gaps and invalid samples and stop at the last real frame. "Trill not detected" is shown separately from "no touch". Microphone, battery and yaw are listed as unavailable |
-| MIDI monitor | Notes, pitch bend (in semitones), channel pressure, CC74 and CC1 per channel, plus a bounded log (2000 events) with CoreMIDI timestamps, port, channel and decoded names | Real-time/clock filter (still counted), events/s, SysEx counts and summaries (first 24 bytes), pause, clear, CSV export. Never routes MIDI anywhere |
-| Configuration | Handshake, read and apply the 13 mapping parameters ([protocol](config-protocol.md)), with "device:" badges for values not yet acknowledged | One request in flight, 1 s timeout, request IDs. Detects a device restart from its boot ID |
-| Actions | MIDI panic, gyro recalibration, LED self-test, restore defaults (with confirmation) | Each is a real firmware command and is acknowledged |
-| Presets | Named presets saved in the app, JSON export and import through the system file dialogs | Ranges are validated on import. Loading a preset fills the editor; **Apply** sends it |
-| Firmware (Mac only) | Read-only assistant: validates a UF2 you pick, reads `INFO_UF2.TXT` from the bootloader drive you pick, then shows the exact `tools/xiao_uf2.py` commands with Copy buttons | **It never writes to the board.** The checks are the same as in `xiao_uf2.py`: nRF52840 family, application window `0x27000–0xEC000`, vector table, bootloader images refused, SoftDevice S140 7.3.0. SHA-256 is an integrity check, not a signature |
+The app has four tabs. The first three are for everyday use; everything detailed is under **Settings**.
+
+| Screen | What it shows |
+|---|---|
+| Splash, then **Home** | Trillium mark and a one-line description. A connection card: **"Connect your Trillium"** (plug in the USB cable) when no instrument is on the MIDI bus; **"Trillium found"** with a **Connect** button (and an optional *Connect automatically*) when its two ports appear; then **Connected** with the firmware version. Once connected, **Current sound** names the active preset (or "Custom"), says in one sentence how the mode plays, lists each input → MIDI output, and offers *Change sound*, *Edit…*, *All notes off* and *Recalibrate* |
+| **Presets** | Built-in and saved presets on one screen as cards. Choosing one applies it straight away when connected (otherwise it loads the editor). The active preset is ticked. *Save current sound…*, *Import…*, and export/delete from each saved preset's context menu. A preset that needs newer firmware says which version |
+| **Sensors** | Live acceleration, rotation, pitch/roll, touch, states, events and stream health (unchanged), with plain-language banners |
+| **Settings › Sound & mapping** | The full editor, in the order the signal flows: a live **What this sound does** summary (input → MIDI), then **1 What plays the notes** (mode: touch strip / tilt notes / theremin, with its own settings), **2 Notes**, **3 Motion controllers**, **4 Taps and strikes** (including strike directions and one note per direction), **5 Flick gestures**. Apply / Revert / Read from Trillium, with orange badges for values the device has not taken yet. Settings the firmware lacks are disabled with an "update the firmware" note |
+| **Settings › Connection** | MIDI ports (port 1 instrument, port 2 settings), Connect / Disconnect, automatic connection |
+| **Settings › MIDI monitor** | Per-channel state and a bounded log with CoreMIDI timestamps, filters and CSV export |
+| **Settings › Device** | Status, MIDI panic, recalibrate, LED self-test, restore defaults (confirmed), activity log |
+| **Settings › Firmware** (Mac) | Read-only UF2 assistant: validates an image and the bootloader drive, then shows the exact `tools/xiao_uf2.py` commands. **It never writes to the board** |
+| **Settings › About** | What Trillium is, hardware, licence |
+
+Protocol behaviour is unchanged: one request in flight, 1 s timeout, request IDs, boot-ID restart detection, and **nothing is sent until you connect**, either by pressing Connect or by turning on *Connect automatically*. Only the configuration pages the firmware advertises are read or written.
 
 **Not in this version:** Bluetooth MIDI or any wireless link (the firmware has no BLE, and the app asks for no Bluetooth permission); over-the-air updates; an iPhone firmware updater; settings stored on the device (they are RAM only); microphone audio, battery level and heading (not measured by the firmware/board); host-side processing or virtual MIDI ports; MPE. Virtual endpoints are left out on purpose for now. A processed route would need an off-by-default virtual source with loop prevention, and on iOS the app's lifetime limits it.
 
@@ -109,19 +115,17 @@ There is no App Store or TestFlight build. The code is GPL-3.0-only, and App Sto
 
 ## Using it
 
-1. **Load firmware 0.3.0 or newer** for the Sensors tab ([loading](firmware-xiao-sense.md#loading-over-usb-explicit-steps-only)); 0.2.0 is enough for configuration and the MIDI monitor. Firmware before 0.2.0 has one MIDI port and ignores configuration. The handshake then times out and the app says so.
-2. Plug in the Trill. Audio MIDI Setup shows `Trill XIAO MIDI (dev)` with two ports.
-3. **Device tab:**
-   - The monitor source is preselected to port 1. The configuration source and destination are preselected to port 2.
-   - Press **Connect**. The status shows the firmware version, the protocol, and "Settings are kept in device RAM only".
-4. **Mapping tab:** load a built-in preset or edit, then press **Apply to device**. Orange "device:" badges show what the device last acknowledged. Sounding notes are released and changed controllers return to 0 when a change is applied.
-   - **Built-in presets:** Default (touch + motion), Tilt scale, Theremin, Expressive controllers, Tap percussion, Flick gestures (experimental). Loading only fills the editor.
-   - **Sensor mode** (touch / tilt notes / theremin), **controllers A and B** (source, CC number, deadzone, smoothing), **tap sensitivity and cooldown**, **flick gestures** (off by default) and **Set current orientation as level** need firmware 0.4.0. With 0.3.0 or older they are disabled, the tab says so, and the app never sends them (the device would reject the whole request). They are tested against simulated devices only, not on hardware yet.
+1. Plug in Trillium. Home changes from "Connect your Trillium" to "Trillium found".
+2. Press **Connect** (or turn on *Connect automatically*). Home shows the current sound.
+3. **Presets:** choose a sound; it is sent immediately. Save your own from the editor with *Save current sound…*.
+4. **Settings › Sound & mapping:** fine-tune, then **Apply to Trillium**. Settings last until the instrument is unplugged; presets keep them on the Mac or iPhone.
    - Theremin: set your synth's pitch-bend range to the value shown (default ±24).
-   - Circle and twirl gestures, yaw/heading and position are not available (no magnetometer, and position cannot be tracked from this IMU).
-5. **Presets:** keep mappings across device restarts. Export or import them as `.trill.json` files.
-6. **Sensors tab:** move the board and watch acceleration, rotation and orientation; touch the Trill. The banner says whether data is live, stale, paused (the device keeps streaming) or unsupported.
-7. **MIDI tab:** watch and log what the instrument sends. Pick **port 1** as the monitor source (Device tab): it carries the instrument notes and controllers. Port 2 carries only configuration and the 50 Hz sensor stream. Trill sensor SysEx is counted but hidden from the log by default ("Hide Trill sensor SysEx"), so tap notes stay visible while the Sensors tab streams. The channel picker only chooses which channel's state is *displayed*. The line under it shows the channels the device *sends* on (notes on the touch channel, taps and flicks on the percussion channel, 10 by default) and the channels that actually had activity.
+   - Strike directions (firmware 0.5.0+): with 2, 4 or 6 directions, the direction Trillium moves when it is stopped picks the note; an unclear strike plays the "unclear direction" note.
+   - Not available: circle/twirl gestures, heading (no magnetometer) and position.
+5. **Sensors:** move the board and watch the values; the banner says whether data is live, stale, paused or unsupported.
+6. **Settings › MIDI monitor:** watch what the instrument sends on port 1. Trill sensor SysEx is hidden by default so tap notes stay visible.
+
+Firmware requirements: settings and the monitor need 0.2.0+, Sensors 0.3.0+, modes/controllers/gestures 0.4.0+, strike directions 0.5.0+. On older firmware the matching controls are disabled and never sent.
 
    In a DAW (GarageBand, Logic): enable the `…Port 1` input (GarageBand: Settings › Audio/MIDI; Logic: MIDI inputs, all enabled by default), put a software-instrument track in record/monitor, and for taps use a drum kit on, or a track receiving, channel 10. Port 2 should not be routed to an instrument.
 
@@ -140,4 +144,4 @@ A diagnostics terminal (`screen /dev/cu.usbmodem…`) is optional. The protocol 
 }
 ```
 
-Import rejects files that are the wrong format or version, have unknown keys, or have out-of-range values. Missing keys take the firmware defaults, so 0.3.0 presets load in 0.4.0 unchanged. Presets saved by app 0.4.0 include the page-1 keys (`mode`, `cc_a_source`, `cc_a_number`, `cc_b_source`, `cc_b_number`, `cc_deadzone_percent`, `cc_smoothing_ms`, `tilt_span_deg`, `gate_deg`, `step_hysteresis_percent`, `expression_cc`, `tap_threshold_cg`, `tap_cooldown_ms`, `gesture_axis`, `gesture_threshold_dps`, `gesture_cooldown_ms`, `gesture_base_note`), so app 0.3.0 rejects them as unknown keys. Presets are stored in the app's own container (`Application Support/Trill/presets.json`).
+Import rejects files that are the wrong format or version, have unknown keys, or have out-of-range values. Missing keys take the firmware defaults, so 0.3.0 presets load in 0.4.0 unchanged. Presets saved by app 0.4.0 include the page-1 keys (`mode`, `cc_a_source`, `cc_a_number`, `cc_b_source`, `cc_b_number`, `cc_deadzone_percent`, `cc_smoothing_ms`, `tilt_span_deg`, `gate_deg`, `step_hysteresis_percent`, `expression_cc`, `tap_threshold_cg`, `tap_cooldown_ms`, `gesture_axis`, `gesture_threshold_dps`, `gesture_cooldown_ms`, `gesture_base_note`), so app 0.3.0 rejects them as unknown keys. App 0.5.0 adds the page-2 keys `strike_directions` and `strike_note_down`/`_up`/`_left`/`_right`/`_forward`/`_back`; app 0.4.0 rejects such files as unknown keys. Presets are stored in the app's own container (`Application Support/Trill/presets.json`).

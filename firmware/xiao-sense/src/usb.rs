@@ -706,7 +706,7 @@ const HELP: &str = "commands: s=status now, m=MIDI map+counters, p=MIDI panic (C
 fn banner(out: &mut String<OUT_LEN>, report: &BootReport) {
     let _ = write!(
         out,
-        "\r\ntrill xiao-sense-fw {} | usb {:04x}:{:04x} (pid.codes test id) | {} | config: SysEx v1 on MIDI cable 1 (2nd port), RAM only | IMU 416 Hz ODR | Trill {} bit, poll {} ms | safe_mode={}\r\n",
+        "\r\ntrill xiao-sense-fw {} | usb {:04x}:{:04x} (pid.codes test id) | {} | config: SysEx v1 on MIDI cable 1 (2nd port), RAM only | IMU 833 Hz ODR, ±8 g | Trill {} bit, poll {} ms | safe_mode={}\r\n",
         env!("CARGO_PKG_VERSION"),
         USB_VID,
         USB_PID,

@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Versions follow [Semant
 
 ## [Unreleased]
 
+### Added (0.5.0, not yet run on hardware)
+- **Directional strikes** (firmware/protocol 0.5.0, simulation- and unit-tested): a tap also reports the board's direction of travel relative to gravity, and with 2, 4 or 6 directions each direction plays its own note on the percussion channel; ambiguous strikes play the plain percussion note. Off by default. Configuration page 2 (parameters 31–37) behind capability bit 5 (`0x20`); 0.4.0 hosts and firmware are unaffected. New vectors in `protocol/config-v1-vectors.txt`.
+- **Apple app 0.5.0 interface**: splash, then a Home screen (plug-in prompt, "Trillium found" + Connect, optional automatic connection, current sound with input → MIDI summary and quick actions); one Presets screen for built-in and saved presets that applies immediately when connected; Settings holds Sound & mapping (reorganised as what plays the notes → notes → controllers → taps and strikes → gestures), Connection (ports), MIDI monitor, Device, Firmware and About. New built-in preset *Drum strikes*. About and status texts no longer describe version history.
+- `MappingSummary` in TrillKit (plain-language input → MIDI lines) with tests.
+
+### Changed (0.5.0)
+- Firmware: the IMU task runs on its own interrupt executor (`EGU2_SWI2`, P7) so blocking Trill I²C reads in thread mode no longer delay IMU samples; IMU at **833 Hz** (was 416 Hz) and accelerometer **±8 g** (was ±4 g) so hard taps do not clip. Gyro calibration uses 800 samples (≈ 1 s). Worst-case motion-to-sample wait falls from ≈ 2.4 ms plus a possible 2.3 ms Trill read to ≈ 1.2 ms (calculated, not measured).
+- `trill-config`: duplicate-parameter tracking widened to 64 bits (parameter IDs above 31).
+
 ### Changed
 - The Apple companion app is now named **Trillium** (`Trillium.app`, schemes `TrilliumMac`/`TrilliumIOS`, artifacts `Trillium-macOS-…`, `trillium-*` CI artifacts, test kit `Trillium-<version>-<commit>`). Trill remains the name of the Bela sensor, the firmware, USB device, protocol, `TrillKit` package and repository. Bundle ID unchanged (`com.nymble.trill`).
 

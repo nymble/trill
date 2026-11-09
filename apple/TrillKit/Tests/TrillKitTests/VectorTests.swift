@@ -24,7 +24,7 @@ final class VectorTests: XCTestCase {
 
     func testRequestsMatchRustEncoder() throws {
         let v = try Self.loadVectors()
-        XCTAssertEqual(v.count, 33)
+        XCTAssertEqual(v.count, 36)
         XCTAssertEqual(TrillCodec.hello(1), v["hello"]!.request)
         XCTAssertEqual(TrillCodec.getConfig(2), v["get_config"]!.request)
         XCTAssertEqual(TrillCodec.setConfig(3, [(.channel, 2), (.pitchMode, 1)]), v["set_channel_steps"]!.request)
@@ -37,6 +37,9 @@ final class VectorTests: XCTestCase {
         XCTAssertEqual(TrillCodec.setConfig(27, [(.gestureAxis, 3), (.gestureThresholdDps, 500), (.gestureBaseNote, 70)]), v["set_flick_gestures"]!.request)
         XCTAssertEqual(TrillCodec.action(30, .zeroOrientation), v["action_zero_orientation"]!.request)
         XCTAssertNil(TrillCodec.setConfig(29, [(.tapThresholdCg, 10)]))
+        XCTAssertEqual(TrillCodec.getConfig(31, page: 2), v["get_config_page2"]!.request)
+        XCTAssertEqual(TrillCodec.setConfig(32, [(.strikeDirections, 4), (.strikeNoteDown, 36), (.strikeNoteRight, 46)]), v["set_strikes"]!.request)
+        XCTAssertNil(TrillCodec.setConfig(33, [(.strikeDirections, 3)]))
         // The app refuses to encode requests the device would reject.
         XCTAssertNil(TrillCodec.setConfig(5, [(.channel, 2), (.bendRange, 30)]))
         XCTAssertNil(TrillCodec.setConfig(7, [(.baseNote, 60), (.baseNote, 61)]))
@@ -76,6 +79,16 @@ final class VectorTests: XCTestCase {
             return .config(requestID: 22, generation: g, persistent: pe, page: pg, c)
         })
         guard case .actionAck(30, .zeroOrientation)? = TrillCodec.decodeReply(v["action_zero_orientation"]!.reply!) else { return XCTFail("zero") }
+        guard case let .config(_, _, _, 2, p2)? = TrillCodec.decodeReply(v["get_config_page2"]!.reply!) else { return XCTFail("page 2") }
+        XCTAssertEqual(p2, DeviceConfig.firmwareDefaults, "page-2 defaults match firmware")
+        guard case let .config(_, _, _, 2, st)? = TrillCodec.decodeReply(v["set_strikes"]!.reply!) else { return XCTFail("strikes") }
+        XCTAssertEqual(st[.strikeDirections], 4)
+        XCTAssertEqual(st[.strikeNoteDown], 36)
+        XCTAssertEqual(st[.strikeNoteRight], 46)
+        guard case let .hello(_, h)? = TrillCodec.decodeReply(v["hello"]!.reply!) else { return XCTFail("hello") }
+        XCTAssertTrue(h.supportsStrikes)
+        XCTAssertEqual(h.pages, [0, 1, 2])
+        XCTAssertEqual(h.paramCount, TrillParam.allCases.count)
 
         guard case let .config(_, gen2, _, _, cfg2)? = TrillCodec.decodeReply(v["set_channel_steps"]!.reply!) else { return XCTFail("set") }
         XCTAssertEqual(gen2, 1)
@@ -95,7 +108,8 @@ final class VectorTests: XCTestCase {
             ("too_long", .tooLong, 0),
             ("bad_version", .badVersion, 1),
             ("unknown_type", .unknownType, 0x20),
-            ("get_config_bad_page", .outOfRange, 2),
+            ("get_config_bad_page", .outOfRange, 3),
+            ("set_strikes_odd", .outOfRange, TrillParam.strikeDirections.rawValue),
             ("get_config_bad_length", .badLength, 2),
             ("set_tap_out_of_range", .outOfRange, TrillParam.tapThresholdCg.rawValue),
         ]

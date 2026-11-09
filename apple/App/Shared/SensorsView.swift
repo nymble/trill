@@ -265,22 +265,22 @@ struct StatusBanner: View {
         let requested: Int = s.telemetryRate ?? model.telemetryRateHz
         if !s.isReady {
             return Info(title: "Not connected",
-                        detail: "Connect to the Trill on the Device tab. Sensor data comes from the device's configuration port.",
+                        detail: "Connect to Trillium on the Home tab to see its sensors live.",
                         icon: "cable.connector", color: .secondary)
         }
         if !s.supportsTelemetry {
             let fw: String = s.hello?.firmwareString ?? "?"
-            return Info(title: "Sensors unsupported until the firmware is updated",
-                        detail: "This device reports firmware \(fw); live sensor data needs \(TrillProtocol.telemetryMinimumFirmware) or newer. Install the matching UF2 (double-press RESET to show the XIAO-SENSE drive; see the Firmware tab). MIDI keeps working on the current firmware.",
+            return Info(title: "Update the firmware to see sensors",
+                        detail: "This Trillium runs firmware \(fw); live sensors need \(TrillProtocol.telemetryMinimumFirmware) or newer. See Settings › Firmware. Playing works on the current firmware.",
                         icon: "exclamationmark.triangle", color: .orange)
         }
         if let e = s.telemetryError {
-            return Info(title: "The device refused the sensor stream", detail: e, icon: "xmark.octagon", color: .red)
+            return Info(title: "Trillium refused the sensor stream", detail: e, icon: "xmark.octagon", color: .red)
         }
         if model.sensorsPaused {
             let n: Int = model.liveTelemetry.framesReceived - model.framesAtPause
             return Info(title: "Display paused",
-                        detail: "The device is still streaming: \(n) frames received since pausing. Resume to see them.",
+                        detail: "Trillium is still streaming: \(n) frames received since pausing. Resume to see them.",
                         icon: "pause.circle", color: .blue)
         }
         if !model.sensorsLive {
@@ -294,7 +294,7 @@ struct StatusBanner: View {
             }
             return Info(title: "Waiting for sensor data…", detail: "Requested \(requested) Hz.", icon: "hourglass", color: .orange)
         }
-        let detail: String = String(format: "%ld Hz requested, %.0f frames/s arriving. Telemetry is a sampled snapshot of the %.0f Hz IMU, not every sample.",
+        let detail: String = String(format: "%ld Hz requested, %.0f frames/s arriving. The display samples the %.0f Hz motion sensor; it doesn't show every reading.",
                                     requested, t.frameRate, t.imuRate)
         return Info(title: "Live", detail: detail, icon: "dot.radiowaves.left.and.right", color: .green)
     }

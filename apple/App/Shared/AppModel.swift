@@ -41,6 +41,16 @@ final class AppModel: ObservableObject {
     @Published private(set) var sessionRevision = 0
     @Published var draft = DeviceConfig.firmwareDefaults
 
+    // Navigation
+    @Published var tab: AppTab = .home
+    @Published var settingsPath: [SettingsPage] = []
+
+    /// Jump to the full mapping editor (Settings › Sound & mapping).
+    func openMapping() {
+        settingsPath = [.mapping]
+        tab = .settings
+    }
+
     // Presets
     @Published private(set) var presets: [Preset] = []
     @Published var presetError: String?
@@ -104,6 +114,7 @@ final class AppModel: ObservableObject {
         }
         applyMonitorSource()
         if let id = configSourceID { _ = c.setConfigSource(sources.contains { $0.id == id } ? id : nil) }
+        if autoConnect, trillDetected, session.phase == .disconnected { connectToDetected() }
     }
 
     private func applyMonitorSource() {
@@ -116,6 +127,42 @@ final class AppModel: ObservableObject {
     func destination(_ id: MIDIUniqueID?) -> MIDIEndpointInfo? { destinations.first { $0.id == id } }
 
     var destinationLooksLikeTrill: Bool { destination(configDestinationID)?.isTrill ?? false }
+
+    /// A Trillium (online) is on the MIDI bus: both configuration endpoints
+    /// (port 2) are present.
+    var trillDetected: Bool {
+        sources.contains { $0.isTrill && $0.portIndex == 1 && !$0.isOffline }
+            && destinations.contains { $0.isTrill && $0.portIndex == 1 && !$0.isOffline }
+    }
+
+    /// Connect automatically when a Trillium appears (Settings › Connection).
+    var autoConnect: Bool {
+        get { UserDefaults.standard.bool(forKey: "autoConnect") }
+        set { UserDefaults.standard.set(newValue, forKey: "autoConnect"); objectWillChange.send() }
+    }
+
+    /// Select the detected Trillium's ports and start the handshake.
+    func connectToDetected() {
+        if let s = sources.first(where: { $0.isTrill && $0.portIndex == 1 && !$0.isOffline }) { configSourceID = s.id }
+        if let d = destinations.first(where: { $0.isTrill && $0.portIndex == 1 && !$0.isOffline }) { configDestinationID = d.id }
+        if let s = sources.first(where: { $0.isTrill && $0.portIndex == 0 && !$0.isOffline }) { monitorSourceID = s.id }
+        connectConfig()
+    }
+
+    /// Name of the built-in or saved preset matching what the device runs
+    /// (or the editor, when not connected).
+    var activePresetName: String? {
+        let cfg = session.acknowledged ?? draft
+        let pages = session.supportedPages
+        let same = { (c: DeviceConfig) in c.changes(from: cfg, pages: pages).isEmpty }
+        return BuiltInPreset.all.first { same($0.config) }?.name ?? presets.first { same($0.config) }?.name
+    }
+
+    /// Load a preset into the editor and, if connected, send it.
+    func use(_ config: DeviceConfig) {
+        draft = config
+        if session.isReady { applyDraft() }
+    }
 
     // MARK: Session
 

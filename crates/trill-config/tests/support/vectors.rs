@@ -144,7 +144,7 @@ pub fn vectors() -> Vec<(&'static str, Vec<u8>)> {
         ("get_config_page1", request::get_config_page(23, 1).to_vec()),
         (
             "get_config_bad_page",
-            request::get_config_page(24, 2).to_vec(),
+            request::get_config_page(24, 3).to_vec(),
         ),
         (
             "get_config_bad_length",
@@ -191,6 +191,27 @@ pub fn vectors() -> Vec<(&'static str, Vec<u8>)> {
         (
             "action_zero_orientation",
             request::action(30, Action::ZeroOrientation).to_vec(),
+        ),
+        // Firmware 0.5 (CAP_STRIKES): directional strikes on page 2.
+        ("get_config_page2", request::get_config_page(31, 2).to_vec()),
+        (
+            "set_strikes",
+            request::set_config(
+                32,
+                &[
+                    (Param::StrikeDirections, 4),
+                    (Param::StrikeNoteDown, 36),
+                    (Param::StrikeNoteRight, 46),
+                ],
+            )
+            .unwrap()
+            .to_vec(),
+        ),
+        (
+            "set_strikes_odd",
+            request::set_config(33, &[(Param::StrikeDirections, 3)])
+                .unwrap()
+                .to_vec(),
         ),
     ]
 }

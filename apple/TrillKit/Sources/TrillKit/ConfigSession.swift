@@ -116,12 +116,14 @@ public final class ConfigSession {
 
     public func refresh(now: TimeInterval) {
         enqueue(.getConfig, now: now)
-        if supportsConfigPages { enqueue(.getConfigPage(1), now: now) }
+        for page in supportedPages.sorted() where page > 0 { enqueue(.getConfigPage(page), now: now) }
     }
 
-    /// Pages this device has: page 0 always, page 1 with firmware 0.4.0+.
-    public var supportedPages: Set<Int> { supportsConfigPages ? [0, 1] : [0] }
+    /// Pages this device has: page 0 always, page 1 with firmware 0.4.0+,
+    /// page 2 with 0.5.0+.
+    public var supportedPages: Set<Int> { hello?.pages ?? [0] }
     public var supportsConfigPages: Bool { hello?.supportsConfigPages ?? false }
+    public var supportsStrikes: Bool { hello?.supportsStrikes ?? false }
 
     /// Parameters the connected device does not have (empty when not connected).
     public func unsupported(_ p: TrillParam) -> Bool { hello != nil && !supportedPages.contains(p.page) }
@@ -213,8 +215,7 @@ public final class ConfigSession {
             lastBootID = h.bootID
             hello = h
             note(now, "handshake: firmware \(h.firmwareString)\(h.isPCMSynthBuild ? " (pcm-synth)" : ""), protocol v\(h.protocolVersion), \(ms) ms")
-            queue.insert(.getConfig, at: 0)
-            if h.supportsConfigPages { queue.insert(.getConfigPage(1), at: 1) }
+            queue.insert(contentsOf: [.getConfig] + h.pages.sorted().dropFirst().map { .getConfigPage($0) }, at: 0)
         case let .config(_, gen, _, page, cfg):
             var merged = acknowledged ?? DeviceConfig()
             for param in TrillParam.params(page: page) { merged[param] = cfg[param] }
@@ -222,9 +223,9 @@ public final class ConfigSession {
             receivedPages.insert(page)
             generation = gen
             if phase == .handshaking, receivedPages.isSuperset(of: supportedPages) { phase = .ready }
-            // Restoring defaults replies with page 0 only: read page 1 too.
-            if p.request == .action(.restoreDefaults), supportsConfigPages {
-                queue.insert(.getConfigPage(1), at: 0)
+            // Restoring defaults replies with page 0 only: read the others too.
+            if p.request == .action(.restoreDefaults) {
+                queue.insert(contentsOf: supportedPages.sorted().dropFirst().map { .getConfigPage($0) }, at: 0)
             }
             note(now, "\(p.request.title): acknowledged, generation \(gen), \(ms) ms")
         case let .actionAck(_, a):

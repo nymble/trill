@@ -44,6 +44,10 @@ public enum TrillProtocol {
     public static let capConfigPages: UInt8 = 0x10
     /// Oldest firmware with paged configuration (sensor modes, gestures).
     public static let configPagesMinimumFirmware = "0.4.0"
+    /// Directional strikes: page 2, parameters 31...37 (firmware 0.5.0+).
+    public static let capStrikes: UInt8 = 0x20
+    /// Oldest firmware with directional strikes.
+    public static let strikesMinimumFirmware = "0.5.0"
 }
 
 /// Device-side error codes.
@@ -94,6 +98,29 @@ public enum SensorMode: Int, CaseIterable, Sendable {
         case .theremin: return "Theremin (continuous tilt pitch)"
         }
     }
+    /// Short name for the home screen and pickers.
+    public var name: String {
+        switch self {
+        case .touch: return "Touch strip"
+        case .tiltNotes: return "Tilt notes"
+        case .theremin: return "Theremin"
+        }
+    }
+    /// One sentence on how this mode plays.
+    public var howItPlays: String {
+        switch self {
+        case .touch: return "Slide a finger along the strip to play notes; press harder for more pressure."
+        case .tiltNotes: return "Tilt forward to start a note, roll left/right to step through a scale, tilt back to stop."
+        case .theremin: return "Tilt forward to start a note, roll left/right to glide the pitch smoothly, tilt back to stop."
+        }
+    }
+    public var symbol: String {
+        switch self {
+        case .touch: return "hand.draw"
+        case .tiltNotes: return "level"
+        case .theremin: return "waveform"
+        }
+    }
 }
 
 /// Values of `TrillParam.ccASource` / `.ccBSource`.
@@ -114,17 +141,28 @@ public enum CCSource: Int, CaseIterable, Sendable {
 }
 
 /// Configurable parameters. IDs 1...13 (page 0) exist since firmware 0.2.0;
-/// IDs 14...30 (page 1) need firmware 0.4.0 (`capConfigPages`).
+/// IDs 14...30 (page 1) need firmware 0.4.0 (`capConfigPages`); IDs 31...37
+/// (page 2, directional strikes) need firmware 0.5.0 (`capStrikes`).
 public enum TrillParam: UInt8, CaseIterable, Codable, Sendable {
     case channel = 1, baseNote, rangeSemitones, scale, pitchMode, bendRange, velocityMin,
          motionEnabled, rotationFullDps, tiltFullDeg, percussionEnabled, percussionChannel, percussionNote
     case mode = 14, ccASource, ccANumber, ccBSource, ccBNumber, ccDeadzone, ccSmoothingMs,
          tiltSpanDeg, gateDeg, stepHysteresis, expressionCC, tapThresholdCg, tapCooldownMs,
          gestureAxis, gestureThresholdDps, gestureCooldownMs, gestureBaseNote
+    case strikeDirections = 31, strikeNoteDown, strikeNoteUp, strikeNoteLeft, strikeNoteRight,
+         strikeNoteForward, strikeNoteBack
 
     /// Configuration page (a `CONFIG` reply carries one page).
-    public var page: Int { rawValue <= 13 ? 0 : 1 }
-    public static let pageCount = 2
+    public var page: Int { rawValue <= 13 ? 0 : rawValue <= 30 ? 1 : 2 }
+    public static let pageCount = 3
+    /// The strike note parameters, in direction order.
+    public static let strikeNotes: [TrillParam] = [.strikeNoteDown, .strikeNoteUp, .strikeNoteLeft,
+                                                   .strikeNoteRight, .strikeNoteForward, .strikeNoteBack]
+
+    /// True if the device accepts `v` (range, plus even-only strike counts).
+    public func accepts(_ v: Int) -> Bool {
+        range.contains(v) && (self != .strikeDirections || v % 2 == 0)
+    }
     public static func params(page: Int) -> [TrillParam] { allCases.filter { $0.page == page } }
 
     public var range: ClosedRange<Int> {
@@ -152,6 +190,9 @@ public enum TrillParam: UInt8, CaseIterable, Codable, Sendable {
         case .gestureThresholdDps: return 100...2000
         case .gestureCooldownMs: return 100...2000
         case .gestureBaseNote: return 0...125
+        case .strikeDirections: return 0...6
+        case .strikeNoteDown, .strikeNoteUp, .strikeNoteLeft, .strikeNoteRight, .strikeNoteForward,
+             .strikeNoteBack: return 0...127
         }
     }
 
@@ -188,6 +229,13 @@ public enum TrillParam: UInt8, CaseIterable, Codable, Sendable {
         case .gestureThresholdDps: return 400
         case .gestureCooldownMs: return 300
         case .gestureBaseNote: return 60
+        case .strikeDirections: return 0
+        case .strikeNoteDown: return 38
+        case .strikeNoteUp: return 49
+        case .strikeNoteLeft: return 36
+        case .strikeNoteRight: return 42
+        case .strikeNoteForward: return 45
+        case .strikeNoteBack: return 51
         }
     }
 
@@ -224,6 +272,13 @@ public enum TrillParam: UInt8, CaseIterable, Codable, Sendable {
         case .gestureThresholdDps: return "gesture_threshold_dps"
         case .gestureCooldownMs: return "gesture_cooldown_ms"
         case .gestureBaseNote: return "gesture_base_note"
+        case .strikeDirections: return "strike_directions"
+        case .strikeNoteDown: return "strike_note_down"
+        case .strikeNoteUp: return "strike_note_up"
+        case .strikeNoteLeft: return "strike_note_left"
+        case .strikeNoteRight: return "strike_note_right"
+        case .strikeNoteForward: return "strike_note_forward"
+        case .strikeNoteBack: return "strike_note_back"
         }
     }
 
@@ -242,7 +297,11 @@ public struct DeviceConfig: Equatable, Hashable, Sendable {
 
     public subscript(p: TrillParam) -> Int {
         get { values[p] ?? p.defaultValue }
-        set { values[p] = min(max(newValue, p.range.lowerBound), p.range.upperBound) }
+        set {
+            var v = min(max(newValue, p.range.lowerBound), p.range.upperBound)
+            if p == .strikeDirections, v % 2 == 1 { v += 1 }
+            values[p] = v
+        }
     }
 
     /// Parameters whose values differ from `other`, in ID order, limited to
@@ -272,6 +331,10 @@ public enum TrillReply: Equatable, Sendable {
         public var supportsTelemetry: Bool { capabilities & TrillProtocol.capTelemetry != 0 }
         /// Parameters 14...30 and action 5 (firmware 0.4.0+).
         public var supportsConfigPages: Bool { capabilities & TrillProtocol.capConfigPages != 0 }
+        /// Parameters 31...37, directional strikes (firmware 0.5.0+).
+        public var supportsStrikes: Bool { supportsConfigPages && capabilities & TrillProtocol.capStrikes != 0 }
+        /// Configuration pages this firmware has.
+        public var pages: Set<Int> { supportsStrikes ? [0, 1, 2] : supportsConfigPages ? [0, 1] : [0] }
         public static func == (a: Hello, b: Hello) -> Bool {
             a.protocolVersion == b.protocolVersion && a.firmware == b.firmware && a.variant == b.variant
                 && a.capabilities == b.capabilities && a.maxMessageLength == b.maxMessageLength
@@ -322,7 +385,7 @@ public enum TrillCodec {
         guard Set(values.map(\.0)).count == values.count else { return nil }
         var m = header(.setConfig, id)
         for (p, v) in values {
-            guard p.range.contains(v) else { return nil }
+            guard p.accepts(v) else { return nil }
             m += [p.rawValue, UInt8((v >> 7) & 0x7F), UInt8(v & 0x7F)]
         }
         return m + [0xF7]
@@ -354,7 +417,7 @@ public enum TrillCodec {
                 // Unknown IDs (newer firmware) are skipped, not fatal.
                 guard let param = TrillParam(rawValue: p[i]) else { continue }
                 let v = u14(p[i + 1], p[i + 2])
-                guard param.range.contains(v), !seen.contains(param) else { return nil }
+                guard param.accepts(v), !seen.contains(param) else { return nil }
                 seen.insert(param)
                 cfg[param] = v
             }

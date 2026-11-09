@@ -10,10 +10,14 @@
 //! |---|---|---|---|
 //! | high | EGU1_SWI1 | P5 | audio (debug synth block render; only with feature `pcm-synth`) |
 //! | med | EGU0_SWI0 | P6 | USB device, diagnostics, MIDI writer, PCM stream (`pcm-synth`) |
-//! | thread | — | lowest | IMU, Trill (blocking I²C with timeouts), LED, health |
+//! | imu | EGU2_SWI2 | P7 | IMU (833 Hz, short blocking I²C reads on its own bus) |
+//! | thread | — | lowest | Trill (blocking I²C with timeouts), LED, health |
 //!
 //! Sensor I/O may block for bounded time (I²C timeouts) without delaying
-//! USB (or audio), because both preempt thread mode. Touch and IMU are
+//! USB (or audio), because both preempt it. The IMU has its own executor
+//! (0.5.0): a Trill read (≈ 2.3 ms at 100 kHz) blocks thread mode and used
+//! to delay IMU samples, adding up to one sample period of jitter to taps
+//! and motion. Touch and IMU are
 //! separate tasks: each hands its own timestamped samples to the event
 //! engine (`instrument-events`), so either keeps working without the other.
 //! The default build has no audio task and no high-priority executor.
@@ -62,6 +66,7 @@ bind_interrupts!(pub struct Irqs {
 #[cfg(feature = "pcm-synth")]
 static EXECUTOR_HIGH: InterruptExecutor = InterruptExecutor::new();
 static EXECUTOR_MED: InterruptExecutor = InterruptExecutor::new();
+static EXECUTOR_IMU: InterruptExecutor = InterruptExecutor::new();
 static EXECUTOR_LOW: StaticCell<Executor> = StaticCell::new();
 
 #[cfg(feature = "pcm-synth")]
@@ -75,6 +80,12 @@ unsafe fn EGU1_SWI1() {
 unsafe fn EGU0_SWI0() {
     // SAFETY: called only from this interrupt.
     unsafe { EXECUTOR_MED.on_interrupt() }
+}
+
+#[interrupt]
+unsafe fn EGU2_SWI2() {
+    // SAFETY: called only from this interrupt.
+    unsafe { EXECUTOR_IMU.on_interrupt() }
 }
 
 static REPORT: StaticCell<crash::BootReport> = StaticCell::new();
@@ -236,8 +247,12 @@ fn main() -> ! {
         TWIM_TRILL_BUF.take(),
     );
 
+    // IMU above thread mode (Trill's blocking reads) and below USB.
+    interrupt::EGU2_SWI2.set_priority(Priority::P7);
+    let imu_exec = EXECUTOR_IMU.start(interrupt::EGU2_SWI2);
+    imu_exec.spawn(imu::imu_task(imu_twim, imu_power, imu_int1).unwrap());
+
     executor.run(|spawner| {
-        spawner.spawn(imu::imu_task(imu_twim, imu_power, imu_int1).unwrap());
         spawner.spawn(trill::trill_task(trill_twim).unwrap());
         spawner.spawn(led_task(led, previous_crash).unwrap());
         spawner.spawn(health_task().unwrap());
