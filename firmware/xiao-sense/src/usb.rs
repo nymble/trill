@@ -142,11 +142,116 @@ pub async fn usb_task(usbd: Peri<'static, peripherals::USBD>, report: &'static B
     embassy_futures::join::join3(dev.run(), diag_loop(f.diag, report), midi_loop(f.midi)).await;
 }
 
-/// Fill `buf` with up to `MIDI_EVENTS_PER_PACKET` USB-MIDI events. Returns
-/// (bytes, contains a note on).
+/// A configuration reply being sent on cable 1, a few events per packet.
+struct PendingReply {
+    packets: [[u8; 4]; trill_config::usb::MAX_PACKETS],
+    len: usize,
+    next: usize,
+}
+
+impl PendingReply {
+    const fn new() -> Self {
+        Self {
+            packets: [[0; 4]; trill_config::usb::MAX_PACKETS],
+            len: 0,
+            next: 0,
+        }
+    }
+    fn is_empty(&self) -> bool {
+        self.next >= self.len
+    }
+    /// Load the next queued reply if idle.
+    fn refill(&mut self) {
+        if !self.is_empty() {
+            return;
+        }
+        if let Ok(r) = CONFIG_REPLIES.try_receive() {
+            self.len =
+                trill_config::usb::encode_sysex(trill_usb::CABLE_CONFIG, &r, &mut self.packets)
+                    .unwrap_or(0);
+            self.next = 0;
+        }
+    }
+    /// Load a telemetry frame if idle and nothing else is queued.
+    fn load_telemetry(&mut self, frame: &trill_config::Reply) -> bool {
+        if !self.is_empty() || !CONFIG_REPLIES.is_empty() {
+            return false;
+        }
+        self.len =
+            trill_config::usb::encode_sysex(trill_usb::CABLE_CONFIG, frame, &mut self.packets)
+                .unwrap_or(0);
+        self.next = 0;
+        self.len > 0
+    }
+    fn clear(&mut self) {
+        self.len = 0;
+        self.next = 0;
+    }
+}
+
+/// Build one telemetry frame from the latest published sensor values.
+/// Each source is read in one short critical section; nothing here blocks
+/// the sensor tasks or allocates.
+fn telemetry_frame(
+    sched: &mut trill_config::telemetry::Schedule,
+    last_imu: &mut u32,
+) -> trill_config::Reply {
+    use trill_config::telemetry::{self, Frame, Sample};
+    let snap = SENSOR_SNAPSHOT.lock(|c| c.get());
+    let touch = TOUCH.lock(|c| c.get());
+    let imu_state = STATS.imu_state.load(Ordering::Relaxed);
+    let trill_state = STATS.trill_state.load(Ordering::Relaxed);
+    let imu_samples = STATS.imu_samples.load(Ordering::Relaxed);
+    let mut f = Frame {
+        seq: sched.next_seq(),
+        t_ms: (snap.t_us / 1000) as u32,
+        imu_state,
+        trill_state,
+        imu_samples: (imu_samples & 0x3FFF) as u16,
+        taps: (STATS.imu_taps.load(Ordering::Relaxed) & 0x3FFF) as u16,
+        calibrations: (STATS.imu_calibrations.load(Ordering::Relaxed) & 0x7F) as u8,
+        skipped: sched.skipped,
+        trill_frames: (STATS.trill_reads.load(Ordering::Relaxed) & 0x3FFF) as u16,
+        ..Frame::default()
+    };
+    if snap.calibrated {
+        f.flags |= telemetry::FLAG_CALIBRATED;
+    }
+    if imu_samples != *last_imu {
+        f.flags |= telemetry::FLAG_IMU_NEW;
+    }
+    *last_imu = imu_samples;
+    if SAFE_MODE.load(Ordering::Relaxed) {
+        f.flags |= telemetry::FLAG_SAFE_MODE;
+    }
+    let trill_running = trill_state == SensorState::Running as u8;
+    f.set_sample(
+        &Sample {
+            accel_g: snap.accel_g,
+            gyro_dps: snap.gyro_dps,
+            pitch_deg: snap.pitch_deg,
+            roll_deg: snap.roll_deg,
+            touch: if trill_running {
+                touch.location.map(|l| (l, touch.size))
+            } else {
+                None
+            },
+        },
+        imu_state == SensorState::Running as u8 && snap.t_us != 0,
+    );
+    bump(&STATS.telemetry_frames);
+    telemetry::encode(&f)
+}
+
+/// Fill `buf` with up to `MIDI_EVENTS_PER_PACKET` USB-MIDI events: the
+/// engine's instrument events (cable 0) first, then spare slots with
+/// configuration-reply events (cable 1). Cables are independent streams in
+/// USB-MIDI, so a reply can be interleaved with notes and never delays
+/// them. Returns (bytes, contains a note on).
 fn fill_packet(
     e: &mut instrument_events::Engine,
     now: u32,
+    reply: &mut PendingReply,
     buf: &mut [u8; MAX_PACKET],
 ) -> (usize, bool) {
     let mut n = 0;
@@ -154,11 +259,92 @@ fn fill_packet(
     while n < MIDI_EVENTS_PER_PACKET {
         let Some(m) = e.next_message(now) else { break };
         note_on |= matches!(m, instrument_events::MidiMessage::NoteOn { .. });
-        buf[4 * n..4 * n + 4].copy_from_slice(&m.usb_packet(0));
+        buf[4 * n..4 * n + 4].copy_from_slice(&m.usb_packet(trill_usb::CABLE_INSTRUMENT));
+        n += 1;
+    }
+    while n < MIDI_EVENTS_PER_PACKET && !reply.is_empty() {
+        buf[4 * n..4 * n + 4].copy_from_slice(&reply.packets[reply.next]);
+        reply.next += 1;
         n += 1;
     }
     (4 * n, note_on)
 }
+
+/// Handle one complete SysEx message from cable 1 and queue the reply.
+/// Validation happens in `trill-config`; only the listed side effects are
+/// possible (no memory or pin access is reachable from a message).
+async fn config_request(msg: &[u8], truncated: bool) {
+    let info = trill_config::DeviceInfo {
+        firmware: FW_VERSION,
+        variant: if cfg!(feature = "pcm-synth") {
+            trill_config::VARIANT_PCM_SYNTH
+        } else {
+            0
+        },
+        uptime_s: Instant::now().as_secs() as u32,
+        boot_id: BOOT_ID.load(Ordering::Relaxed),
+    };
+    let outcome = with_engine(|e| {
+        let gen = CONFIG_GEN.load(Ordering::Relaxed);
+        let o = trill_config::handle(msg, truncated, e.config(), gen, &info)?;
+        if let Some(c) = o.config {
+            // Releases a sounding note, re-centres bend / resends RPN 0 if
+            // needed, and waits for the finger to lift (engine contract).
+            e.set_config(c);
+            CONFIG_GEN.store(o.generation, Ordering::Relaxed);
+        }
+        Some(o)
+    })
+    .flatten();
+    let Some(o) = outcome else {
+        bump(&STATS.config_ignored);
+        return;
+    };
+    match o.action {
+        Some(trill_config::Action::Panic) => {
+            MIDI_REQUEST.fetch_or(MIDI_REQ_PANIC, Ordering::Relaxed);
+        }
+        Some(trill_config::Action::RecalibrateGyro) => RECALIBRATE.store(true, Ordering::Relaxed),
+        Some(trill_config::Action::LedSelfTest) => LED_COMMAND.store(b'L', Ordering::Relaxed),
+        Some(trill_config::Action::ZeroOrientation) => {
+            // Ignored (still acknowledged) until the IMU is calibrated.
+            let _ = with_engine(|e| e.zero_orientation());
+        }
+        Some(trill_config::Action::RestoreDefaults) => {
+            let _ = with_engine(|e| e.clear_zero());
+        }
+        None => {}
+    }
+    if let Some(rate) = o.telemetry {
+        TELEMETRY_REQUEST.store(rate, Ordering::Relaxed);
+    }
+    bump(&STATS.config_requests);
+    CONFIG_REPLIES.send(o.reply).await;
+    MIDI_WAKE.signal(());
+}
+
+/// Firmware version for the protocol (from Cargo.toml).
+const FW_VERSION: [u8; 3] = {
+    const fn parse(s: &str) -> u8 {
+        let b = s.as_bytes();
+        let mut i = 0;
+        let mut v: u32 = 0;
+        while i < b.len() {
+            v = v * 10 + (b[i] - b'0') as u32;
+            i += 1;
+        }
+        if v > 127 {
+            127
+        } else {
+            v as u8
+        }
+    }
+    [
+        parse(env!("CARGO_PKG_VERSION_MAJOR")),
+        parse(env!("CARGO_PKG_VERSION_MINOR")),
+        parse(env!("CARGO_PKG_VERSION_PATCH")),
+    ]
+};
 
 /// Write one packet without ever abandoning it half way: a slow host only
 /// delays it (counted as a stall every `MIDI_STALL_MS`); a bus disconnect
@@ -184,18 +370,34 @@ async fn midi_write(
 
 async fn midi_loop(class: MidiClass<'static, UsbDriver>) {
     let (mut tx, mut rx) = class.split();
-    // Host -> device MIDI is read and discarded so the host never blocks.
+    // Host -> device: cable 1 SysEx is the configuration protocol; anything
+    // else (notes, clock, cable 0) is read and discarded so the host never
+    // blocks. A message is at most 64 bytes, so parsing is bounded.
     let reader = async {
         let mut buf = [0u8; MAX_PACKET];
+        let mut asm = trill_config::usb::Assembler::new(trill_usb::CABLE_CONFIG);
+        let mut msg = [0u8; trill_config::MAX_MESSAGE_LEN];
         loop {
             rx.wait_connection().await;
-            if rx.read_packet(&mut buf).await.is_ok() {
-                bump(&STATS.midi_rx_packets);
+            let Ok(n) = rx.read_packet(&mut buf).await else {
+                asm = trill_config::usb::Assembler::new(trill_usb::CABLE_CONFIG);
+                continue;
+            };
+            bump(&STATS.midi_rx_packets);
+            for p in buf[..n - n % 4].chunks_exact(4) {
+                if let Some(c) = asm.push_packet([p[0], p[1], p[2], p[3]]) {
+                    let m = asm.message(c);
+                    msg[..m.len()].copy_from_slice(m);
+                    config_request(&msg[..m.len()], c.truncated).await;
+                }
             }
         }
     };
     let writer = async {
         let mut buf = [0u8; MAX_PACKET];
+        let mut reply = PendingReply::new();
+        let mut sched = trill_config::telemetry::Schedule::new();
+        let mut last_imu = 0u32;
         loop {
             tx.wait_connection().await;
             if !USB_READY.load(Ordering::Relaxed) {
@@ -213,18 +415,35 @@ async fn midi_loop(class: MidiClass<'static, UsbDriver>) {
                     break;
                 }
                 let now = now_us32();
+                reply.refill();
+                // Telemetry: lowest priority on cable 1 (after config
+                // replies), and instrument events always fill the packet
+                // first. A frame that cannot go out in its period is
+                // skipped and counted; values are sampled when it is sent.
+                let t64 = Instant::now().as_micros();
+                let req = TELEMETRY_REQUEST.swap(TELEMETRY_NO_CHANGE, Ordering::Relaxed);
+                if req != TELEMETRY_NO_CHANGE {
+                    sched.subscribe(req, t64);
+                }
+                if reply.is_empty() && CONFIG_REPLIES.is_empty() && sched.due(t64) {
+                    let frame = telemetry_frame(&mut sched, &mut last_imu);
+                    reply.load_telemetry(&frame);
+                }
+                TELEMETRY_RATE.store(sched.rate_hz(), Ordering::Relaxed);
                 let (n, note_on) = with_engine(|e| {
                     if MIDI_REQUEST.swap(0, Ordering::Relaxed) & MIDI_REQ_PANIC != 0 {
                         e.panic(now);
                     }
                     e.tick(now);
-                    fill_packet(e, now, &mut buf)
+                    fill_packet(e, now, &mut reply, &mut buf)
                 })
                 .unwrap_or((0, false));
                 if n == 0 {
                     let _ = select(MIDI_WAKE.wait(), Timer::after_millis(MIDI_TICK_MS)).await;
                     continue;
                 }
+                // `n` can be non-zero with only telemetry in it; that is a
+                // normal packet on cable 1.
                 if note_on {
                     crate::timing::note_write(true);
                 }
@@ -244,6 +463,13 @@ async fn midi_loop(class: MidiClass<'static, UsbDriver>) {
             // while unplugged are the host's responsibility.
             MIDI_CONFIGURED.store(false, Ordering::Relaxed);
             with_engine(|e| e.disconnect());
+            // Replies to a previous connection are meaningless now, and a
+            // telemetry subscription ends with the connection.
+            reply.clear();
+            sched.stop();
+            TELEMETRY_RATE.store(0, Ordering::Relaxed);
+            TELEMETRY_REQUEST.store(TELEMETRY_NO_CHANGE, Ordering::Relaxed);
+            while CONFIG_REPLIES.try_receive().is_ok() {}
         }
     };
     join(reader, writer).await;
@@ -332,7 +558,7 @@ fn midi_summary(out: &mut String<OUT_LEN>) {
     let (note, st) = with_engine(|e| (e.active_note(), e.stats())).unwrap_or_default();
     let _ = write!(
         out,
-        " | midi={} note={} on={} off={} pk={} ev={} stall={} werr={} defer={} coal={}",
+        " | midi={} note={} on={} off={} pk={} ev={} stall={} werr={} defer={} coal={} cfg={}/{} gen={} tlm={}Hz/{}",
         if MIDI_CONFIGURED.load(Ordering::Relaxed) {
             "up"
         } else {
@@ -347,6 +573,11 @@ fn midi_summary(out: &mut String<OUT_LEN>) {
         r(&STATS.midi_write_errors),
         st.note_on_deferred,
         st.control_coalesced,
+        r(&STATS.config_requests),
+        r(&STATS.config_ignored),
+        CONFIG_GEN.load(Ordering::Relaxed),
+        TELEMETRY_RATE.load(Ordering::Relaxed),
+        r(&STATS.telemetry_frames),
     );
 }
 
@@ -359,7 +590,7 @@ fn midi_report(out: &mut String<OUT_LEN>) {
     };
     let _ = write!(
         out,
-        "midi: usb {:04x}:{:04x} {} | ch={} base={} range={:.0}st scale={} pitch={} bend=+-{}st | pressure=contact size (not force) | motion_cc={} (CC74 rot, CC1 tilt) | tap_perc={} (ch {} note {})\r\n",
+        "midi: usb {:04x}:{:04x} {} | ch={} base={} range={:.0}st scale={} pitch={} bend=+-{}st | pressure=contact size (not force) | mode={} motion_cc={} (A CC{} src {}, B CC{} src {}) | tap_perc={} (ch {} note {}) | flick_axis={} gestures={}\r\n",
         USB_VID,
         USB_PID,
         if MIDI_CONFIGURED.load(Ordering::Relaxed) {
@@ -379,10 +610,32 @@ fn midi_report(out: &mut String<OUT_LEN>) {
             PitchMode::Steps => "steps",
         },
         c.bend_range_semitones,
+        match c.mode {
+            instrument_events::Mode::Touch => "touch",
+            instrument_events::Mode::TiltNotes => "tilt-notes",
+            instrument_events::Mode::Theremin => "theremin",
+        },
         u8::from(c.motion_enabled),
+        c.cc_a.control,
+        instrument_events::CcSource::ALL
+            .iter()
+            .position(|&x| x == c.cc_a.source)
+            .unwrap_or(0),
+        c.cc_b.control,
+        instrument_events::CcSource::ALL
+            .iter()
+            .position(|&x| x == c.cc_b.source)
+            .unwrap_or(0),
         u8::from(c.percussion_enabled),
         c.percussion_channel + 1,
         c.percussion_note,
+        match c.gesture_axis {
+            None => "off",
+            Some(instrument_events::Axis::X) => "x",
+            Some(instrument_events::Axis::Y) => "y",
+            Some(instrument_events::Axis::Z) => "z",
+        },
+        st.gestures,
     );
     let _ = write!(
         out,
@@ -437,20 +690,23 @@ fn midi_key(k: u8) -> Option<&'static str> {
             }
             _ => return None,
         };
-        e.set_config(c);
+        if c != *e.config() {
+            e.set_config(c);
+            bump_config_generation();
+        }
         Some(msg)
     })
     .flatten()
 }
 
 const HELP: &str = "commands: s=status now, m=MIDI map+counters, p=MIDI panic (CC123/CC120/bend centre), c=recalibrate gyro (hold still), b=boot report, v=version, h=help\r\n\
-     midi map: k=bend/steps, q=chromatic/pentatonic, t=tap percussion on/off, x=motion CCs on/off (not persisted)\r\n\
+     midi map: k=bend/steps, q=chromatic/pentatonic, t=tap percussion on/off, x=motion CCs on/off (RAM only, not persisted)\r\n\
      led: L=self-test, 0-7=manual colour (0 off 1 red 2 green 3 yellow 4 blue 5 magenta 6 cyan 7 white; 60 s), a=automatic\r\n";
 
 fn banner(out: &mut String<OUT_LEN>, report: &BootReport) {
     let _ = write!(
         out,
-        "\r\ntrill xiao-sense-fw {} | usb {:04x}:{:04x} (pid.codes test id) | {} | IMU 416 Hz ODR | Trill {} bit, poll {} ms | safe_mode={}\r\n",
+        "\r\ntrill xiao-sense-fw {} | usb {:04x}:{:04x} (pid.codes test id) | {} | config: SysEx v1 on MIDI cable 1 (2nd port), RAM only | IMU 416 Hz ODR | Trill {} bit, poll {} ms | safe_mode={}\r\n",
         env!("CARGO_PKG_VERSION"),
         USB_VID,
         USB_PID,

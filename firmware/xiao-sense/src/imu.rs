@@ -63,6 +63,8 @@ pub async fn imu_task(
             set_state(&STATS.imu_state, SensorState::Running);
             backoff_ms = 100;
             let mut consecutive = 0u32;
+            let mut was_calibrated = false;
+            let mut applied_tap = (f32::NAN, 0u32);
             loop {
                 if with_timeout(
                     Duration::from_millis(IMU_DRDY_TIMEOUT_MS),
@@ -89,22 +91,45 @@ pub async fn imu_task(
                         if frame.tap.is_some() {
                             bump(&STATS.imu_taps);
                         }
-                        with_engine(|e| {
+                        if frame.calibrated && !was_calibrated {
+                            bump(&STATS.imu_calibrations);
+                        }
+                        was_calibrated = frame.calibrated;
+                        let tap_cfg = with_engine(|e| {
                             e.motion(
                                 t_us as u32,
                                 instrument_events::MotionSample {
                                     calibrated: frame.calibrated,
                                     rotation_dps: frame.rotation_dps,
                                     pitch_deg: frame.pitch_deg,
+                                    roll_deg: frame.roll_deg,
+                                    gyro_dps: frame.gyro_dps,
                                     tap: frame.tap,
                                 },
-                            )
+                            );
+                            (e.config().tap_threshold_g, e.config().tap_cooldown_us)
                         });
+                        // Tap sensitivity lives in the engine config (set over
+                        // SysEx); the detector picks it up from the next sample.
+                        if let Some(tap_cfg) = tap_cfg.filter(|c| *c != applied_tap) {
+                            applied_tap = tap_cfg;
+                            motion.set_tap(tap_cfg.0, u64::from(tap_cfg.1));
+                        }
                         MIDI_WAKE.signal(());
                         #[cfg(feature = "pcm-synth")]
                         crate::audio::post_controls(&frame, t_us);
                         LAST_MOTION.lock(|m| m.set(frame));
                         LAST_IMU.lock(|m| m.set((s.accel_g, s.gyro_dps)));
+                        SENSOR_SNAPSHOT.lock(|m| {
+                            m.set(SensorSnapshot {
+                                t_us,
+                                accel_g: s.accel_g,
+                                gyro_dps: s.gyro_dps,
+                                pitch_deg: frame.pitch_deg,
+                                roll_deg: frame.roll_deg,
+                                calibrated: frame.calibrated,
+                            })
+                        });
                     }
                     Err(e) => {
                         bump(&STATS.imu_errors);

@@ -31,6 +31,7 @@ fn motion(cal: bool, rot: f32, pitch: f32, tap: Option<f32>) -> MotionSample {
         rotation_dps: rot,
         pitch_deg: pitch,
         tap,
+        ..Default::default()
     }
 }
 

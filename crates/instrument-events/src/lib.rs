@@ -24,5 +24,7 @@
 pub mod engine;
 pub mod midi;
 
-pub use engine::{Config, Engine, MotionSample, PitchMode, Scale, Stats, TouchSample};
+pub use engine::{
+    Axis, CcMap, CcSource, Config, Engine, Mode, MotionSample, PitchMode, Scale, Stats, TouchSample,
+};
 pub use midi::MidiMessage;

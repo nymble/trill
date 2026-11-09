@@ -1,10 +1,10 @@
 [workspace]
 resolver = "2"
-members = ["crates/trill-driver", "crates/trill-cli", "crates/lsm6ds3trc", "crates/motion-synth", "crates/status-led", "crates/instrument-events", "crates/trill-usb"]
+members = ["crates/trill-driver", "crates/trill-cli", "crates/lsm6ds3trc", "crates/motion-synth", "crates/status-led", "crates/instrument-events", "crates/trill-usb", "crates/trill-config"]
 exclude = ["firmware/xiao-sense"]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.4.0"
 edition = "2021"
 license = "GPL-3.0-only"
 repository = "https://github.com/nymble/trill"

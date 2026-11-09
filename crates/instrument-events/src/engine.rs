@@ -72,6 +72,93 @@ pub enum PitchMode {
     Steps,
 }
 
+/// What drives the single melodic voice.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Mode {
+    /// Trill touch plays the voice (position = pitch, contact size =
+    /// velocity / pressure). Motion only sends the two controllers.
+    Touch,
+    /// Tilt plays stepped notes: roll picks the scale note across
+    /// `±tilt_span_deg`, forward pitch past `gate_deg` opens the note and its
+    /// depth sets velocity / pressure. Trill touch is ignored for the voice.
+    TiltNotes,
+    /// Like [`Mode::TiltNotes`] but continuous: the note is chosen at the gate
+    /// and roll then bends the pitch smoothly (theremin-like). The receiver's
+    /// bend range must equal `bend_range_semitones` (sent as RPN 0).
+    Theremin,
+}
+
+/// Motion quantity feeding a controller slot. "Forward/back/right/left"
+/// are the signs of pitch and roll in the IMU's own axes (relative to the
+/// zero set with [`Engine::zero_orientation`]); which physical direction
+/// that is depends on how the board is mounted.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CcSource {
+    /// Slot disabled.
+    Off,
+    /// Rotation-rate magnitude, 0 at rest, 127 at `rotation_full_dps`.
+    Rotation,
+    /// Positive pitch, 0..`tilt_full_deg` → 0..127.
+    PitchForward,
+    /// Negative pitch.
+    PitchBack,
+    /// Positive roll.
+    RollRight,
+    /// Negative roll.
+    RollLeft,
+    /// Pitch −`tilt_full_deg`..+`tilt_full_deg` → 0..127, 64 when level.
+    PitchCentered,
+    /// Roll, centred like [`CcSource::PitchCentered`].
+    RollCentered,
+}
+
+impl CcSource {
+    /// All sources in wire order (0..=7).
+    pub const ALL: [CcSource; 8] = [
+        CcSource::Off,
+        CcSource::Rotation,
+        CcSource::PitchForward,
+        CcSource::PitchBack,
+        CcSource::RollRight,
+        CcSource::RollLeft,
+        CcSource::PitchCentered,
+        CcSource::RollCentered,
+    ];
+}
+
+/// One configurable motion controller: a source and a CC number.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CcMap {
+    /// What drives it.
+    pub source: CcSource,
+    /// Controller number, 1..=119.
+    pub control: u8,
+}
+
+/// IMU axis (the LSM6DS3TR-C's own frame).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Axis {
+    /// X.
+    X,
+    /// Y.
+    Y,
+    /// Z.
+    Z,
+}
+
+/// Forward pitch must fall this far below `gate_deg` to close a tilt note.
+pub const GATE_HYSTERESIS_DEG: f32 = 3.0;
+/// After a flick, an opposite flick within `gesture_cooldown_us` plus this
+/// window also counts as a zig-zag.
+pub const ZIGZAG_EXTRA_US: u32 = 400_000;
+/// A flick needs the rate to fall below this fraction of the threshold
+/// before the next one can fire.
+pub const GESTURE_QUIET_FRACTION: f32 = 0.3;
+/// A sample more than this much *older* than the previous one of the same
+/// input is a clock fault (rejected); anything else counts as forward, so a
+/// long outage (≥ 35.8 min) never makes later samples look "old".
+pub const BACKWARDS_LIMIT_US: u32 = 1_000_000;
+
 /// Engine configuration. Use [`Config::default`] and adjust; values are
 /// sanitised by [`Engine::new`] / [`Engine::set_config`].
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -125,6 +212,39 @@ pub struct Config {
     pub percussion_arm_us: u32,
     /// Tap strength (g above the detector threshold) giving velocity 127.
     pub tap_full_g: f32,
+    /// What plays the melodic voice.
+    pub mode: Mode,
+    /// First motion controller (default rotation → CC74).
+    pub cc_a: CcMap,
+    /// Second motion controller (default forward tilt → CC1).
+    pub cc_b: CcMap,
+    /// Fraction of each controller's full scale ignored near its zero (or
+    /// centre for centred sources), 0..=0.5.
+    pub cc_deadzone: f32,
+    /// One-pole smoothing of the motion controllers (0 = none), at most
+    /// 500 ms; this is the added latency (time constant).
+    pub cc_smoothing_us: u32,
+    /// Tilt modes: roll from −span to +span covers `range_semitones`.
+    pub tilt_span_deg: f32,
+    /// Tilt modes: forward pitch that opens the note (5..=60°).
+    pub gate_deg: f32,
+    /// Also send the voice's pressure value as this CC (e.g. 11 expression,
+    /// 7 volume); 0 = off.
+    pub expression_cc: u8,
+    /// Tap detector threshold in g (high-passed |a|); applied by the caller's
+    /// detector (`motion-synth`), stored here so it travels with the mapping.
+    pub tap_threshold_g: f32,
+    /// Tap detector refractory time; applied by the caller's detector.
+    pub tap_cooldown_us: u32,
+    /// Flick gestures about this axis (None = off).
+    pub gesture_axis: Option<Axis>,
+    /// Rotation rate (deg/s) that counts as a flick.
+    pub gesture_threshold_dps: f32,
+    /// Minimum time between two flicks.
+    pub gesture_cooldown_us: u32,
+    /// Negative flick → this note, positive → +1, zig-zag → +2 (percussion
+    /// channel, `percussion_len_us` long).
+    pub gesture_base_note: u8,
 }
 
 impl Default for Config {
@@ -154,6 +274,26 @@ impl Default for Config {
             percussion_len_us: 60_000,
             percussion_arm_us: 1_000_000,
             tap_full_g: 3.0,
+            mode: Mode::Touch,
+            cc_a: CcMap {
+                source: CcSource::Rotation,
+                control: cc::BRIGHTNESS,
+            },
+            cc_b: CcMap {
+                source: CcSource::PitchForward,
+                control: cc::MODULATION,
+            },
+            cc_deadzone: 0.0,
+            cc_smoothing_us: 0,
+            tilt_span_deg: 45.0,
+            gate_deg: 15.0,
+            expression_cc: 0,
+            tap_threshold_g: 0.8,
+            tap_cooldown_us: 120_000,
+            gesture_axis: None,
+            gesture_threshold_dps: 400.0,
+            gesture_cooldown_us: 300_000,
+            gesture_base_note: 60,
         }
     }
 }
@@ -189,7 +329,30 @@ impl Config {
         self.motion_stale_us = self.motion_stale_us.clamp(1_000, 1_000_000);
         self.percussion_len_us = self.percussion_len_us.clamp(1_000, 1_000_000);
         self.control_interval_us = self.control_interval_us.min(1_000_000);
+        for m in [&mut self.cc_a, &mut self.cc_b] {
+            m.control = m.control.clamp(1, 119);
+        }
+        self.cc_deadzone = finite_or(self.cc_deadzone, 0.0).clamp(0.0, 0.5);
+        self.cc_smoothing_us = self.cc_smoothing_us.min(500_000);
+        self.tilt_span_deg = finite_or(self.tilt_span_deg, d.tilt_span_deg).clamp(10.0, 90.0);
+        self.gate_deg = finite_or(self.gate_deg, d.gate_deg).clamp(5.0, 60.0);
+        self.expression_cc = self.expression_cc.min(119);
+        self.tap_threshold_g = finite_or(self.tap_threshold_g, d.tap_threshold_g).clamp(0.3, 4.0);
+        self.tap_cooldown_us = self.tap_cooldown_us.clamp(50_000, 1_000_000);
+        self.gesture_threshold_dps =
+            finite_or(self.gesture_threshold_dps, d.gesture_threshold_dps).clamp(100.0, 2000.0);
+        self.gesture_cooldown_us = self.gesture_cooldown_us.clamp(100_000, 2_000_000);
+        self.gesture_base_note = self.gesture_base_note.min(125);
         self
+    }
+
+    /// Pitch mode actually used by the voice (tilt modes fix it).
+    pub fn effective_pitch_mode(&self) -> PitchMode {
+        match self.mode {
+            Mode::Touch => self.pitch_mode,
+            Mode::TiltNotes => PitchMode::Steps,
+            Mode::Theremin => PitchMode::Bend,
+        }
     }
 }
 
@@ -204,7 +367,7 @@ pub struct TouchSample {
 }
 
 /// One processed IMU frame.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct MotionSample {
     /// Gyro bias calibration complete; motion controls are gated on this.
     pub calibrated: bool,
@@ -212,6 +375,10 @@ pub struct MotionSample {
     pub rotation_dps: f32,
     /// Tilt pitch, degrees (positive = forward).
     pub pitch_deg: f32,
+    /// Roll, degrees (−180..180).
+    pub roll_deg: f32,
+    /// Bias-corrected rotation rate per axis, deg/s (gestures).
+    pub gyro_dps: [f32; 3],
     /// Tap detected in this frame: strength in g above the detector threshold.
     pub tap: Option<f32>,
 }
@@ -243,6 +410,8 @@ pub struct Stats {
     pub motion_lost: u32,
     /// Taps that produced a percussion note.
     pub taps: u32,
+    /// Flick gestures that produced a note.
+    pub gestures: u32,
     /// Transport connects.
     pub connects: u32,
     /// Transport disconnects.
@@ -327,7 +496,11 @@ impl Slot {
         }
         if !self.force {
             if let Some(t) = self.last_sent {
-                if (now.wrapping_sub(t) as i32) < interval as i32 {
+                // Elapsed as u32: a slot idle for more than 35.8 min must
+                // not look "sent in the future" (signed compare would block
+                // it for the next 35.8 min). `now` and `t` both come from
+                // `next_message`, which is monotonic.
+                if now.wrapping_sub(t) < interval {
                     return None;
                 }
             }
@@ -352,9 +525,11 @@ pub struct Engine {
     critical: Deque<MidiMessage, CRITICAL_CAPACITY>,
     emergency_all_off: bool,
     pressure: Slot,
+    expr: Slot,
     bend: Slot,
-    timbre: Slot,
-    tilt: Slot,
+    cc_a: Slot,
+    cc_b: Slot,
+    cc_smooth: [Option<f32>; 2],
     voice: Option<Voice>,
     armed: bool,
     last_touch: Option<u32>,
@@ -362,13 +537,32 @@ pub struct Engine {
     last_motion: Option<u32>,
     motion_ok: bool,
     calibrated_since: Option<u32>,
+    /// Latched once the gyro has stayed calibrated for `percussion_arm_us`.
+    /// A latch (not a timestamp comparison on every tap) because the u32
+    /// microsecond clock makes "since + arm <= now" ambiguous after 35.8 min.
+    motion_armed: bool,
+    orientation: Option<(f32, f32)>,
+    zero: (f32, f32),
+    flick_quiet: bool,
+    last_flick: Option<(u32, bool)>,
     percussion_off_at: Option<(u8, u8, u32)>,
+    gesture_off_at: [Option<(u8, u8, u32)>; 2],
     stats: Stats,
 }
 
 /// Wrapping "a is earlier than b".
 fn before(a: u32, b: u32) -> bool {
     (b.wrapping_sub(a) as i32) > 0
+}
+
+fn wrap180(v: f32) -> f32 {
+    let mut x = v % 360.0;
+    if x > 180.0 {
+        x -= 360.0;
+    } else if x < -180.0 {
+        x += 360.0;
+    }
+    x
 }
 
 fn unit(v: f32) -> f32 {
@@ -389,9 +583,11 @@ impl Engine {
             critical: Deque::new(),
             emergency_all_off: false,
             pressure: Slot::new(0.75, 127),
+            expr: Slot::new(0.75, 127),
             bend: Slot::new(4.0, BEND_MAX),
-            timbre: Slot::new(0.75, 127),
-            tilt: Slot::new(0.75, 127),
+            cc_a: Slot::new(0.75, 127),
+            cc_b: Slot::new(0.75, 127),
+            cc_smooth: [None; 2],
             voice: None,
             armed: false,
             last_touch: None,
@@ -399,7 +595,13 @@ impl Engine {
             last_motion: None,
             motion_ok: false,
             calibrated_since: None,
+            motion_armed: false,
+            orientation: None,
+            zero: (0.0, 0.0),
+            flick_quiet: false,
+            last_flick: None,
             percussion_off_at: None,
+            gesture_off_at: [None; 2],
             stats: Stats::default(),
         }
     }
@@ -445,10 +647,44 @@ impl Engine {
         self.release_voice(false);
         // A new mapping must not re-trigger under a held finger.
         self.armed = false;
+        self.percussion_release();
+        self.gesture_release();
         let old = self.cfg;
+        // Controllers whose number or source changes (or that are switched
+        // off) go back to 0 on their old number first, so nothing is left
+        // stuck at the synth.
+        let motion_on = |c: &Config, m: CcMap| c.motion_enabled && m.source != CcSource::Off;
+        for (i, (o, n)) in [(old.cc_a, cfg.cc_a), (old.cc_b, cfg.cc_b)]
+            .into_iter()
+            .enumerate()
+        {
+            let changed = o != n || motion_on(&old, o) != motion_on(&cfg, n);
+            if changed {
+                let slot = if i == 0 {
+                    &mut self.cc_a
+                } else {
+                    &mut self.cc_b
+                };
+                let sent = slot.sent;
+                slot.reset(None);
+                self.cc_smooth[i] = None;
+                self.zero_cc(old.channel, o.control, sent);
+            }
+        }
+        if old.expression_cc != cfg.expression_cc || old.channel != cfg.channel {
+            let sent = self.expr.sent;
+            self.expr.reset(None);
+            if old.expression_cc != 0 {
+                self.zero_cc(old.channel, old.expression_cc, sent);
+            }
+        }
+        if old.gesture_axis != cfg.gesture_axis {
+            self.flick_quiet = false;
+            self.last_flick = None;
+        }
         if self.connected
             && (old.channel != cfg.channel
-                || old.pitch_mode != cfg.pitch_mode
+                || old.effective_pitch_mode() != cfg.effective_pitch_mode()
                 || old.bend_range_semitones != cfg.bend_range_semitones)
         {
             self.cfg = cfg;
@@ -456,9 +692,42 @@ impl Engine {
         } else {
             self.cfg = cfg;
         }
-        if old.percussion_enabled && !cfg.percussion_enabled {
-            self.percussion_release();
+    }
+
+    fn zero_cc(&mut self, channel: u8, control: u8, sent: Option<u16>) {
+        if self.connected && sent.is_some_and(|v| v != 0) {
+            let _ = self.critical.push_back(MidiMessage::ControlChange {
+                channel,
+                control,
+                value: 0,
+            });
+            self.note_high_water();
         }
+    }
+
+    /// Make the current orientation the zero for pitch and roll (tilt modes
+    /// and tilt controllers). A tilt-mode note is released first so pitch
+    /// cannot jump under it. Returns false if no orientation is known yet.
+    pub fn zero_orientation(&mut self) -> bool {
+        let Some(o) = self.orientation else {
+            return false;
+        };
+        self.zero = o;
+        if self.cfg.mode != Mode::Touch {
+            self.release_voice(false);
+            self.armed = false;
+        }
+        true
+    }
+
+    /// Forget the orientation zero (back to the IMU's own axes).
+    pub fn clear_zero(&mut self) {
+        self.zero = (0.0, 0.0);
+    }
+
+    /// Current orientation zero (pitch, roll), degrees.
+    pub fn orientation_zero(&self) -> (f32, f32) {
+        self.zero
     }
 
     /// Transport became usable: queue the reset sequence and wait for the
@@ -479,15 +748,18 @@ impl Engine {
         self.emergency_all_off = false;
         self.voice = None;
         self.percussion_off_at = None;
+        self.gesture_off_at = [None; 2];
         self.armed = false;
         for s in [
             &mut self.pressure,
+            &mut self.expr,
             &mut self.bend,
-            &mut self.timbre,
-            &mut self.tilt,
+            &mut self.cc_a,
+            &mut self.cc_b,
         ] {
             s.reset(None);
         }
+        self.cc_smooth = [None; 2];
     }
 
     /// User panic: same reset sequence as on connect (no-op if disconnected).
@@ -502,6 +774,7 @@ impl Engine {
         self.emergency_all_off = false;
         self.voice = None;
         self.percussion_off_at = None;
+        self.gesture_off_at = [None; 2];
         self.armed = false;
         self.channel_reset(self.cfg.channel, true);
         if self.cfg.percussion_channel != self.cfg.channel {
@@ -509,8 +782,10 @@ impl Engine {
         }
         self.pressure.reset(Some(0));
         self.bend.reset(Some(BEND_CENTER));
-        self.timbre.reset(None);
-        self.tilt.reset(None);
+        self.cc_a.reset(None);
+        self.cc_b.reset(None);
+        self.expr.reset(None);
+        self.cc_smooth = [None; 2];
     }
 
     /// CC123, CC120, bend centre (+ pressure 0 and RPN 0 for the voice channel).
@@ -570,7 +845,8 @@ impl Engine {
 
     fn accept_time(last: &mut Option<u32>, t: u32, stats: &mut Stats) -> bool {
         if let Some(p) = *last {
-            if before(t, p) {
+            let back = p.wrapping_sub(t);
+            if back != 0 && back < BACKWARDS_LIMIT_US {
                 stats.stale_inputs = stats.stale_inputs.wrapping_add(1);
                 return false;
             }
@@ -631,8 +907,16 @@ impl Engine {
         unit((size - c.touch_off) / (c.size_full - c.touch_off)) * 127.0
     }
 
-    /// Feed one fresh touch frame (`None` = no touch).
+    /// Feed one fresh touch frame (`None` = no touch). Ignored for the
+    /// voice in the tilt modes.
     pub fn touch(&mut self, t: u32, sample: Option<TouchSample>) {
+        if self.cfg.mode != Mode::Touch {
+            return;
+        }
+        self.apply_touch(t, sample);
+    }
+
+    fn apply_touch(&mut self, t: u32, sample: Option<TouchSample>) {
         if let Some(s) = sample {
             if !s.location.is_finite() || !s.size.is_finite() {
                 self.stats.invalid_inputs = self.stats.invalid_inputs.wrapping_add(1);
@@ -675,7 +959,7 @@ impl Engine {
             return;
         }
         let note = note as u8;
-        let bend_mode = self.cfg.pitch_mode == PitchMode::Bend;
+        let bend_mode = self.cfg.effective_pitch_mode() == PitchMode::Bend;
         let needed = 1 + usize::from(bend_mode) + NOTE_OFF_RESERVE;
         if self.free() < needed {
             self.stats.note_on_deferred = self.stats.note_on_deferred.wrapping_add(1);
@@ -704,12 +988,19 @@ impl Engine {
             velocity,
         });
         self.pressure_smooth = self.pressure_target(size);
-        self.pressure.set(self.pressure_smooth, &mut self.stats);
+        self.set_pressure(self.pressure_smooth);
+    }
+
+    fn set_pressure(&mut self, v: f32) {
+        self.pressure.set(v, &mut self.stats);
+        if self.cfg.expression_cc != 0 {
+            self.expr.set(v, &mut self.stats);
+        }
     }
 
     fn update_voice(&mut self, v: Voice, dt: u32, location: f32, size: f32) {
         let s = self.position(location);
-        match self.cfg.pitch_mode {
+        match self.cfg.effective_pitch_mode() {
             PitchMode::Bend => {
                 let b = self.bend_value(s - v.offset) as f32;
                 self.bend.set(b, &mut self.stats);
@@ -732,7 +1023,7 @@ impl Engine {
         let dt = dt.min(1_000_000) as f32;
         let a = if tau <= 0.0 { 1.0 } else { dt / (tau + dt) };
         self.pressure_smooth += a * (target - self.pressure_smooth);
-        self.pressure.set(self.pressure_smooth, &mut self.stats);
+        self.set_pressure(self.pressure_smooth);
     }
 
     /// Release the touch voice. `rearm`: a normal lift (the next touch may
@@ -741,6 +1032,9 @@ impl Engine {
         if let Some(v) = self.voice.take() {
             self.push_note_off(self.cfg.channel, v.note);
             self.pressure.force(0.0);
+            if self.cfg.expression_cc != 0 {
+                self.expr.force(0.0);
+            }
         }
         if rearm {
             self.armed = true;
@@ -750,42 +1044,216 @@ impl Engine {
     /// The touch sensor stopped answering: release and disarm.
     pub fn touch_lost(&mut self, _now: u32) {
         self.stats.touch_lost = self.stats.touch_lost.wrapping_add(1);
-        self.release_voice(false);
-        self.armed = false;
+        if self.cfg.mode == Mode::Touch {
+            self.release_voice(false);
+            self.armed = false;
+        }
     }
 
     /// Feed one processed IMU frame.
     pub fn motion(&mut self, t: u32, m: MotionSample) {
         if !m.rotation_dps.is_finite()
             || !m.pitch_deg.is_finite()
+            || !m.roll_deg.is_finite()
+            || m.gyro_dps.iter().any(|g| !g.is_finite())
             || m.tap.is_some_and(|g| !g.is_finite())
         {
             self.stats.invalid_inputs = self.stats.invalid_inputs.wrapping_add(1);
             return;
         }
+        let prev = self.last_motion;
         if !Self::accept_time(&mut self.last_motion, t, &mut self.stats) {
             return;
         }
         self.motion_ok = true;
+        self.orientation = Some((m.pitch_deg, m.roll_deg));
         if !m.calibrated {
             self.calibrated_since = None;
+            self.motion_armed = false;
+            self.tilt_voice_stop();
             return;
         }
         let since = *self.calibrated_since.get_or_insert(t);
+        // Elapsed since calibration as u32 is exact while < 71.6 min; this
+        // runs on every IMU sample (416 Hz), so the latch is set within one
+        // sample of the arm time, long before any ambiguity.
+        if !self.motion_armed && t.wrapping_sub(since) >= self.cfg.percussion_arm_us {
+            self.motion_armed = true;
+        }
         if !self.connected {
             return;
         }
         let c = self.cfg;
+        let pitch = m.pitch_deg - self.zero.0;
+        let roll = wrap180(m.roll_deg - self.zero.1);
+        let dt = prev.map_or(0, |p| t.wrapping_sub(p)).min(1_000_000);
         if c.motion_enabled {
-            let r = unit(m.rotation_dps.abs() / c.rotation_full_dps) * 127.0;
-            self.timbre.set(r, &mut self.stats);
-            let p = unit(m.pitch_deg / c.tilt_full_deg) * 127.0;
-            self.tilt.set(p, &mut self.stats);
+            for i in 0..2 {
+                let map = if i == 0 { c.cc_a } else { c.cc_b };
+                if let Some(v) = self.cc_value(map.source, &m, pitch, roll) {
+                    let a = if c.cc_smoothing_us == 0 {
+                        1.0
+                    } else {
+                        dt as f32 / (c.cc_smoothing_us as f32 + dt as f32)
+                    };
+                    let y = match self.cc_smooth[i] {
+                        Some(old) => old + a * (v - old),
+                        None => v,
+                    };
+                    self.cc_smooth[i] = Some(y);
+                    let slot = if i == 0 {
+                        &mut self.cc_a
+                    } else {
+                        &mut self.cc_b
+                    };
+                    slot.set(y * 127.0, &mut self.stats);
+                }
+            }
+        }
+        if c.mode != Mode::Touch {
+            self.tilt_voice(t, pitch, roll);
+        }
+        if !self.motion_armed {
+            return;
         }
         if let Some(g) = m.tap {
-            let armed = !before(t, since.wrapping_add(c.percussion_arm_us));
-            if c.percussion_enabled && armed && g > 0.0 {
+            if c.percussion_enabled && g > 0.0 {
                 self.percussion_hit(t, g);
+            }
+        }
+        if let Some(axis) = c.gesture_axis {
+            let w = m.gyro_dps[match axis {
+                Axis::X => 0,
+                Axis::Y => 1,
+                Axis::Z => 2,
+            }];
+            if let Some((positive, zigzag)) = self.flick(t, w) {
+                self.gesture_hit(t, positive, zigzag, w.abs());
+            }
+        }
+    }
+
+    /// Unit value (0..=1) for a controller source after the deadzone.
+    fn cc_value(&self, src: CcSource, m: &MotionSample, pitch: f32, roll: f32) -> Option<f32> {
+        let c = &self.cfg;
+        let dz = c.cc_deadzone;
+        let uni = |x: f32| {
+            let u = unit(x);
+            if u <= dz {
+                0.0
+            } else {
+                (u - dz) / (1.0 - dz)
+            }
+        };
+        let centred = |x: f32| {
+            let x = x.clamp(-1.0, 1.0);
+            0.5 + 0.5 * x.signum() * uni(x.abs())
+        };
+        let tilt = c.tilt_full_deg;
+        Some(match src {
+            CcSource::Off => return None,
+            CcSource::Rotation => uni(m.rotation_dps.abs() / c.rotation_full_dps),
+            CcSource::PitchForward => uni(pitch / tilt),
+            CcSource::PitchBack => uni(-pitch / tilt),
+            CcSource::RollRight => uni(roll / tilt),
+            CcSource::RollLeft => uni(-roll / tilt),
+            CcSource::PitchCentered => centred(pitch / tilt),
+            CcSource::RollCentered => centred(roll / tilt),
+        })
+    }
+
+    /// Tilt modes: turn orientation into a virtual touch for the voice.
+    fn tilt_voice(&mut self, t: u32, pitch: f32, roll: f32) {
+        let c = self.cfg;
+        let span = c.tilt_span_deg;
+        let location = unit((roll + span) / (2.0 * span));
+        let open = if self.voice.is_some() {
+            pitch >= c.gate_deg - GATE_HYSTERESIS_DEG
+        } else {
+            pitch >= c.gate_deg
+        };
+        let sample = open.then(|| {
+            let depth = unit((pitch - c.gate_deg) / c.tilt_full_deg);
+            TouchSample {
+                location,
+                size: c.touch_on + (c.size_full - c.touch_on) * (0.4 + 0.6 * depth),
+            }
+        });
+        self.apply_touch(t, sample);
+    }
+
+    /// Tilt modes: motion became unusable; end the note and disarm.
+    fn tilt_voice_stop(&mut self) {
+        if self.cfg.mode != Mode::Touch {
+            self.release_voice(false);
+            self.armed = false;
+        }
+    }
+
+    /// Flick recogniser on one gyro axis. Fires on the sample where |rate|
+    /// first reaches the threshold, provided the rate fell below
+    /// [`GESTURE_QUIET_FRACTION`] of it since the last flick and the cooldown
+    /// has passed. Returns (positive direction, completes a zig-zag).
+    fn flick(&mut self, t: u32, w: f32) -> Option<(bool, bool)> {
+        let c = &self.cfg;
+        let thr = c.gesture_threshold_dps;
+        if let Some((lt, _)) = self.last_flick {
+            // Forget it once it can no longer matter; this runs every sample,
+            // so the u32 elapsed value is never ambiguous.
+            if t.wrapping_sub(lt) > c.gesture_cooldown_us.saturating_add(ZIGZAG_EXTRA_US) {
+                self.last_flick = None;
+            }
+        }
+        let a = w.abs();
+        if a < thr * GESTURE_QUIET_FRACTION {
+            self.flick_quiet = true;
+            return None;
+        }
+        if !self.flick_quiet || a < thr {
+            return None;
+        }
+        if let Some((lt, _)) = self.last_flick {
+            if t.wrapping_sub(lt) < c.gesture_cooldown_us {
+                return None;
+            }
+        }
+        let positive = w > 0.0;
+        let zigzag = matches!(self.last_flick, Some((_, p)) if p != positive);
+        self.flick_quiet = false;
+        self.last_flick = Some((t, positive));
+        Some((positive, zigzag))
+    }
+
+    fn gesture_hit(&mut self, t: u32, positive: bool, zigzag: bool, rate: f32) {
+        self.gesture_release();
+        let n = 1 + usize::from(zigzag);
+        if self.free() < n + NOTE_OFF_RESERVE {
+            self.stats.note_on_deferred = self.stats.note_on_deferred.wrapping_add(1);
+            return;
+        }
+        let c = self.cfg;
+        let thr = c.gesture_threshold_dps;
+        let v = 64.0 + unit((rate - thr) / thr) * 63.0;
+        let velocity = ((v + 0.5) as u8).clamp(1, 127);
+        let base = c.gesture_base_note;
+        let notes = [base + u8::from(positive), base + 2];
+        for (i, &note) in notes.iter().take(n).enumerate() {
+            let _ = self.critical.push_back(MidiMessage::NoteOn {
+                channel: c.percussion_channel,
+                note,
+                velocity,
+            });
+            self.stats.note_on = self.stats.note_on.wrapping_add(1);
+            self.gesture_off_at[i] = Some((c.percussion_channel, note, t));
+        }
+        self.note_high_water();
+        self.stats.gestures = self.stats.gestures.wrapping_add(1);
+    }
+
+    fn gesture_release(&mut self) {
+        for i in 0..2 {
+            if let Some((ch, note, _)) = self.gesture_off_at[i].take() {
+                self.push_note_off(ch, note);
             }
         }
     }
@@ -826,9 +1294,13 @@ impl Engine {
         self.stats.motion_lost = self.stats.motion_lost.wrapping_add(1);
         self.motion_ok = false;
         self.calibrated_since = None;
+        self.motion_armed = false;
         self.percussion_release();
+        self.gesture_release();
+        self.tilt_voice_stop();
+        self.cc_smooth = [None; 2];
         if self.connected {
-            for s in [&mut self.timbre, &mut self.tilt] {
+            for s in [&mut self.cc_a, &mut self.cc_b] {
                 if s.sent.is_some_and(|v| v != 0) {
                     s.force(0.0);
                 }
@@ -859,6 +1331,16 @@ impl Engine {
                 self.percussion_release();
             }
         }
+        for i in 0..2 {
+            if let Some((ch, note, start)) = self.gesture_off_at[i] {
+                // Signed: `start` comes from the IMU task and may be a few
+                // µs ahead of `now`; the interval is short.
+                if (now.wrapping_sub(start) as i32) >= self.cfg.percussion_len_us as i32 {
+                    self.gesture_off_at[i] = None;
+                    self.push_note_off(ch, note);
+                }
+            }
+        }
     }
 
     /// Next message to transmit, in priority order (see module docs). `now`
@@ -882,32 +1364,42 @@ impl Engine {
         let interval = self.cfg.control_interval_us;
         let channel = self.cfg.channel;
         let c = &self.cfg;
-        let motion = c.motion_enabled || self.timbre.force || self.tilt.force;
+        let motion = c.motion_enabled || self.cc_a.force || self.cc_b.force;
         let msg = if let Some(v) = self.pressure.due(now, interval) {
             self.pressure.mark_sent(v, Some(now));
             MidiMessage::ChannelPressure {
                 channel,
                 value: v as u8,
             }
-        } else if let Some(v) = (c.pitch_mode == PitchMode::Bend)
+        } else if let Some(v) = (c.expression_cc != 0)
+            .then(|| self.expr.due(now, interval))
+            .flatten()
+        {
+            self.expr.mark_sent(v, Some(now));
+            MidiMessage::ControlChange {
+                channel,
+                control: c.expression_cc,
+                value: v as u8,
+            }
+        } else if let Some(v) = (c.effective_pitch_mode() == PitchMode::Bend)
             .then(|| self.bend.due(now, interval))
             .flatten()
         {
             self.bend.mark_sent(v, Some(now));
             MidiMessage::PitchBend { channel, value: v }
-        } else if let Some(v) = motion.then(|| self.timbre.due(now, interval)).flatten() {
-            self.timbre.mark_sent(v, Some(now));
+        } else if let Some(v) = motion.then(|| self.cc_a.due(now, interval)).flatten() {
+            self.cc_a.mark_sent(v, Some(now));
             MidiMessage::ControlChange {
                 channel,
-                control: cc::BRIGHTNESS,
+                control: c.cc_a.control,
                 value: v as u8,
             }
         } else {
-            let v = motion.then(|| self.tilt.due(now, interval)).flatten()?;
-            self.tilt.mark_sent(v, Some(now));
+            let v = motion.then(|| self.cc_b.due(now, interval)).flatten()?;
+            self.cc_b.mark_sent(v, Some(now));
             MidiMessage::ControlChange {
                 channel,
-                control: cc::MODULATION,
+                control: c.cc_b.control,
                 value: v as u8,
             }
         };

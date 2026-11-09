@@ -266,7 +266,8 @@ fn check(pcm: bool) {
         assert_eq!(d[5], 1, "one input pin");
         assert!(ids.contains(&d[6]), "source jack exists");
     }
-    assert_eq!((in_emb.len(), out_emb.len()), (1, 1));
+    let cables = MIDI_CABLES as usize;
+    assert_eq!((in_emb.len(), out_emb.len()), (cables, cables));
 
     // Bulk endpoints, 64 bytes, each followed by a CS MS_GENERAL endpoint
     // descriptor associating the right embedded jack.
@@ -284,14 +285,17 @@ fn check(pcm: bool) {
         assert_eq!(e[3] & 0x03, 0x02, "bulk");
         assert_eq!(u16::from_le_bytes([e[4], e[5]]), MAX_PACKET);
         let cs = body[i + 1];
-        assert_eq!(&cs[1..4], &[CS_ENDPOINT, 0x01, 1]);
+        assert_eq!(&cs[1..4], &[CS_ENDPOINT, 0x01, MIDI_CABLES]);
+        assert_eq!(cs[0] as usize, 4 + cables, "bLength = 4 + bNumEmbMIDIJack");
         let is_in = e[2] & 0x80 != 0;
-        // Host->device (OUT) feeds an embedded IN jack; device->host (IN)
-        // is sourced from an embedded OUT jack.
+        // Host->device (OUT) feeds the embedded IN jacks; device->host (IN)
+        // is sourced from the embedded OUT jacks. The n-th listed jack is
+        // virtual cable n, so cable order = jack order.
+        let jacks = &cs[4..4 + cables];
         if is_in {
-            assert_eq!(cs[4], out_emb[0]);
+            assert_eq!(jacks, &out_emb[..]);
         } else {
-            assert_eq!(cs[4], in_emb[0]);
+            assert_eq!(jacks, &in_emb[..]);
         }
         dirs.push(is_in);
     }
@@ -341,6 +345,14 @@ fn layouts_use_distinct_pid_codes_test_ids() {
         (0xEF, 0x02, 0x01)
     );
     assert!(a.composite_with_iads);
+}
+
+#[test]
+fn cables_and_release_are_documented_values() {
+    assert_eq!((CABLE_INSTRUMENT, CABLE_CONFIG, MIDI_CABLES), (0, 1, 2));
+    for pcm in [false, true] {
+        assert_eq!(device_config(pcm).device_release, DEVICE_RELEASE);
+    }
 }
 
 #[test]
