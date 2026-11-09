@@ -1,14 +1,14 @@
 # Gesture, Gravity and Pitch: Mapping Inertial Sensors to Musical Action in a Wearable-Scale Controller
 
-*A design study for **Trillium** (the instrument formerly developed under the working name "Trill")*
+*A design study for **Trillium**, a USB-MIDI instrument built around a Bela Trill Flex touch sensor and a six-axis IMU*
 
-**Status:** research report for review, November 2026. It proposes designs and **reports no new hardware results**. Statements about current firmware behaviour refer to firmware 0.4.0 and the repository documentation ([midi-mapping.md](../midi-mapping.md), [firmware-xiao-sense.md](../firmware-xiao-sense.md)). Where 0.4.0 features were checked only in simulation or unit tests, this report says so.
+**Status:** research report for review, November 2026. It proposes designs and **reports no new hardware results**. Statements about current firmware behaviour refer to firmware 0.4.0 and the repository documentation ([midi-mapping.md](../midi-mapping.md), [firmware-xiao-sense.md](../firmware-xiao-sense.md)). Features of 0.4.0 that have been verified only in simulation or unit tests are marked as such.
 
 ---
 
 ## Abstract
 
-Trillium is a small USB-MIDI instrument. It pairs a capacitive touch strip (Bela Trill Flex) with a six-axis inertial measurement unit (IMU), an STMicroelectronics LSM6DS3TR-C accelerometer and gyroscope, on a Seeed XIAO nRF52840 Sense. Firmware 0.4.0 already maps tilt to pitch, rotation and tilt to continuous controllers, impacts to percussion and fast wrist rotations to "flick" and "zig-zag" events. This report asks how to go further. It looks at four questions. Can the direction of an impulse select among notes? Can orientation, or magnetic heading, select pitch? What have other instrument designers built with accelerometers over the past four decades? And how much gesture intelligence should run on the microcontroller itself? We review the mapping literature from Hunt, Wanderley and colleagues, survey accelerometer-based instruments from Waisvisz's *The Hands* to machine-learning practice with the Wekinator, and set these against the physics and limits of a low-cost MEMS IMU. Our conclusions:
+Trillium is a small USB-MIDI instrument. It pairs a capacitive touch strip (Bela Trill Flex) with a six-axis inertial measurement unit (IMU), an STMicroelectronics LSM6DS3TR-C accelerometer and gyroscope, on a Seeed XIAO nRF52840 Sense. Firmware 0.4.0 already maps tilt to pitch, rotation and tilt to continuous controllers, impacts to percussion and fast wrist rotations to "flick" and "zig-zag" events. This report examines how to go further through four questions. Can the direction of an impulse select among notes? Can orientation, or magnetic heading, select pitch? What have other instrument designers built with accelerometers over the past four decades? And how much gesture intelligence should run on the microcontroller itself? It reviews the mapping literature from Hunt, Wanderley and colleagues, surveys accelerometer-based instruments from Waisvisz's *The Hands* to machine-learning practice with the Wekinator, and sets these against the physics and limits of a low-cost MEMS IMU. The conclusions are:
 
 1. **Impulse direction is a reliable note selector** for four to six classes, provided gravity is removed and the classifier is built around the first lobe of the acceleration impulse.
 2. **Orientation is a good pitch selector when separated from articulation.** Let the hand choose the pitch by orientation and let a separate action, a tap, a touch or an impulse, decide *when* the note plays.
@@ -25,15 +25,15 @@ Accelerometers have been in electronic instruments for as long as they have been
 
 Trillium sits squarely in this tradition. It is small, held or worn, and speaks class-compliant USB-MIDI. Its touch strip gives a precise, tactile, one-dimensional control surface. Its IMU gives the gestures of the hand and arm that carry the device. The design question is not whether motion *can* be mapped to sound. Any number can be sent to any synthesiser parameter. The question is which mappings a performer can **learn, repeat and play expressively**. The mapping literature has long argued that this choice defines the instrument more than the sensors do [Hunt, Wanderley & Paradis 2003; Hunt & Kirk 2000].
 
-The rest of the report runs as follows. Section 2 sets out what an IMU of this kind can and cannot measure. Section 3 summarises the mapping principles that bear on the decisions here. Section 4 surveys earlier instruments. Sections 5 to 7 answer the three design questions about impulse direction, orientation and heading, and on-device gesture intelligence. Section 8 turns these into a prioritised plan for Trillium.
+The report is organised as follows. Section 2 sets out what an IMU of this kind can and cannot measure. Section 3 summarises the mapping principles that bear on the decisions here. Section 4 surveys earlier instruments. Sections 5 to 7 address the design questions on impulse direction, on orientation and heading, and on on-device gesture intelligence. Section 8 turns these into a prioritised plan for Trillium.
 
-## 2. What the sensor actually knows
+## 2. What the sensor measures
 
 ### 2.1 The measurement
 
 The LSM6DS3TR-C reports **specific force** (acceleration minus gravity, as an accelerometer measures it) on three axes and **angular rate** on three axes. Firmware 0.4.0 samples both at a 416 Hz output data rate (2.4 ms period), with the accelerometer at ±4 g and the gyroscope at ±1000 °/s (`crates/lsm6ds3trc`, `Config::default`). Three facts follow, and they constrain every mapping in this report.
 
-1. **At rest, the accelerometer measures gravity, not motion.** The 1 g vector tells you which way is down, so it gives pitch and roll. It says nothing about rotation around the vertical (yaw, or heading). When the device moves, gravity and linear acceleration add together and cannot be separated without another sensor. The gyroscope is the usual choice.
+1. **At rest, the accelerometer measures gravity, not motion.** The 1 g vector indicates which way is down, so it gives pitch and roll. It says nothing about rotation around the vertical (yaw, or heading). When the device moves, gravity and linear acceleration add together and cannot be separated without another sensor. The gyroscope is the usual choice.
 2. **Position is not observable.** Double-integrating acceleration turns a small bias into a position error that grows with the square of time. For consumer MEMS parts it becomes unusable within seconds [Woodman 2007]. Instruments that seem to "know where the hand is" use external references: ultrasound in *The Hands*, radio in Mathews's *Radio Baton* [Mathews 1991], magnetic tracking in the *AirSticks* [Ilsar, Havryliv & Johnston 2013], or cameras.
 3. **Integrating the gyroscope gives orientation change, with drift.** After calibration at rest, the remaining bias makes yaw drift slowly. Pitch and roll can be corrected continuously against gravity. Yaw cannot be corrected without a magnetometer, and this board has none.
 
@@ -120,10 +120,10 @@ Human repeatability, not sensing, sets the class count. Kiefer et al. found gest
 
 ### 6.1 Orientation relative to gravity: yes, and Trillium already does it
 
-The 0.4.0 *tilt notes* mode chooses the note from roll across a span of ±45° by default, quantised to the scale with hysteresis. Forward pitch acts as the gate, and theremin mode bends continuously. These modes were tested **in simulation and unit tests only, not on hardware**. The HCI literature supports the basic idea. In a controlled study of wrist tilt, Rahman et al. found that users could comfortably control **at least 16 distinct levels** of pronation and supination (forearm roll, the axis Trillium uses). A **quadratic** discretisation, with finer zones near neutral and wider zones at the extremes, improved performance on every axis [Rahman et al. 2009]. Two concrete improvements follow:
+The 0.4.0 *tilt notes* mode chooses the note from roll across a span of ±45° by default, quantised to the scale with hysteresis. Forward pitch acts as the gate, and theremin mode bends continuously. These modes were tested **in simulation and unit tests only, not on hardware**. The HCI literature supports the basic idea. In a controlled study of wrist tilt, Rahman et al. found that users could comfortably control **at least 16 distinct levels** of pronation and supination (forearm roll, the axis Trillium uses). A **quadratic** discretisation, with finer zones near neutral and wider zones at the extremes, improved performance on every axis [Rahman et al. 2009]. Two improvements follow:
 
 1. **Use non-uniform note zones** that are narrow near neutral and wide near the limits of comfortable rotation, instead of equal steps across ±45°.
-2. **Limit a span to about one octave of a diatonic or pentatonic scale**, 5–8 notes, within that 16-level ceiling. Use the touch strip or a gesture to shift octaves. The current span is set in notes and scale steps, so this is a preset decision rather than a firmware change.
+2. **Limit a span to about one octave of a diatonic or pentatonic scale**, 5–8 notes, within that 16-level ceiling. Use the touch strip or a gesture to shift octaves. The note range is already a parameter (range in semitones plus a scale choice) and the roll span is a separate parameter in degrees, so this is a preset decision rather than a firmware change.
 
 ### 6.2 Separate selection from excitation
 
@@ -161,7 +161,7 @@ The nRF52840 has a 64 MHz Cortex-M4 with single-precision FPU, 256 KB RAM and 1 
 
 ### 7.3 A layered architecture
 
-We propose five layers, each building on the one below.
+The proposed architecture has five layers, each building on the one below.
 
 **Layer 0: hardware event engines.** The LSM6DS3TR-C offers single and double tap with direction, 6D/4D orientation, free fall, wake-up (activity), tilt and significant motion. They are useful as low-latency, low-power triggers and for prototyping. This part does **not** have the programmable finite-state machine or machine-learning core of newer ST IMUs such as the LSM6DSOX family. That is worth considering if the hardware is ever revised.
 
@@ -204,11 +204,11 @@ Caramiaux and Tanaka's review is a good map of the trade-offs [Caramiaux & Tanak
 3. **Feedback.** Flash the status LED with a distinct colour per recognised class, and show the class in the app. Players learn the detector's boundaries much faster when they can see them.
 4. **Per-player calibration.** Thresholds for tap, flick and shake differ widely between players and between wrist and arm technique. Offer a short "play five strikes" calibration in the app that sets thresholds from the player's own data.
 5. **Graceful misses.** A rejected or ambiguous gesture produces nothing (or a configured default), never a random note.
-6. **Record everything.** Gesture work needs data. At 50 frames/s, the current telemetry stream is too slow to capture impulses. A triggered **burst capture**, for example 512 raw samples at 416 Hz around each detected event sent over the configuration cable, would let the app build the data set that Layers 3 and 4 need, and let any reported misfire be replayed against the detector in unit tests.
+6. **Record everything.** Gesture work needs data. The current telemetry stream (1–100 frames/s, 50 by default) is too slow to capture impulses. A triggered **burst capture**, for example 512 raw samples at 416 Hz around each detected event sent over the configuration cable, would let the app build the data set that Layers 3 and 4 need, and let any reported misfire be replayed against the detector in unit tests.
 
 ## 8. Recommendations for Trillium
 
-In order of value against effort. None of these is implemented, and nothing here has been tested on hardware.
+Listed in order of value against effort. None of these changes is implemented, and none has been tested on hardware.
 
 | # | Change | Firmware / app / hardware | Notes |
 |---|---|---|---|
@@ -223,10 +223,10 @@ In order of value against effort. None of these is implemented, and nothing here
 | 9 | **Template gestures (DTW)** trained in the app and uploaded | All three | After 7 has collected data |
 | 10 | **Optional magnetometer** for yaw drift correction only | Hardware | Not for absolute-heading note maps (§6.4) |
 
-**Hardware validation plan**, for whenever the user approves flashing a build containing any of the above:
+**Hardware validation plan**, for when a firmware build containing any of the above is approved for hardware testing:
 
 - Record five players × 20 strikes per direction and report a confusion matrix and onset-to-MIDI latency, measured with a contact microphone against USB-MIDI timestamps.
-- Repeat over a 60-minute session to cover the 35.8-minute timing class of bug.
+- Repeat over a 60-minute session to exercise the class of timer bug fixed in 0.4.0 (tap notes stopping after 35.8 minutes).
 - Confirm on the board the physical axis signs that §5 relies on. The repository notes that tilt axis signs are still unverified on hardware.
 
 ## 9. Conclusion
@@ -331,4 +331,4 @@ Woodman, O. J. (2007). *An introduction to inertial navigation* (Technical Repor
 
 ---
 
-*Bibliographic note.* The following were checked against publisher, proceedings or repository records while preparing this report: Ilsar et al. 2013, Mitchell et al. 2012, Rahman et al. 2009, Fiebrink & Sonami 2020, Malloch & Wanderley 2007, Jack et al. 2018, Kiefer et al. 2008, Rasamimanana et al. 2011, Caramiaux & Tanaka 2013, Françoise et al. 2014, Medeiros & Wanderley 2014, Essl & Rohs 2009 and Wang 2009. The other references are standard works cited from the authors' knowledge. Page numbers and venue details for those should be confirmed before any external publication.
+*Bibliographic note.* The following references were checked against publisher, proceedings or repository records: Ilsar et al. 2013, Mitchell et al. 2012, Rahman et al. 2009, Fiebrink & Sonami 2020, Malloch & Wanderley 2007, Jack et al. 2018, Kiefer et al. 2008, Rasamimanana et al. 2011, Caramiaux & Tanaka 2013, Françoise et al. 2014, Medeiros & Wanderley 2014, Essl & Rohs 2009 and Wang 2009. The remaining references are standard works in the field; their page numbers and venue details should be confirmed before external publication.
