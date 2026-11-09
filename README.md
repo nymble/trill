@@ -23,6 +23,8 @@ Open hardware designs and Rust software for using [Bela Trill](https://bela.io/t
 - [MIDI mapping](docs/midi-mapping.md): touch and motion events → MIDI messages, priorities, reconnect/panic, example trace.
 - [XIAO nRF52840 Sense firmware](docs/firmware-xiao-sense.md): build, safe UF2 loading with backup/restore, USB diagnostics, bring-up checklist, latency measurement.
 - [Motion-to-music engine](docs/motion-synth.md): motion processing, and the optional on-board debug synth.
+- [Current design and status](docs/current-design.md): block diagram, real rates, what is compiled, tested or untested, known limitations.
+- [Mac/iPhone connectivity plan](docs/music-connectivity.md): USB-MIDI vs BLE-MIDI vs custom, product precedents, latency targets and test plan.
 - [Omi integration](docs/omi-integration.md): what Omi's DevKit firmware does, licences by component, reuse matrix, architecture decision.
 
 - [Protocol notes](docs/protocol.md): I²C memory map, commands, data formats, and scaling.

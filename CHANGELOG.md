@@ -37,6 +37,7 @@ All notable changes to this project are documented here. Versions follow [Semant
 - `apple/`: Trill companion app for macOS 13+ and iOS 16+ (SwiftUI, CoreMIDI): endpoint discovery and hotplug, MIDI monitor with SysEx reassembly, configuration with requested vs acknowledged state, JSON presets through user-selected files, read-only firmware assistant on the Mac. `TrillKit` Swift package with tests. Xcode project from pinned XcodeGen 2.45.4; bundle ID `com.nymble.trill`; no team or signing in the repository.
 - Make targets `apple-test`, `apple-test-ios-sim`, `apple-project`, `apple-mac`, `apple-ios-sim`, `apple-ios-device`, `apple`, `apple-dist`; CI job on macOS building unsigned apps and uploading `trill-apple-apps-unsigned-dev`.
 - Docs: Apple app, configuration protocol.
+- Docs: current design and status (`docs/current-design.md`), and Mac/iPhone connectivity research and plan (`docs/music-connectivity.md`). The Omi BLE licensing note now states its scope precisely.
 
 ### Changed
 - USB layout: two MIDI cables per direction; `bcdDevice` 0x0200. Workspace version 0.3.0 (0.2.0 added configuration; `bcdDevice` stays 0x0200 because the USB layout did not change).

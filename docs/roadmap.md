@@ -17,7 +17,7 @@
 | `trill-config` ([protocol](config-protocol.md)) | Implemented: SysEx configuration v1 on USB-MIDI cable 1 (13 RAM-only parameters, actions, error codes); Rust and Swift codecs checked against shared vectors; firmware handler host-tested via the crate. **Not exercised against a device** |
 | Apple app ([doc](apple-app.md)) | Implemented: Mac + iPhone SwiftUI app and `TrillKit`; built unsigned and tested in CI on macOS (see doc). **Not run against a device**; no signing, App Store, BLE or OTA |
 | Omi integration ([doc](omi-integration.md)) | Investigated. Decision: separate development image, Omi untouched |
-| I²S output, BLE (incl. BLE-MIDI), MPE, multi-touch, mic, battery monitoring, settings persistence, firmware update from the app | Not started. BLE deferred pending a licensing decision |
+| I²S output, BLE (incl. BLE-MIDI), MPE, multi-touch, mic, battery monitoring, settings persistence, firmware update from the app | Not started. BLE deferred pending a licensing decision. Researched: [music-connectivity.md](music-connectivity.md) recommends host synth + USB-MIDI first, BLE-MIDI second |
 
 ## Instrument pipeline
 
@@ -33,7 +33,7 @@ Trill Flex ──I²C──> driver ──> touch frames ──> mapping ──>
 4. **Outputs (future):**
    - **Local synth** on a Linux host through ALSA.
    - **MIDI:** USB-MIDI from the XIAO is implemented (single voice, [mapping](midi-mapping.md)); next: MPE with multi-touch tracking. ALSA sequencer on Linux.
-   - **BLE (nRF52840):** BLE-MIDI or a custom GATT service to iPhone/iPad. The nRF52840 has no Wi-Fi; Wi-Fi transport would need a different host.
+   - **BLE (nRF52840):** standard BLE-MIDI to iPhone/iPad/Mac. A custom GATT service only for diagnostics ([why](music-connectivity.md#4-custom-ble-messages-gatt)). The nRF52840 has no Wi-Fi; a Wi-Fi transport would need a different host.
    - **OSC/network** from a Linux host over Wi-Fi to iPad apps.
    - **Contrail:** integration surface to be defined with the Contrail project.
 
@@ -44,9 +44,9 @@ Trill Flex ──I²C──> driver ──> touch frames ──> mapping ──>
 | 0.1 | Designs, driver, Linux CLI, CI and release workflow (this version) |
 | 0.2 | Hardware bring-up on a Pi: record `identify`/`read` logs, confirm pin mapping and FFC orientation, mark the Pi design *validated* |
 | 0.3 | XIAO Sense firmware on hardware: bring-up checklist, IMU axis signs, Trill on D4/D5, measured render time and latency. Validate the XIAO design |
-| 0.4 | USB-MIDI on hardware (implemented, to be accepted: [procedure](usb-midi.md#hardware-acceptance-procedure)); touch tracking, MPE; battery voltage/charge status reading; MIDI output on Linux |
+| 0.4 | USB-MIDI on hardware (implemented, to be accepted: [procedure](usb-midi.md#hardware-acceptance-procedure)); touch tracking, MPE; battery voltage/charge status reading; MIDI output on Linux; latency tests ([plan](music-connectivity.md#7-plan-minimum-viable-order)) |
 | 0.4.x | Apple app against hardware: two-port enumeration on Mac and iPhone, configuration round trip, preset apply; optional virtual MIDI routing in the Mac app; settings persistence on the device |
-| 0.5 | BLE-MIDI from the XIAO to iPhone/iPad; optional PDM mic input |
+| 0.5 | BLE-MIDI from the XIAO to iPhone/iPad/Mac after the licence decision; optional I²S output and PDM mic input |
 | later | Synth app for ZPOD, Contrail integration |
 
 ## ZPOD

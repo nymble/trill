@@ -46,7 +46,12 @@ The repository root [LICENSE](https://github.com/BasedHardware/omi/blob/28c78596
 Consequences for this GPL-3.0 + commercial project (engineering analysis, not legal advice):
 
 1. **MIT, BSD-3 and Apache-2.0** code may be combined into GPL-3.0 work, with attribution and licence text kept (Apache-2.0 is GPLv3-compatible, not GPLv2-compatible). Copying such code would be allowed but would add notice duties. None has been copied.
-2. **Nordic-5-Clause** components impose a "Nordic ICs only" field-of-use restriction, which GPL-3.0 forbids adding (§7, §10). A single binary that combines **GPL-3.0** code from this repository with the **NCS SoftDevice Controller** (that is, extending Omi's firmware with our GPL modules) could not be distributed under GPL. The workable route is for the copyright holder (Nymble) to license any module contributed to an Omi-based build under **MIT** or under the commercial licence. The dual-licensing model already allows that.
+2. **Nordic-5-Clause** components are binary-only and restricted to Nordic ICs. GPL-3.0 does not allow further restrictions on a conveyed work and requires its Corresponding Source (§§1, 7, 10). A single binary that combines **GPL-3.0-only** code from this repository with the **NCS SoftDevice Controller** (for example, our GPL modules built into Omi's firmware) is therefore at high risk of being undistributable under GPL-3.0-only alone. Whether an exception such as the System Library clause applies is a legal question we have not resolved. Routes open to the copyright holder (Nymble), for our own code only:
+   - license the module for that build under **MIT** or the commercial licence;
+   - add a narrowly scoped GPL §7 additional permission;
+   - use an open-source BLE controller.
+   
+   The same question applies to adding BLE to this firmware; see [music-connectivity.md](music-connectivity.md#licensing-notes-for-ble-engineering-analysis-not-legal-advice).
 3. **Permissive upstream cannot be relicensed away.** Our GPL or commercial licence covers only our code. Omi's MIT notices, the Opus BSD notices and the battery Apache-2.0 notice stay with any copy of those files.
 4. **Copyleft upstream** (for example, GPL code in another project) could not be relicensed commercially without its authors' permission. No copyleft component was found in the DevKit firmware path.
 5. **Facts are not copyrightable.** UUIDs, the codec ID, packet header layout and pin assignments can be implemented independently in our own code (protocol compatibility) without copying Omi source.
