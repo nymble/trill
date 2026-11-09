@@ -51,9 +51,15 @@ pub struct MotionConfig {
     pub orientation_tau_s: f32,
     /// Stationary samples needed to estimate gyro bias.
     pub calib_samples: u16,
-    /// Max |gyro| (dps) and max ||a|−1| (g) considered stationary.
+    /// Max per-axis deviation (dps) of a gyro sample from the mean of the
+    /// current stationary run. Measured around the run's own mean, not zero,
+    /// because the bias being estimated can itself be several dps.
     pub still_gyro_dps: f32,
-    /// See `still_gyro_dps`.
+    /// Max raw |gyro| (dps) for a stationary sample. Above the sensor's
+    /// zero-rate spec (±10 dps for the LSM6DS3TR-C), so any real bias fits,
+    /// while steady turning is rejected.
+    pub still_gyro_max_dps: f32,
+    /// Max ||a|−1| (g) considered stationary.
     pub still_accel_g: f32,
     /// High-passed |a| threshold for a tap (g).
     pub tap_threshold_g: f32,
@@ -70,7 +76,8 @@ impl Default for MotionConfig {
         Self {
             orientation_tau_s: 0.5,
             calib_samples: 400,
-            still_gyro_dps: 3.0,
+            still_gyro_dps: 4.0,
+            still_gyro_max_dps: 15.0,
             still_accel_g: 0.05,
             tap_threshold_g: 0.8,
             tap_refractory_us: 120_000,
@@ -96,7 +103,12 @@ impl GyroCalibrator {
         }
         let g = norm(s.gyro_dps);
         let a = norm(s.accel_g);
-        if g < cfg.still_gyro_dps && (a - 1.0).abs() < cfg.still_accel_g {
+        let near_mean = self.n == 0
+            || (0..3).all(|i| {
+                let d = s.gyro_dps[i] - self.sum[i] / self.n as f32;
+                d.abs() < cfg.still_gyro_dps
+            });
+        if g < cfg.still_gyro_max_dps && near_mean && (a - 1.0).abs() < cfg.still_accel_g {
             for i in 0..3 {
                 self.sum[i] += s.gyro_dps[i];
             }
@@ -337,6 +349,33 @@ mod tests {
             assert!((b[i] - bias[i]).abs() < 1e-4);
         }
         assert!(f.rotation_dps < 0.01, "bias removed: {}", f.rotation_dps);
+    }
+
+    #[test]
+    fn calibrates_large_bias_with_noise() {
+        // Bias above the old raw-|gyro| limit (3 dps), plus ±2.5 dps noise:
+        // the firmware 0.5.0 hardware case that never calibrated.
+        let mut p = MotionProcessor::new(MotionConfig::default());
+        let bias = [-0.8, -6.0, 5.0];
+        let noise = [2.5, -2.5, 1.5, -1.5, 0.0];
+        for i in 0..600u64 {
+            let n = noise[(i % 5) as usize];
+            let g = [bias[0] + n, bias[1] - n, bias[2] + n];
+            p.update(&still(i * DT, [0.0, 0.0, 1.0], g));
+        }
+        let b = p.gyro_bias().expect("calibrated");
+        for i in 0..3 {
+            assert!((b[i] - bias[i]).abs() < 0.1, "{b:?}");
+        }
+    }
+
+    #[test]
+    fn steady_turning_does_not_calibrate() {
+        let mut p = MotionProcessor::new(MotionConfig::default());
+        for i in 0..2000 {
+            p.update(&still(i * DT, [0.0, 0.0, 1.0], [0.0, 0.0, 20.0]));
+        }
+        assert!(p.gyro_bias().is_none());
     }
 
     #[test]

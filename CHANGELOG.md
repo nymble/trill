@@ -12,6 +12,7 @@ All notable changes to this project are documented here. Versions follow [Semant
 ### Changed (0.5.0)
 - Firmware: the IMU task runs on its own interrupt executor (`EGU2_SWI2`, P7) so blocking Trill I²C reads in thread mode no longer delay IMU samples; IMU at **833 Hz** (was 416 Hz) and accelerometer **±8 g** (was ±4 g) so hard taps do not clip. Gyro calibration uses 800 samples (≈ 1 s). Worst-case motion-to-sample wait falls from ≈ 2.4 ms plus a possible 2.3 ms Trill read to ≈ 1.2 ms (calculated, not measured).
 - `trill-config`: duplicate-parameter tracking widened to 64 bits (parameter IDs above 31).
+- Gyro calibration judges stillness around the run's own mean (each axis within 4 dps, raw |ω| < 15 dps) instead of raw |ω| < 3 dps. Found on hardware: the first 0.5.0 build never calibrated on the user's board (bias ≈ 2.6 dps plus 833 Hz noise kept breaking the run). The sensor's zero-rate spec is ±10 dps, so the old rule could fail on any board.
 
 ### Changed
 - The Apple companion app is now named **Trillium** (`Trillium.app`, schemes `TrilliumMac`/`TrilliumIOS`, artifacts `Trillium-macOS-…`, `trillium-*` CI artifacts, test kit `Trillium-<version>-<commit>`). Trill remains the name of the Bela sensor, the firmware, USB device, protocol, `TrillKit` package and repository. Bundle ID unchanged (`com.nymble.trill`).
