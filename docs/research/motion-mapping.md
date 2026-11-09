@@ -120,7 +120,7 @@ Human repeatability, not sensing, sets the class count. Kiefer et al. found gest
 
 ### 6.1 Orientation relative to gravity: yes, and Trillium already does it
 
-The 0.4.0 *tilt notes* mode chooses the note from roll across a span of ±45° by default, quantised to the scale with hysteresis. Forward pitch acts as the gate, and theremin mode bends continuously. These modes were tested **in simulation and unit tests only, not on hardware**. The HCI literature supports the basic idea. In a controlled study of wrist tilt, Rahman et al. found that users could comfortably control **at least 16 distinct levels** of pronation and supination (forearm roll, the axis Trillium uses). A **quadratic** discretisation, with finer zones near neutral and wider zones at the extremes, improved performance on every axis [Rahman et al. 2009]. Two improvements follow:
+The 0.4.0 *tilt notes* mode chooses the note from roll across a span of ±45° by default, quantised to the scale with hysteresis. Forward pitch acts as the gate, and theremin mode bends continuously over ±24 semitones by default (1–24 configurable). The bend range is sent to the receiver as RPN 0 on connect, and the receiving synth must use the same range for the pitch to be correct. These modes were tested **in simulation and unit tests only, not on hardware**. The HCI literature supports the basic idea. In a controlled study of wrist tilt, Rahman et al. found that users could comfortably control **at least 16 distinct levels** of pronation and supination (forearm roll, the axis Trillium uses). A **quadratic** discretisation, with finer zones near neutral and wider zones at the extremes, improved performance on every axis [Rahman et al. 2009]. Two improvements follow:
 
 1. **Use non-uniform note zones** that are narrow near neutral and wide near the limits of comfortable rotation, instead of equal steps across ±45°.
 2. **Limit a span to about one octave of a diatonic or pentatonic scale**, 5–8 notes, within that 16-level ceiling. Use the touch strip or a gesture to shift octaves. The note range is already a parameter (range in semitones plus a scale choice) and the roll span is a separate parameter in degrees, so this is a preset decision rather than a firmware change.
@@ -153,7 +153,7 @@ The XIAO nRF52840 Sense has **no magnetometer**. Adding one, for example a small
 
 ### 7.1 Where Trillium stands
 
-Firmware 0.4.0 has a complementary-filter tilt estimate (τ = 0.5 s), a rotation-speed magnitude and a tap detector. It also has a **flick** detector on one chosen gyroscope axis, with threshold, re-arm at 30% and cooldown. Two opposite flicks within a window count as a **zig-zag**. Circle and twirl recognition are documented as not implemented. Flick and zig-zag are covered by unit tests and are **not hardware-tested**.
+Firmware 0.4.0 has a complementary-filter tilt estimate (τ = 0.5 s), a rotation-speed magnitude and a tap detector. It also has a **flick** detector on one chosen gyroscope axis, with threshold, re-arm at 30% and cooldown. Two opposite flicks within a window count as a **zig-zag**. Circle and twirl recognition are documented as not implemented. Two configurable controller slots (A and B) each map a motion source to a CC number (1–119), with a shared deadzone and one-pole smoothing of up to 500 ms; the defaults are rotation → CC74 and forward tilt → CC1. All settings are held in RAM only and revert to firmware defaults on reset or unplug, so presets are stored in the app. Flick and zig-zag are covered by unit tests and are **not hardware-tested**.
 
 ### 7.2 Resource budget
 
@@ -226,7 +226,7 @@ Listed in order of value against effort. None of these changes is implemented, a
 **Hardware validation plan**, for when a firmware build containing any of the above is approved for hardware testing:
 
 - Record five players × 20 strikes per direction and report a confusion matrix and onset-to-MIDI latency, measured with a contact microphone against USB-MIDI timestamps.
-- Repeat over a 60-minute session to exercise the class of timer bug fixed in 0.4.0 (tap notes stopping after 35.8 minutes).
+- Repeat over a session of at least 72 minutes. The firmware clock is a 32-bit microsecond counter: the tap-arming bug fixed in 0.4.0 appeared after 35.8 minutes (2³¹ µs), and the counter itself wraps after about 71.6 minutes (2³² µs), so a 72-minute run exercises both.
 - Confirm on the board the physical axis signs that §5 relies on. The repository notes that tilt axis signs are still unverified on hardware.
 
 ## 9. Conclusion
@@ -237,17 +237,17 @@ A bare six-axis IMU cannot tell where a hand is or which way it faces. It is exc
 
 ## References
 
-Arfib, D., Couturier, J.-M., Kessous, L., & Verfaille, V. (2002). Strategies of mapping between gesture data and synthesis model parameters using perceptual spaces. *Organised Sound, 7*(2), 127–144.
+Arfib, D., Couturier, J.-M., Kessous, L., & Verfaille, V. (2002). Strategies of mapping between gesture data and synthesis model parameters using perceptual spaces. *Organised Sound, 7*(2), 127–144. https://doi.org/10.1017/S1355771802002054
 
-Bevilacqua, F., Zamborlin, B., Sypniewski, A., Schnell, N., Guédy, F., & Rasamimanana, N. (2010). Continuous realtime gesture following and recognition. In S. Kopp & I. Wachsmuth (Eds.), *Gesture in Embodied Communication and Human-Computer Interaction* (LNCS 5934, pp. 73–84). Springer.
+Bevilacqua, F., Zamborlin, B., Sypniewski, A., Schnell, N., Guédy, F., & Rasamimanana, N. (2010). Continuous realtime gesture following and recognition. In S. Kopp & I. Wachsmuth (Eds.), *Gesture in Embodied Communication and Human-Computer Interaction* (LNCS 5934, pp. 73–84). Springer. https://doi.org/10.1007/978-3-642-12553-9_7
 
 Bongers, B. (2000). Physical interfaces in the electronic arts: Interaction theory and interfacing techniques for real-time performance. In M. M. Wanderley & M. Battier (Eds.), *Trends in Gestural Control of Music*. IRCAM – Centre Pompidou.
 
-Caramiaux, B., & Tanaka, A. (2013). Machine learning of musical gestures. In *Proceedings of the International Conference on New Interfaces for Musical Expression (NIME)* (pp. 513–518). Daejeon, Korea.
+Caramiaux, B., & Tanaka, A. (2013). Machine learning of musical gestures. In *Proceedings of the International Conference on New Interfaces for Musical Expression (NIME)* (pp. 513–518). Daejeon, Korea. https://doi.org/10.5281/zenodo.1178490
 
-Casiez, G., Roussel, N., & Vogel, D. (2012). 1€ filter: A simple speed-based low-pass filter for noisy input in interactive systems. In *Proceedings of the SIGCHI Conference on Human Factors in Computing Systems (CHI '12)* (pp. 2527–2530). ACM.
+Casiez, G., Roussel, N., & Vogel, D. (2012). 1€ filter: A simple speed-based low-pass filter for noisy input in interactive systems. In *Proceedings of the SIGCHI Conference on Human Factors in Computing Systems (CHI '12)* (pp. 2527–2530). ACM. https://doi.org/10.1145/2207676.2208639
 
-David, R., Duke, J., Jain, A., Janapa Reddi, V., Jeffries, N., Li, J., Kreeger, N., Nappier, I., Natraj, M., Wang, T., Warden, P., & Rhodes, R. (2021). TensorFlow Lite Micro: Embedded machine learning for TinyML systems. In *Proceedings of Machine Learning and Systems 3 (MLSys 2021)*.
+David, R., Duke, J., Jain, A., Janapa Reddi, V., Jeffries, N., Li, J., Kreeger, N., Nappier, I., Natraj, M., Wang, T., Warden, P., & Rhodes, R. (2021). TensorFlow Lite Micro: Embedded machine learning for TinyML systems. In *Proceedings of Machine Learning and Systems 3 (MLSys 2021)*. https://arxiv.org/abs/2010.08678
 
 Essl, G., & Rohs, M. (2009). Interactivity for mobile music-making. *Organised Sound, 14*(2), 197–207. https://doi.org/10.1017/S1355771809000302
 
@@ -255,47 +255,47 @@ Fiebrink, R., & Cook, P. R. (2010). The Wekinator: A system for real-time, inter
 
 Fiebrink, R., & Sonami, L. (2020). Reflections on eight years of instrument creation with machine learning. In *Proceedings of the International Conference on New Interfaces for Musical Expression (NIME)* (pp. 237–242). Birmingham, UK. https://doi.org/10.5281/zenodo.4813334
 
-Françoise, J., Schnell, N., Borghesi, R., & Bevilacqua, F. (2014). Probabilistic models for designing motion and sound relationships. In *Proceedings of the International Conference on New Interfaces for Musical Expression (NIME)* (pp. 287–292). London.
+Françoise, J., Schnell, N., Borghesi, R., & Bevilacqua, F. (2014). Probabilistic models for designing motion and sound relationships. In *Proceedings of the International Conference on New Interfaces for Musical Expression (NIME)* (pp. 287–292). London. https://doi.org/10.5281/zenodo.1178764
 
-Godøy, R. I. (2006). Gestural-sonorous objects: Embodied extensions of Schaeffer's conceptual apparatus. *Organised Sound, 11*(2), 149–157.
+Godøy, R. I. (2006). Gestural-sonorous objects: Embodied extensions of Schaeffer's conceptual apparatus. *Organised Sound, 11*(2), 149–157. https://doi.org/10.1017/S1355771806001439
 
 Hunt, A., & Kirk, R. (2000). Mapping strategies for musical performance. In M. M. Wanderley & M. Battier (Eds.), *Trends in Gestural Control of Music*. IRCAM – Centre Pompidou.
 
-Hunt, A., Wanderley, M. M., & Paradis, M. (2003). The importance of parameter mapping in electronic instrument design. *Journal of New Music Research, 32*(4), 429–440.
+Hunt, A., Wanderley, M. M., & Paradis, M. (2003). The importance of parameter mapping in electronic instrument design. *Journal of New Music Research, 32*(4), 429–440. https://doi.org/10.1076/jnmr.32.4.429.18853
 
-Ilsar, A., Havryliv, M., & Johnston, A. (2013). The AirSticks: A new interface for electronic percussionists. In *Proceedings of the Sound and Music Computing Conference (SMC 2013)* (pp. 220–226). Stockholm.
+Ilsar, A., Havryliv, M., & Johnston, A. (2013). The AirSticks: A new interface for electronic percussionists. In *Proceedings of the Sound and Music Computing Conference (SMC 2013)* (pp. 220–226). Stockholm. https://doi.org/10.5281/zenodo.850415
 
 Jack, R. H., Mehrabi, A., Stockman, T., & McPherson, A. (2018). Action-sound latency and the perceived quality of digital musical instruments: Comparing professional percussionists and amateur musicians. *Music Perception, 36*(1), 109–128. https://doi.org/10.1525/mp.2018.36.1.109
 
-Jensenius, A. R., Wanderley, M. M., Godøy, R. I., & Leman, M. (2010). Musical gestures: Concepts and methods in research. In R. I. Godøy & M. Leman (Eds.), *Musical Gestures: Sound, Movement, and Meaning* (pp. 12–35). Routledge.
+Jensenius, A. R., Wanderley, M. M., Godøy, R. I., & Leman, M. (2010). Musical gestures: Concepts and methods in research. In R. I. Godøy & M. Leman (Eds.), *Musical Gestures: Sound, Movement, and Meaning* (pp. 12–35). Routledge. https://doi.org/10.4324/9780203863411
 
-Kapur, A., Lazier, A. J., Davidson, P., Wilson, R. S., & Cook, P. R. (2004). The electronic sitar controller. In *Proceedings of the International Conference on New Interfaces for Musical Expression (NIME)*. Hamamatsu, Japan.
+Kapur, A., Lazier, A. J., Davidson, P., Wilson, R. S., & Cook, P. R. (2004). The electronic sitar controller. In *Proceedings of the International Conference on New Interfaces for Musical Expression (NIME)*. Hamamatsu, Japan. https://doi.org/10.5281/zenodo.1176623
 
-Kiefer, C., Collins, N., & Fitzpatrick, G. (2008). Evaluating the Wiimote as a musical controller. In *Proceedings of the International Computer Music Conference (ICMC 2008)*. Belfast. (See also the companion paper: HCI methodology for evaluating musical controllers: A case study. *NIME 2008*, pp. 87–90.)
+Kiefer, C., Collins, N., & Fitzpatrick, G. (2008). Evaluating the Wiimote as a musical controller. In *Proceedings of the International Computer Music Conference (ICMC 2008)*. Belfast. (See also the companion paper: HCI methodology for evaluating musical controllers: A case study. *NIME 2008*, pp. 87–90. https://doi.org/10.5281/zenodo.1179577)
 
 Kolesnik, P., & Wanderley, M. M. (2004). Recognition, analysis and performance with expressive conducting gestures. In *Proceedings of the International Computer Music Conference (ICMC 2004)*. Miami.
 
-Lee, E., Nakra, T. M., & Borchers, J. (2004). You're the conductor: A realistic interactive conducting system for children. In *Proceedings of the International Conference on New Interfaces for Musical Expression (NIME)*. Hamamatsu, Japan.
+Lee, E., Nakra, T. M., & Borchers, J. (2004). You're the conductor: A realistic interactive conducting system for children. In *Proceedings of the International Conference on New Interfaces for Musical Expression (NIME)*. Hamamatsu, Japan. https://doi.org/10.5281/zenodo.1176629
 
-Leman, M. (2008). *Embodied Music Cognition and Mediation Technology*. MIT Press.
+Leman, M. (2008). *Embodied Music Cognition and Mediation Technology*. MIT Press. https://doi.org/10.7551/mitpress/7476.001.0001
 
-Liu, J., Zhong, L., Wickramasuriya, J., & Vasudevan, V. (2009). uWave: Accelerometer-based personalized gesture recognition and its applications. *Pervasive and Mobile Computing, 5*(6), 657–675.
+Liu, J., Zhong, L., Wickramasuriya, J., & Vasudevan, V. (2009). uWave: Accelerometer-based personalized gesture recognition and its applications. *Pervasive and Mobile Computing, 5*(6), 657–675. https://doi.org/10.1016/j.pmcj.2009.07.007
 
-Madgwick, S. O. H., Harrison, A. J. L., & Vaidyanathan, R. (2011). Estimation of IMU and MARG orientation using a gradient descent algorithm. In *Proceedings of the IEEE International Conference on Rehabilitation Robotics (ICORR 2011)*. Zurich.
+Madgwick, S. O. H., Harrison, A. J. L., & Vaidyanathan, R. (2011). Estimation of IMU and MARG orientation using a gradient descent algorithm. In *Proceedings of the IEEE International Conference on Rehabilitation Robotics (ICORR 2011)*. Zurich. https://doi.org/10.1109/ICORR.2011.5975346
 
-Mahony, R., Hamel, T., & Pflimlin, J.-M. (2008). Nonlinear complementary filters on the special orthogonal group. *IEEE Transactions on Automatic Control, 53*(5), 1203–1218.
+Mahony, R., Hamel, T., & Pflimlin, J.-M. (2008). Nonlinear complementary filters on the special orthogonal group. *IEEE Transactions on Automatic Control, 53*(5), 1203–1218. https://doi.org/10.1109/TAC.2008.923738
 
-Malloch, J., Sinclair, S., & Wanderley, M. M. (2013). Libmapper (a library for connecting things). In *CHI '13 Extended Abstracts on Human Factors in Computing Systems*. ACM.
+Malloch, J., Sinclair, S., & Wanderley, M. M. (2013). Libmapper (a library for connecting things). In *CHI '13 Extended Abstracts on Human Factors in Computing Systems*. ACM. https://doi.org/10.1145/2468356.2479617
 
-Malloch, J., & Wanderley, M. M. (2007). The T-Stick: From musical interface to musical instrument. In *Proceedings of the International Conference on New Interfaces for Musical Expression (NIME)* (pp. 66–69). New York.
+Malloch, J., & Wanderley, M. M. (2007). The T-Stick: From musical interface to musical instrument. In *Proceedings of the International Conference on New Interfaces for Musical Expression (NIME)* (pp. 66–69). New York. https://doi.org/10.5281/zenodo.1177175
 
 Marrin, T., & Paradiso, J. (1997). The Digital Baton: A versatile performance instrument. In *Proceedings of the International Computer Music Conference (ICMC 1997)*. Thessaloniki.
 
-Marrin Nakra, T. (2000). *Inside the Conductor's Jacket: Analysis, interpretation and musical synthesis of expressive gesture* (Doctoral dissertation). Massachusetts Institute of Technology.
+Marrin Nakra, T. (2000). *Inside the Conductor's Jacket: Analysis, interpretation and musical synthesis of expressive gesture* (Doctoral dissertation). Massachusetts Institute of Technology. https://hdl.handle.net/1721.1/9165
 
-Mathews, M. V. (1991). The Radio Baton and Conductor program, or: Pitch, the most important and least expressive part of music. *Computer Music Journal, 15*(4), 37–46.
+Mathews, M. V. (1991). The Radio Baton and Conductor program, or: Pitch, the most important and least expressive part of music. *Computer Music Journal, 15*(4), 37–46. https://doi.org/10.2307/3681070
 
-McPherson, A. P., Jack, R. H., & Moro, G. (2016). Action-sound latency: Are our tools fast enough? In *Proceedings of the International Conference on New Interfaces for Musical Expression (NIME)*. Brisbane.
+McPherson, A. P., Jack, R. H., & Moro, G. (2016). Action-sound latency: Are our tools fast enough? In *Proceedings of the International Conference on New Interfaces for Musical Expression (NIME)*. Brisbane. https://doi.org/10.5281/zenodo.3964611
 
 Medeiros, C. B., & Wanderley, M. M. (2014). A comprehensive review of sensors and instrumentation methods in devices for musical expression. *Sensors, 14*(8), 13556–13591. https://doi.org/10.3390/s140813556
 
@@ -309,26 +309,26 @@ Rasamimanana, N., Bevilacqua, F., Schnell, N., Guédy, F., Fléty, E., Maestracc
 
 Rovan, J. B., Wanderley, M. M., Dubnov, S., & Depalle, P. (1997). Instrumental gestural mapping strategies as expressivity determinants in computer music performance. In *Proceedings of the Kansei – The Technology of Emotion Workshop*. Genoa.
 
-Sakoe, H., & Chiba, S. (1978). Dynamic programming algorithm optimization for spoken word recognition. *IEEE Transactions on Acoustics, Speech, and Signal Processing, 26*(1), 43–49.
+Sakoe, H., & Chiba, S. (1978). Dynamic programming algorithm optimization for spoken word recognition. *IEEE Transactions on Acoustics, Speech, and Signal Processing, 26*(1), 43–49. https://doi.org/10.1109/TASSP.1978.1163055
 
-STMicroelectronics. *LSM6DS3TR-C: iNEMO inertial module, always-on 3D accelerometer and 3D gyroscope* (datasheet), and *AN5130: LSM6DS3TR-C always-on 3D accelerometer and 3D gyroscope* (application note). Register details cited here (`TAP_SRC`, `D6D_SRC`, full-scale settings) should be checked against the current revisions before implementation.
+STMicroelectronics. *LSM6DS3TR-C: iNEMO inertial module, always-on 3D accelerometer and 3D gyroscope* (datasheet), and *AN5130: LSM6DS3TR-C always-on 3D accelerometer and 3D gyroscope* (application note). Datasheet (DocID030071 Rev 3): https://www.st.com/resource/en/datasheet/lsm6ds3tr-c.pdf. Register details cited here (`TAP_SRC`, `D6D_SRC`, full-scale settings) match Rev 3 of the datasheet.
 
-Vasconcelos, J. F., Elkaim, G., Silvestre, C., Oliveira, P., & Cardeira, B. (2011). Geometric approach to strapdown magnetometer calibration in sensor frame. *IEEE Transactions on Aerospace and Electronic Systems, 47*(2), 1293–1306.
+Vasconcelos, J. F., Elkaim, G., Silvestre, C., Oliveira, P., & Cardeira, B. (2011). Geometric approach to strapdown magnetometer calibration in sensor frame. *IEEE Transactions on Aerospace and Electronic Systems, 47*(2), 1293–1306. https://doi.org/10.1109/TAES.2011.5751259
 
 Waisvisz, M. (1985). THE HANDS, a set of remote MIDI-controllers. In *Proceedings of the International Computer Music Conference (ICMC 1985)*. Burnaby, BC.
 
 Wang, G. (2009). Designing Smule's Ocarina: The iPhone's magic flute. In *Proceedings of the International Conference on New Interfaces for Musical Expression (NIME)* (pp. 303–307). Pittsburgh, PA. https://doi.org/10.5281/zenodo.1177697
 
-Wanderley, M. M., & Depalle, P. (2004). Gestural control of sound synthesis. *Proceedings of the IEEE, 92*(4), 632–644.
+Wanderley, M. M., & Depalle, P. (2004). Gestural control of sound synthesis. *Proceedings of the IEEE, 92*(4), 632–644. https://doi.org/10.1109/JPROC.2004.825882
 
-Wessel, D., & Wright, M. (2002). Problems and prospects for intimate musical control of computers. *Computer Music Journal, 26*(3), 11–22.
+Wessel, D., & Wright, M. (2002). Problems and prospects for intimate musical control of computers. *Computer Music Journal, 26*(3), 11–22. https://doi.org/10.1162/014892602320582945
 
-Williamson, J., Murray-Smith, R., & Hughes, S. (2007). Shoogle: Excitatory multimodal interaction on mobile devices. In *Proceedings of the SIGCHI Conference on Human Factors in Computing Systems (CHI '07)*. ACM.
+Williamson, J., Murray-Smith, R., & Hughes, S. (2007). Shoogle: Excitatory multimodal interaction on mobile devices. In *Proceedings of the SIGCHI Conference on Human Factors in Computing Systems (CHI '07)*. ACM. https://doi.org/10.1145/1240624.1240642
 
-Wobbrock, J. O., Wilson, A. D., & Li, Y. (2007). Gestures without libraries, toolkits or training: A $1 recognizer for user interface prototypes. In *Proceedings of the 20th Annual ACM Symposium on User Interface Software and Technology (UIST '07)* (pp. 159–168). ACM.
+Wobbrock, J. O., Wilson, A. D., & Li, Y. (2007). Gestures without libraries, toolkits or training: A $1 recognizer for user interface prototypes. In *Proceedings of the 20th Annual ACM Symposium on User Interface Software and Technology (UIST '07)* (pp. 159–168). ACM. https://doi.org/10.1145/1294211.1294238
 
-Woodman, O. J. (2007). *An introduction to inertial navigation* (Technical Report UCAM-CL-TR-696). University of Cambridge Computer Laboratory.
+Woodman, O. J. (2007). *An introduction to inertial navigation* (Technical Report UCAM-CL-TR-696). University of Cambridge Computer Laboratory. https://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-696.html
 
 ---
 
-*Bibliographic note.* The following references were checked against publisher, proceedings or repository records: Ilsar et al. 2013, Mitchell et al. 2012, Rahman et al. 2009, Fiebrink & Sonami 2020, Malloch & Wanderley 2007, Jack et al. 2018, Kiefer et al. 2008, Rasamimanana et al. 2011, Caramiaux & Tanaka 2013, Françoise et al. 2014, Medeiros & Wanderley 2014, Essl & Rohs 2009 and Wang 2009. The remaining references are standard works in the field; their page numbers and venue details should be confirmed before external publication.
+*Bibliographic note.* Links were checked to resolve to the cited work. References without a link have no verified online record.
