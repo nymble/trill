@@ -17,7 +17,7 @@ FW_ELF  := $(FW_DIR)/target/thumbv7em-none-eabihf/release/xiao-sense-fw
 FW_UF2  := $(DIST)/xiao-sense-fw-$(VERSION).uf2
 
 .PHONY: all ci fmt fmt-check clippy test tools-test check-thumb fw fw-check fw-uf2 fw-uf2-pcm synth-demo build pi-zero pi-arm64 x86-musl dist clean \
-        protocol-vectors apple apple-project apple-test apple-test-ios-sim apple-mac apple-ios-sim apple-ios-device apple-dist test-kit
+        protocol-vectors apple apple-project apple-test apple-test-ios-sim apple-mac apple-ios-sim apple-ios-device apple-dist apple-icon test-kit
 
 all: ci
 
@@ -117,6 +117,10 @@ apple: apple-test apple-mac apple-ios-sim apple-ios-device apple-dist
 # Generate apple/Trillium.xcodeproj from apple/project.yml (not committed).
 apple-project:
 	cd $(APPLE) && $(XCODEGEN) generate --spec project.yml
+
+# Regenerate the app icon PNGs (committed) from the CoreGraphics drawing.
+apple-icon:
+	swift $(APPLE)/scripts/make_app_icon.swift $(APPLE)/App/Shared/Assets.xcassets/AppIcon.appiconset
 
 # TrillKit tests on the host (macOS: also the CoreMIDI loopback tests;
 # Linux: protocol/model/UF2 tests only).

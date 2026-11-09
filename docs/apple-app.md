@@ -88,6 +88,8 @@ make apple                # all of the above (except the Simulator tests)
 
 On Linux, `make apple-test` runs the platform-independent TrillKit tests (protocol vectors, UMP, session, presets, UF2). That proves nothing about SwiftUI or CoreMIDI, which only build on macOS.
 
+The app icon (`apple/App/Shared/Assets.xcassets/AppIcon.appiconset`) is drawn in code: after changing `apple/scripts/make_app_icon.swift`, run `make apple-icon` and commit the PNGs. Tagged versions are packaged as GitHub Releases ([releasing.md](releasing.md)).
+
 ## Run and install
 
 **Mac, from Xcode:**

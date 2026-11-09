@@ -1,9 +1,9 @@
 # Trill test kit (Mac app + matching XIAO firmware)
 
-A development bundle built by CI (`trillium-test-kit-unsigned-dev` artifact) or
-locally with `make test-kit`. Everything in it comes from one commit, named in
-the folder (`Trillium-<version>-<commit>`) and in `MANIFEST.txt`. It is not a
-release, it is not notarized, and the firmware has **not** been validated on
+A development bundle attached to each GitHub Release, also built by CI
+(`trillium-test-kit-unsigned-dev` artifact) or locally with `make test-kit`. Everything in it comes from one commit, named in
+the folder (`Trillium-<version>-<commit>`) and in `MANIFEST.txt`. It is not
+notarized, and the firmware has **not** been validated on
 hardware. Check `SHA256SUMS` first (`shasum -a 256 -c SHA256SUMS`).
 
 | File | What |
@@ -15,11 +15,11 @@ hardware. Check `SHA256SUMS` first (`shasum -a 256 -c SHA256SUMS`).
 
 ## Bring-up
 
-1. **Firmware.** The Mapping tab's sensor modes and gestures need firmware
-   0.4.0; the Sensors tab needs firmware 0.3.0 or newer; older firmware
-   still plays MIDI and the app says "Sensors unsupported until the firmware is
-   updated". To update: double-press RESET on the XIAO so the `XIAO-SENSE`
-   drive appears, then
+1. **Firmware.** Use the firmware from the same kit: the app's newest
+   features (directional strikes) need 0.5.0, sensor modes and gestures
+   0.4.0, the Sensors tab 0.3.0; with older firmware those controls are
+   disabled and never sent. To update: double-press RESET on the XIAO so the
+   `XIAO-SENSE` drive appears, then
    `python3 tools/xiao_uf2.py info /Volumes/XIAO-SENSE` (note the Board-ID),
    `python3 tools/xiao_uf2.py flash --drive /Volumes/XIAO-SENSE --board-id <Board-ID> firmware/xiao-sense-fw-<version>.uf2`
    (dry run), and the same command with `--write` to copy it. The tool refuses
@@ -27,17 +27,16 @@ hardware. Check `SHA256SUMS` first (`shasum -a 256 -c SHA256SUMS`).
    Keep your own backup of the previous firmware outside this folder.
 2. **App.** Unzip and open `Trillium.app`. Gatekeeper blocks unsigned apps: on
    macOS 15+ try once, then System Settings › Privacy & Security › Open Anyway.
-3. **Connect.** Device tab: port 2 ("…Port 2") is the configuration port. Press
-   Connect.
-4. **Sensors tab.** Move the board: acceleration (g), rotation rate (°/s),
+3. **Connect.** Home shows "Trillium found": press Connect (or turn on
+   *Connect automatically*). Ports can be checked under Settings › Connection.
+4. **Presets.** Choose a sound; it is sent straight away. *Drum strikes*
+   (firmware 0.5.0) plays a different drum for down, sideways and forward hits.
+5. **Sensors tab.** Move the board: acceleration (g), rotation rate (°/s),
    pitch/roll, Trill touch and stream health update live. Charts show the last
    10 s; gaps and stale periods are left blank, never drawn through.
-5. **MIDI tab.** Logs what port 1 sends (CoreMIDI time, channel, decoded
-   message), with clock and Trill-SysEx filtering, rates and CSV export. Select
-   port 1 as the monitor source; port 2 is configuration + sensor stream only.
-6. **Mapping tab (firmware 0.4.0).** Built-in presets and the new sensor
-   modes, controller assignment, tap sensitivity and gestures. Firmware 0.3.0
-   keeps working with the old controls; the new ones are disabled and not sent.
+6. **Settings.** Sound & mapping is the full editor (mode, notes, controllers,
+   taps and strikes, gestures). MIDI monitor logs what port 1 sends, with
+   filtering, rates and CSV export.
 
 ### What to test on hardware with 0.4.0 (not yet done)
 
