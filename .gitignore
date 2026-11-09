@@ -4,3 +4,4 @@
 .DS_Store
 firmware/xiao-sense/target
 __pycache__/
+/build

@@ -1,0 +1,7 @@
+Trill.xcodeproj/
+Config/Local.xcconfig
+build/
+.build/
+.swiftpm/
+TrillKit/.build/
+TrillKit/.swiftpm/

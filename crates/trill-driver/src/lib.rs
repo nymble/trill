@@ -675,6 +675,32 @@ impl<I2C: I2c> Trill<I2C> {
         Ok(decode_centroids_1d(&buf[..2 * 2 * MAX_TOUCHES_1D]))
     }
 
+    /// Read the status byte and one centroid frame in a single I²C read
+    /// starting at offset 3 (firmware ≥ 3). Comparing
+    /// [`Status::frame_id`] with the previous call tells whether the sensor
+    /// finished a new scan since then, so a caller polling faster than the
+    /// scan time does not treat a repeated frame as new data.
+    pub fn read_frame<D: DelayNs>(
+        &mut self,
+        delay: &mut D,
+    ) -> Result<(Status, Touches), Error<I2C::Error>> {
+        let id = self.identity.ok_or(Error::NotIdentified)?;
+        self.require_firmware(3)?;
+        if self.mode != Mode::Centroid {
+            return Err(Error::WrongMode { current: self.mode });
+        }
+        if !id.device.is_1d() {
+            return Err(Error::Unsupported("2-axis centroid decoding (Square/Hex)"));
+        }
+        let mut buf = [0u8; 25];
+        let len = 1 + id.device.centroid_len();
+        self.read_from(delay, OFFSET_STATUS, &mut buf[..len])?;
+        Ok((
+            Status(buf[0]),
+            decode_centroids_1d(&buf[1..1 + 2 * 2 * MAX_TOUCHES_1D]),
+        ))
+    }
+
     /// Read one frame of 16-bit channel values. Requires an identified device
     /// in Raw, Baseline or Diff mode with the default Format (16 bit) and
     /// channel mask.

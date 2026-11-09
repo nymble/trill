@@ -322,3 +322,49 @@ fn legacy_firmware_without_ack_is_accepted() {
         })
     ));
 }
+
+#[test]
+fn read_frame_includes_status_in_one_transaction() {
+    let mut frame = vec![0xFF; 21];
+    frame[0] = 0x80 | 0x40 | 17; // initialised, activity, frame 17
+    frame[1] = 0x07;
+    frame[2] = 0x40;
+    frame[11] = 0x02;
+    frame[12] = 0x58;
+    let mut next = frame.clone();
+    next[0] = 0x80 | 18;
+    let expectations = [
+        T::write(A, vec![0, 0xFF]),
+        T::read(A, vec![0xFE, 6, 3]),
+        T::write(A, vec![0, 1, 0]),
+        ack(),
+        T::write(A, vec![0, 3, 4]),
+        ack(),
+        T::write(A, vec![0, 2, 0, 10]), // ultra-fast, 10 bit
+        ack(),
+        T::write(A, vec![0, 4, 31]), // 0.03 * 1024 rounded
+        ack(),
+        T::write(A, vec![0, 6]),
+        ack(),
+        T::write(A, vec![3]), // read pointer at the status byte
+        T::read(A, frame),
+        T::read(A, next), // cached pointer: one read per frame
+    ];
+    let mut i2c = I2cMock::new(&expectations);
+    let mut delay = NoopDelay::new();
+    let mut trill = Trill::new(i2c.clone(), A);
+    let mut cfg = Config::for_device(Device::Flex);
+    cfg.bits = 10;
+    cfg.noise_threshold = noise_threshold_counts(0.03, 10);
+    trill.init(&mut delay, Some(Device::Flex), &cfg).unwrap();
+    let (st, t) = trill.read_frame(&mut delay).unwrap();
+    assert_eq!(st.frame_id(), 17);
+    assert!(st.activity() && st.initialised());
+    assert_eq!(t.as_slice()[0].location, 1856);
+    assert_eq!(t.as_slice()[0].size, 600);
+    let (st, t) = trill.read_frame(&mut delay).unwrap();
+    assert_eq!(st.frame_id(), 18);
+    assert!(!st.activity());
+    assert_eq!(t.len(), 1);
+    i2c.done();
+}

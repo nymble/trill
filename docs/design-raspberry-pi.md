@@ -37,6 +37,8 @@ Do **not** connect pins 2 or 4 (5 V).
 
 I²C logic levels follow Trill VCC, so powering Trill from 3.3 V keeps SDA/SCL within the Pi's limits. Never power Trill from 5 V while it is connected to Pi GPIO.
 
+This design is powered from the Pi's own USB supply. **Never connect a raw LiPo/Li-ion cell to any Pi pin** (3V3, 5V or GPIO); battery operation is only described for the XIAO, which has an on-board charger ([XIAO power and battery](design-xiao-nrf52840.md#power-usb-and-battery)).
+
 ### Address selection
 
 The ADR0/ADR1 solder-pad groups on the back of the base add an offset of +0 to +8, giving 0x48–0x50 (datasheet Table 8). In each group, bridge the middle pad to **one** side only; bridging both sides shorts VCC to GND. Check with a meter before powering. 0x50 (+8) can collide with other devices; avoid it when other I²C parts share the bus.

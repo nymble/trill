@@ -1,7 +1,7 @@
 [package]
 name = "xiao-sense-fw"
-description = "Embassy firmware for the Seeed XIAO nRF52840 Sense: USB CDC diagnostics, LSM6DS3TR-C motion, Trill touch, audio-rate motion synth"
-version = "0.1.0"
+description = "Embassy firmware for the Seeed XIAO nRF52840 Sense: class-compliant USB-MIDI + CDC diagnostics from Trill touch and LSM6DS3TR-C motion; optional debug synth PCM stream"
+version = "0.4.0"
 edition = "2021"
 license = "GPL-3.0-only"
 repository = "https://github.com/nymble/trill"
@@ -20,6 +20,9 @@ trill-driver = { path = "../../crates/trill-driver" }
 lsm6ds3trc = { path = "../../crates/lsm6ds3trc" }
 motion-synth = { path = "../../crates/motion-synth" }
 status-led = { path = "../../crates/status-led" }
+instrument-events = { path = "../../crates/instrument-events" }
+trill-usb = { path = "../../crates/trill-usb" }
+trill-config = { path = "../../crates/trill-config" }
 embassy-nrf = { version = "0.11.0", features = ["nrf52840", "time-driver-rtc1", "gpiote", "time", "unstable-pac"] }
 embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread", "executor-interrupt"] }
 embassy-time = "0.5.1"
@@ -31,6 +34,15 @@ embassy-usb = { version = "0.6.0", default-features = false }
 cortex-m = { version = "0.7.7", features = ["inline-asm", "critical-section-single-core"] }
 cortex-m-rt = { version = "0.7.5", features = ["set-vtor"] }
 heapless = "0.9"
+
+[features]
+default = []
+# Debug/test path: on-board synth rendered on the high-priority executor and
+# streamed as framed PCM over a second CDC ACM port (tools/pcm_capture.py).
+# Uses USB PID 1209:0003 instead of 1209:0002.
+pcm-synth = []
+# Logic-analyser timing outputs on D0/D1 (see src/timing.rs). Off by default.
+timing-gpio = []
 
 [profile.release]
 opt-level = 3

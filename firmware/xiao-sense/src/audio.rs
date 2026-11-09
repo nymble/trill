@@ -1,5 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
-//! Audio task (high-priority interrupt executor).
+//! Audio task (high-priority interrupt executor), only built with the
+//! optional `pcm-synth` feature: the on-board synth is a debug/test path,
+//! not the instrument's audio output (USB MIDI drives a host synth).
+//!
+//! Controls reach the synth through `MAILBOX`, posted by both the IMU task
+//! and the Trill task (so touch reaches the synth without the IMU).
 //!
 //! Every block period: take one control snapshot, render `BLOCK` samples,
 //! hand the block to the USB PCM queue without ever blocking. The block
@@ -12,6 +17,8 @@ use core::sync::atomic::Ordering;
 
 use cortex_m::peripheral::DWT;
 use embassy_time::{Instant, Timer, TICK_HZ};
+use motion_synth::mapping::{map, MappingConfig};
+use motion_synth::motion::MotionFrame;
 use motion_synth::stream::FLAG_DROPPED;
 use motion_synth::synth::Synth;
 
@@ -20,6 +27,22 @@ use crate::shared::*;
 
 /// CPU clock used to convert DWT cycles to µs.
 const CPU_HZ: u32 = 64_000_000;
+
+/// Map the latest motion + touch to synth parameters and post them.
+/// `frame.tap` triggers a percussive hit; callers other than the IMU task
+/// must pass a frame with `tap: None`.
+pub fn post_controls(frame: &MotionFrame, t_us: u64) {
+    let touch = TOUCH.lock(|t| t.get());
+    let params = map(&MappingConfig::default(), frame, &touch);
+    MAILBOX.lock(|m| m.borrow_mut().post(params, t_us));
+}
+
+/// Touch-only update for the synth (no tap trigger).
+pub fn post_touch(t_us: u64) {
+    let mut frame = LAST_MOTION.lock(|m| m.get());
+    frame.tap = None;
+    post_controls(&frame, t_us);
+}
 
 fn deadline_ticks(start: u64, block_index: u64) -> u64 {
     start + block_index * BLOCK as u64 * TICK_HZ / SAMPLE_RATE as u64

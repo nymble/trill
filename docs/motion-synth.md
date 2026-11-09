@@ -1,6 +1,6 @@
 # Motion-to-music engine
 
-[`crates/motion-synth`](../crates/motion-synth) is a `no_std`, allocation-free library. It turns IMU motion (and optional Trill touch) into sound at audio rate. It runs unchanged on the host (tests, WAV demo) and in the [XIAO Sense firmware](firmware-xiao-sense.md).
+[`crates/motion-synth`](../crates/motion-synth) is a `no_std`, allocation-free library. It turns IMU motion (and optional Trill touch) into sound at audio rate. It runs unchanged on the host (tests, WAV demo) and in the [XIAO Sense firmware](firmware-xiao-sense.md). In the firmware, the `motion` module (orientation, rotation, taps) feeds the default [USB-MIDI](usb-midi.md) path. The synth, mapping and PCM stream are an optional debug build (`--features pcm-synth`): the instrument's sound normally comes from a host synth over MIDI.
 
 > **Status:** implemented and host-tested. The audio path has been checked by disassembly to use no `f64` maths. On-target timing has **not** been measured: the firmware reports render time and control age, but no hardware run has been done yet.
 
@@ -37,7 +37,7 @@ Default instrument, intended to be changed:
 
 PolyBLEP sawtooth plus a sine sub-oscillator one octave down, into a TPT state-variable low-pass (coefficients every 8 samples), then amplitude = 0.7 × sustained level + pluck envelope (2 ms linear attack, 250 ms exponential decay) × velocity, then a cubic soft clip to i16. Invalid parameters (NaN, ±∞, out of range) are clamped or ignored, so output is always finite.
 
-The nRF52840 FPU is single precision, and `libm` trigonometry evaluates in `f64` (software emulated). The audio path therefore uses a polynomial sine (error < 0.0011) and a rational `tan` (error < 1 % up to 0.45·fs). Disassembly of the release firmware shows `f64` helper calls only in the control-rate IMU task (for `exp2f`/`powf` in mapping), none in the audio task.
+The nRF52840 FPU is single precision, and `libm` trigonometry evaluates in `f64` (software emulated). The audio path therefore uses a polynomial sine (error < 0.0011) and a rational `tan` (error < 1 % up to 0.45·fs). Disassembly of the release firmware (before the USB-MIDI change; not re-checked for the `pcm-synth` build) showed `f64` helper calls only in the control-rate IMU task (for `exp2f`/`powf` in mapping), none in the audio task.
 
 ## Latency budget
 

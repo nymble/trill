@@ -1,5 +1,12 @@
 # Current design and implementation status
 
+> **Historical snapshot (updated 2026-11-08).** This page describes the code after PR #1. Since then:
+> - USB-MIDI, the configuration protocol and the Apple app have been built (PRs #3, #4).
+> - Firmware 0.2.0–0.4.0 has run on one XIAO nRF52840 Sense. 0.4.0's new modes are simulation-tested only.
+> - Limitation 1 (touch coupled to the IMU) and limitation 2 (Trill scan longer than the poll period: now 10-bit scan with frame-ID filtering) were addressed in #3.
+>
+> For current status, see the [README](../README.md), the [roadmap](roadmap.md#design-status) and [CLAUDE_HANDOFF.md](CLAUDE_HANDOFF.md).
+
 Snapshot of what is on `main` after [PR #1](https://github.com/nymble/trill/pull/1) (merge `6aaa73d`, 2026-11-07). It describes the code as written; rates are the configured values read from the source, not measurements. **Nothing below has run on hardware yet.**
 
 ## Block diagram (XIAO nRF52840 Sense firmware)
