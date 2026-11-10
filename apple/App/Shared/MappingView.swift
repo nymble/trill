@@ -70,6 +70,9 @@ struct MappingView: View {
     static let sources = CCSource.allCases.map { ($0.rawValue, $0.title) }
     static let ccNumbers = (1...119).map { ($0, Self.ccName($0)) }
     static let expression = [(0, "Off")] + Self.ccNumbers
+    static let voicingCounts = [(0, "Off: every strike plays the chosen note"), (2, "2: down = note, up = octave"),
+                                (4, "4: + left = third, right = fifth"), (6, "6: + forward = second, back = octave below")]
+    static let scales = ScaleKind.allCases.map { ($0.rawValue, $0.name) }
     static let strikeCounts = [(0, "Off: one note for every tap"), (2, "2: down, up"),
                                (4, "4: down, up, left, right"), (6, "6: + forward, back")]
 
@@ -169,7 +172,24 @@ struct MappingView: View {
                 .pickerStyle(.segmented)
                 .disabled(model.session.unsupported(.mode))
                 Text(mode.howItPlays).font(.callout).foregroundStyle(.secondary)
-                if mode != .touch {
+                if mode == .tiltStrike {
+                    ZoneStrip(config: model.draft).padding(.vertical, 4)
+                    ParamStepper(param: .tiltSpanDeg, label: "Roll to reach each end", step: 5) { "\($0)°" }
+                    ParamToggle(param: .zoneCurve, label: "Smaller zones near level (finer control where the wrist is steadiest)")
+                    ParamStepper(param: .stepHysteresis, label: "Zone edge stickiness", step: 5) { "\($0)% of a zone" }
+                    ParamToggle(param: .registerTilt, label: "Tilt forward / back for octave up / down")
+                    if model.draft[.registerTilt] == 1 {
+                        ParamStepper(param: .gateDeg, label: "Tilt for an octave change", step: 1) { "\($0)°" }
+                    }
+                    ParamStepper(param: .noteLengthMs, label: "Note length", step: 50) { "\($0) ms" }
+                    ParamToggle(param: .strikeVoicing, label: "Strike direction adds chord tones")
+                    if model.draft[.strikeVoicing] == 1 {
+                        ParamChoice(param: .strikeDirections, label: "Directions", options: Self.voicingCounts)
+                    }
+                    Button("Set current position as level") { model.perform(.zeroOrientation) }
+                        .disabled(!model.session.isReady || !model.session.supportsConfigPages)
+                    needsUpdate(model.session.hello != nil && !model.session.supportsStrikes, TrillProtocol.strikesMinimumFirmware)
+                } else if mode != .touch {
                     ParamStepper(param: .tiltSpanDeg, label: "Roll to reach each end", step: 5) { "\($0)°" }
                     ParamStepper(param: .gateDeg, label: "Forward tilt to sound", step: 1) { "\($0)° (stops 3° lower)" }
                     if mode == .tiltNotes {
@@ -192,7 +212,10 @@ struct MappingView: View {
                 ParamChoice(param: .channel, label: "MIDI channel", options: Self.channels)
                 ParamStepper(param: .baseNote, label: "Lowest note") { "\(NoteName.name(UInt8($0))) (\($0))" }
                 ParamStepper(param: .rangeSemitones, label: "Range") { "\($0) semitones" }
-                ParamChoice(param: .scale, label: "Scale", options: [(0, "Chromatic"), (1, "Pentatonic")])
+                ParamChoice(param: .scale, label: "Scale", options: Self.scales)
+                if ScaleKind(rawValue: model.draft[.scale])?.needsStrikes == true {
+                    needsUpdate(model.session.hello != nil && !model.session.supportsStrikes, TrillProtocol.strikesMinimumFirmware)
+                }
                 if mode == .touch {
                     ParamChoice(param: .pitchMode, label: "Pitch", options: [(0, "Glide (pitch bend)"), (1, "Steps (separate notes)")])
                 }
@@ -222,6 +245,12 @@ struct MappingView: View {
             }
 
             Section {
+                if mode == .tiltStrike {
+                    Label("In Tilt + strike, every tap or strike plays the note chosen by roll (section 1).", systemImage: "music.note")
+                        .font(.callout)
+                    ParamStepper(param: .tapThresholdCg, label: "Strike strength needed", step: 5) { String(format: "%.2f g (lower = more sensitive)", Double($0) / 100) }
+                    ParamStepper(param: .tapCooldownMs, label: "Fastest repeat", step: 10) { "\($0) ms (sixteenths up to \(60_000 / max($0, 1) / 4) BPM)" }
+                } else {
                 ParamToggle(param: .percussionEnabled, label: "Play notes on taps")
                 if model.draft[.percussionEnabled] == 1 {
                     ParamChoice(param: .percussionChannel, label: "Channel", options: Self.channels)
@@ -238,6 +267,7 @@ struct MappingView: View {
                         ParamStepper(param: .percussionNote, label: "Unclear direction") { "\(NoteName.name(UInt8($0))) (\($0))" }
                     }
                     needsUpdate(model.session.unsupported(.strikeDirections), TrillProtocol.strikesMinimumFirmware)
+                }
                 }
             } header: {
                 Text("4 · Taps and strikes")

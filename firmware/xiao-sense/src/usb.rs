@@ -604,6 +604,8 @@ fn midi_report(out: &mut String<OUT_LEN>) {
         match c.scale {
             Scale::Chromatic => "chromatic",
             Scale::Pentatonic => "pentatonic",
+            Scale::Major => "major",
+            Scale::Minor => "minor",
         },
         match c.pitch_mode {
             PitchMode::Bend => "bend",
@@ -614,6 +616,7 @@ fn midi_report(out: &mut String<OUT_LEN>) {
             instrument_events::Mode::Touch => "touch",
             instrument_events::Mode::TiltNotes => "tilt-notes",
             instrument_events::Mode::Theremin => "theremin",
+            instrument_events::Mode::TiltStrike => "tilt-strike",
         },
         u8::from(c.motion_enabled),
         c.cc_a.control,
@@ -676,9 +679,11 @@ fn midi_key(k: u8) -> Option<&'static str> {
             b'q' => {
                 c.scale = match c.scale {
                     Scale::Chromatic => Scale::Pentatonic,
-                    Scale::Pentatonic => Scale::Chromatic,
+                    Scale::Pentatonic => Scale::Major,
+                    Scale::Major => Scale::Minor,
+                    Scale::Minor => Scale::Chromatic,
                 };
-                "midi: scale toggled (note released; lift finger to play)"
+                "midi: next scale (note released; lift finger to play)"
             }
             b't' => {
                 c.percussion_enabled = !c.percussion_enabled;

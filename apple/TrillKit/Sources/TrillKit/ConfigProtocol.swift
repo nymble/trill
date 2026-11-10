@@ -90,12 +90,15 @@ public enum TrillAction: UInt8, CaseIterable, Sendable {
 
 /// Values of `TrillParam.mode`.
 public enum SensorMode: Int, CaseIterable, Sendable {
-    case touch = 0, tiltNotes, theremin
+    /// Needs firmware 0.5.0 (`capStrikes`).
+    public var needsStrikes: Bool { self == .tiltStrike }
+    case touch = 0, tiltNotes, theremin, tiltStrike
     public var title: String {
         switch self {
         case .touch: return "Touch strip + motion controllers"
         case .tiltNotes: return "Tilt notes (scale steps)"
         case .theremin: return "Theremin (continuous tilt pitch)"
+        case .tiltStrike: return "Tilt chooses, strike plays"
         }
     }
     /// Short name for the home screen and pickers.
@@ -104,6 +107,7 @@ public enum SensorMode: Int, CaseIterable, Sendable {
         case .touch: return "Touch strip"
         case .tiltNotes: return "Tilt notes"
         case .theremin: return "Theremin"
+        case .tiltStrike: return "Tilt + strike"
         }
     }
     /// One sentence on how this mode plays.
@@ -112,6 +116,7 @@ public enum SensorMode: Int, CaseIterable, Sendable {
         case .touch: return "Slide a finger along the strip to play notes; press harder for more pressure."
         case .tiltNotes: return "Tilt forward to start a note, roll left/right to step through a scale, tilt back to stop."
         case .theremin: return "Tilt forward to start a note, roll left/right to glide the pitch smoothly, tilt back to stop."
+        case .tiltStrike: return "Roll to choose a note, tilt forward or back for the octave, and strike or tap to play it in time."
         }
     }
     public var symbol: String {
@@ -119,6 +124,7 @@ public enum SensorMode: Int, CaseIterable, Sendable {
         case .touch: return "hand.draw"
         case .tiltNotes: return "level"
         case .theremin: return "waveform"
+        case .tiltStrike: return "music.note"
         }
     }
 }
@@ -141,8 +147,9 @@ public enum CCSource: Int, CaseIterable, Sendable {
 }
 
 /// Configurable parameters. IDs 1...13 (page 0) exist since firmware 0.2.0;
-/// IDs 14...30 (page 1) need firmware 0.4.0 (`capConfigPages`); IDs 31...37
-/// (page 2, directional strikes) need firmware 0.5.0 (`capStrikes`).
+/// IDs 14...30 (page 1) need firmware 0.4.0 (`capConfigPages`); IDs 31...41
+/// (page 2: directional strikes and tilt-strike settings) need firmware 0.5.0
+/// (`capStrikes`), as do `mode` 3 and `scale` 2–3 (see `requiresStrikes`).
 public enum TrillParam: UInt8, CaseIterable, Codable, Sendable {
     case channel = 1, baseNote, rangeSemitones, scale, pitchMode, bendRange, velocityMin,
          motionEnabled, rotationFullDps, tiltFullDeg, percussionEnabled, percussionChannel, percussionNote
@@ -150,7 +157,7 @@ public enum TrillParam: UInt8, CaseIterable, Codable, Sendable {
          tiltSpanDeg, gateDeg, stepHysteresis, expressionCC, tapThresholdCg, tapCooldownMs,
          gestureAxis, gestureThresholdDps, gestureCooldownMs, gestureBaseNote
     case strikeDirections = 31, strikeNoteDown, strikeNoteUp, strikeNoteLeft, strikeNoteRight,
-         strikeNoteForward, strikeNoteBack
+         strikeNoteForward, strikeNoteBack, noteLengthMs, registerTilt, zoneCurve, strikeVoicing
 
     /// Configuration page (a `CONFIG` reply carries one page).
     public var page: Int { rawValue <= 13 ? 0 : rawValue <= 30 ? 1 : 2 }
@@ -163,6 +170,11 @@ public enum TrillParam: UInt8, CaseIterable, Codable, Sendable {
     public func accepts(_ v: Int) -> Bool {
         range.contains(v) && (self != .strikeDirections || v % 2 == 0)
     }
+    /// Values that only firmware 0.5.0 understands on parameters older
+    /// firmware already has (tilt-strike mode, major/minor scales).
+    public func requiresStrikes(_ v: Int) -> Bool {
+        (self == .mode && v >= 3) || (self == .scale && v >= 2)
+    }
     public static func params(page: Int) -> [TrillParam] { allCases.filter { $0.page == page } }
 
     public var range: ClosedRange<Int> {
@@ -170,12 +182,14 @@ public enum TrillParam: UInt8, CaseIterable, Codable, Sendable {
         case .channel, .percussionChannel: return 0...15
         case .baseNote, .percussionNote: return 0...127
         case .rangeSemitones: return 1...96
-        case .scale, .pitchMode, .motionEnabled, .percussionEnabled: return 0...1
+        case .scale: return 0...3
+        case .pitchMode, .motionEnabled, .percussionEnabled, .registerTilt, .zoneCurve, .strikeVoicing: return 0...1
+        case .noteLengthMs: return 20...2000
         case .bendRange: return 1...24
         case .velocityMin: return 1...127
         case .rotationFullDps: return 30...2000
         case .tiltFullDeg: return 5...90
-        case .mode: return 0...2
+        case .mode: return 0...3
         case .ccASource, .ccBSource: return 0...7
         case .ccANumber, .ccBNumber: return 1...119
         case .ccDeadzone: return 0...50
@@ -236,6 +250,8 @@ public enum TrillParam: UInt8, CaseIterable, Codable, Sendable {
         case .strikeNoteRight: return 42
         case .strikeNoteForward: return 45
         case .strikeNoteBack: return 51
+        case .noteLengthMs: return 300
+        case .registerTilt, .zoneCurve, .strikeVoicing: return 1
         }
     }
 
@@ -279,6 +295,10 @@ public enum TrillParam: UInt8, CaseIterable, Codable, Sendable {
         case .strikeNoteRight: return "strike_note_right"
         case .strikeNoteForward: return "strike_note_forward"
         case .strikeNoteBack: return "strike_note_back"
+        case .noteLengthMs: return "note_length_ms"
+        case .registerTilt: return "register_tilt"
+        case .zoneCurve: return "zone_curve"
+        case .strikeVoicing: return "strike_voicing"
         }
     }
 
