@@ -16,7 +16,7 @@ Per-sample synthesis never waits on sensors. Control frames land in a fixed-size
 ## Motion processing (`motion`)
 
 - **Timestamps:** every sample carries a microsecond timestamp from the producer. A gap longer than 50 ms, or a timestamp that goes backwards, re-seeds orientation from gravity instead of integrating a bogus dt.
-- **Gyro bias:** averaged over 400 consecutive stationary samples (|ω| < 3 dps and ||a| − 1 g| < 0.05 g, about 1 s at 416 Hz; the 0.5.0 firmware uses 800 samples at 833 Hz). Any motion restarts the run. After an IMU power cycle the bias is discarded, and the `c` diagnostics command forces recalibration.
+- **Gyro bias:** averaged over 400 consecutive stationary samples (each gyro axis within 4 dps of the run's own mean, raw |ω| < 15 dps and ||a| − 1 g| < 0.05 g, about 1 s at 416 Hz; the 0.5.0 firmware uses 800 samples at 833 Hz). Any motion restarts the run. Stillness is judged around the run's mean, not around zero, because the bias itself can be several dps (up to ±10 dps by the LSM6DS3TR-C spec); a raw |ω| < 3 dps rule, used up to the first 0.5.0 build, never calibrated a board with a 2.6 dps bias at 833 Hz. After an IMU power cycle the bias is discarded, and the `c` diagnostics command forces recalibration.
 - **Orientation:** complementary filter with τ = 0.5 s. Gravity is trusted only while |a| is within 0.3 g of 1 g, so shakes do not tilt the estimate. Roll is unwrapped across ±180°.
 - **Rotation energy:** smoothed magnitude of bias-corrected angular rate (τ = 30 ms).
 - **Taps:** |a| minus its slow baseline crossing 0.8 g, with a 120 ms refractory period. Strength is the excess in g.

@@ -24,14 +24,16 @@ struct PresetDocument: FileDocument {
 }
 
 /// Every preset in one place: built-in sounds first, then the user's own.
-/// Choosing one applies it straight away when Trillium is connected.
+/// Choosing one applies it straight away when Trillium is connected; Edit
+/// opens it in the full editor, where changes play live.
 struct PresetsView: View {
     @EnvironmentObject var model: AppModel
     @State private var newName = ""
     @State private var exporting: PresetDocument?
     @State private var showExporter = false
     @State private var showImporter = false
-    @State private var showSave = false
+    @State private var showEditor = false
+    @State private var confirmRestore: BuiltInPreset?
 
     private let columns = [GridItem(.adaptive(minimum: 230), spacing: 12)]
 
@@ -42,50 +44,61 @@ struct PresetsView: View {
                     statusLine
                     Text("Built in").font(.headline)
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
-                        ForEach(BuiltInPreset.all) { p in
+                        ForEach(model.builtIns) { p in
+                            let edited = model.isEdited(builtIn: p.id)
                             PresetCard(name: p.name, symbol: p.symbol, summary: p.summary,
-                                       note: updateNote(p), isActive: model.activePresetName == p.name) {
-                                model.use(p.config)
+                                       note: updateNote(p), badge: edited ? "Edited" : nil,
+                                       isActive: model.activePresetName == p.name,
+                                       action: { model.use(p.config) },
+                                       edit: { model.edit(builtIn: p); showEditor = true })
+                            .contextMenu {
+                                Button("Edit…") { model.edit(builtIn: p); showEditor = true }
+                                Button("Duplicate as my preset") { model.duplicate(p.config, named: p.name + " copy") }
+                                Button("Export…") { exporting = PresetDocument(preset: model.presetForExport(builtIn: p)); showExporter = true }
+                                if edited { Button("Restore original…", role: .destructive) { confirmRestore = p } }
                             }
                         }
                     }
                     HStack {
                         Text("My presets").font(.headline)
                         Spacer()
-                        Button { showSave = true } label: { Label("Save current sound…", systemImage: "plus") }
+                        Button { model.newPreset(); showEditor = true } label: { Label("New preset", systemImage: "plus") }
                         Button { showImporter = true } label: { Label("Import…", systemImage: "square.and.arrow.down") }
                     }
                     if model.presets.isEmpty {
-                        Text("Sounds you save appear here. They're stored on this \(Self.deviceWord), because Trillium itself forgets changes when unplugged.")
+                        Text("Make your own: press New preset to start from the current sound, or Edit on any preset above and choose Save as new. Presets are stored on this \(Self.deviceWord), because Trillium itself forgets changes when unplugged.")
                             .font(.callout).foregroundStyle(.secondary)
                     }
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
                         ForEach(model.presets) { p in
                             PresetCard(name: p.name, symbol: SensorMode(rawValue: p.config[.mode])?.symbol ?? "slider.horizontal.3",
                                        summary: MappingSummary.lines(p.config).map(\.input).joined(separator: " · "),
-                                       note: nil, isActive: model.activePresetName == p.name) {
-                                model.use(p.config)
-                            }
+                                       note: nil, badge: nil, isActive: model.activePresetName == p.name,
+                                       action: { model.use(p.config) },
+                                       edit: { model.edit(saved: p); showEditor = true })
                             .contextMenu {
+                                Button("Edit…") { model.edit(saved: p); showEditor = true }
+                                Button("Duplicate") { model.duplicate(p.config, named: p.name + " copy") }
                                 Button("Export…") { exporting = PresetDocument(preset: p); showExporter = true }
                                 Button("Delete", role: .destructive) { model.deletePreset(p) }
                             }
                         }
                     }
-                    if !model.presets.isEmpty {
-                        Text("Right-click (or touch and hold) a preset to export or delete it.")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
+                    Text("Right-click (or touch and hold) a preset for more: duplicate, export, delete or restore the original. Edited built-ins can be exported and sent in to improve the ones that ship with the app.")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
                 .padding()
             }
             .navigationTitle("Presets")
-            .alert("Save current sound", isPresented: $showSave) {
-                TextField("Name", text: $newName)
-                Button("Save") { model.savePreset(named: newName); newName = "" }
-                Button("Cancel", role: .cancel) { newName = "" }
+            .navigationDestination(isPresented: $showEditor) { MappingView() }
+            .confirmationDialog("Restore the original \(confirmRestore?.name ?? "")?", isPresented: Binding(
+                get: { confirmRestore != nil }, set: { if !$0 { confirmRestore = nil } })) {
+                Button("Restore original", role: .destructive) {
+                    if let p = confirmRestore { model.restoreBuiltIn(p.id) }
+                    confirmRestore = nil
+                }
             } message: {
-                Text("Saves the sound from the editor on this \(Self.deviceWord).")
+                Text("Your changes to this built-in preset are discarded.")
             }
             .fileExporter(isPresented: $showExporter, document: exporting, contentType: .json,
                           defaultFilename: (exporting?.preset.name ?? "preset") + ".trill.json") { result in
@@ -135,29 +148,42 @@ struct PresetCard: View {
     let symbol: String
     let summary: String
     let note: String?
+    let badge: String?
     let isActive: Bool
     let action: () -> Void
+    let edit: () -> Void
 
     var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack {
-                    Image(systemName: symbol).font(.title2).foregroundStyle(.tint).frame(width: 30)
-                    Text(name).font(.headline)
-                    Spacer()
-                    if isActive { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green) }
+        ZStack(alignment: .bottomTrailing) {
+            Button(action: action) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Image(systemName: symbol).font(.title2).foregroundStyle(.tint).frame(width: 30)
+                        Text(name).font(.headline)
+                        if let badge {
+                            Text(badge).font(.caption2.weight(.semibold)).padding(.horizontal, 6).padding(.vertical, 2)
+                                .background(Capsule().fill(.orange.opacity(0.2))).foregroundStyle(.orange)
+                        }
+                        Spacer()
+                        if isActive { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green) }
+                    }
+                    Text(summary).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.leading)
+                        .lineLimit(4).fixedSize(horizontal: false, vertical: true)
+                    if let note { Text(note).font(.caption).foregroundStyle(.orange) }
+                    Spacer(minLength: 18)
                 }
-                Text(summary).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.leading)
-                    .lineLimit(4).fixedSize(horizontal: false, vertical: true)
-                if let note { Text(note).font(.caption).foregroundStyle(.orange) }
+                .padding(12)
+                .frame(maxWidth: .infinity, minHeight: 124, alignment: .topLeading)
+                .background(RoundedRectangle(cornerRadius: 12).fill(.quaternary.opacity(isActive ? 0.9 : 0.45)))
+                .overlay(RoundedRectangle(cornerRadius: 12).stroke(isActive ? Color.accentColor : .clear, lineWidth: 2))
+                .contentShape(RoundedRectangle(cornerRadius: 12))
             }
-            .padding(12)
-            .frame(maxWidth: .infinity, minHeight: 110, alignment: .topLeading)
-            .background(RoundedRectangle(cornerRadius: 12).fill(.quaternary.opacity(isActive ? 0.9 : 0.45)))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(isActive ? Color.accentColor : .clear, lineWidth: 2))
-            .contentShape(RoundedRectangle(cornerRadius: 12))
+            .buttonStyle(.plain)
+            .accessibilityHint(isActive ? "Current sound" : "Use this sound")
+            Button(action: edit) { Label("Edit", systemImage: "pencil") }
+                .controlSize(.small)
+                .padding(8)
+                .help("Open in the editor; changes play live")
         }
-        .buttonStyle(.plain)
-        .accessibilityHint(isActive ? "Current sound" : "Use this sound")
     }
 }

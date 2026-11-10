@@ -39,7 +39,34 @@ final class AppModel: ObservableObject {
 
     // Configuration
     @Published private(set) var sessionRevision = 0
-    @Published var draft = DeviceConfig.firmwareDefaults
+    @Published var draft = DeviceConfig.firmwareDefaults { didSet { if draft != oldValue { draftChangedAt = now } } }
+    private var draftChangedAt: TimeInterval = 0
+
+    /// What the editor is working on.
+    enum EditTarget: Equatable {
+        /// Whatever Trillium is playing; not tied to a preset.
+        case current
+        /// A new preset, not saved yet.
+        case new
+        case saved(UUID)
+        case builtIn(String)
+    }
+    @Published var editing: EditTarget = .current
+
+    /// Send editor changes to Trillium as they are made (short debounce).
+    var liveApply: Bool {
+        get { UserDefaults.standard.object(forKey: "liveApply") as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: "liveApply"); objectWillChange.send() }
+    }
+
+    // Strikes and taps seen on port 1 (for the Motion overview).
+    struct Hit: Equatable {
+        let direction: StrikeDirection?
+        let note: Int
+        let velocity: Int
+        let time: TimeInterval
+    }
+    @Published private(set) var lastHit: Hit?
 
     // Navigation
     @Published var tab: AppTab = .home
@@ -53,6 +80,8 @@ final class AppModel: ObservableObject {
 
     // Presets
     @Published private(set) var presets: [Preset] = []
+    /// The user's refinements of built-in presets, by built-in id.
+    @Published private(set) var builtInEdits: [String: DeviceConfig] = [:]
     @Published var presetError: String?
 
     let events = EventBuffer(capacity: 4096)
@@ -61,12 +90,16 @@ final class AppModel: ObservableObject {
     private(set) var session: ConfigSession!
     private var timer: Timer?
     private let presetStore: PresetStore
+    private let builtInStore: PresetStore
 
     init() {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
         presetStore = PresetStore(fileURL: dir.appendingPathComponent("Trill/presets.json"))
         presets = presetStore.presets
+        // Refined built-ins: one Preset per built-in, its name is the built-in id.
+        builtInStore = PresetStore(fileURL: dir.appendingPathComponent("Trill/builtin-edits.json"))
+        builtInEdits = Dictionary(builtInStore.presets.map { ($0.name, $0.config) }, uniquingKeysWith: { a, _ in a })
         session = ConfigSession { [weak self] bytes in
             guard let self, let c = self.client, let d = self.configDestinationID else { return false }
             return c.send(sysex: bytes, to: d)
@@ -155,13 +188,122 @@ final class AppModel: ObservableObject {
         let cfg = session.acknowledged ?? draft
         let pages = session.supportedPages
         let same = { (c: DeviceConfig) in c.changes(from: cfg, pages: pages).isEmpty }
-        return BuiltInPreset.all.first { same($0.config) }?.name ?? presets.first { same($0.config) }?.name
+        return builtIns.first { same($0.config) }?.name ?? presets.first { same($0.config) }?.name
+    }
+
+    /// Built-in presets with the user's refinements applied.
+    var builtIns: [BuiltInPreset] {
+        BuiltInPreset.all.map { p in builtInEdits[p.id].map { p.with(config: $0) } ?? p }
     }
 
     /// Load a preset into the editor and, if connected, send it.
     func use(_ config: DeviceConfig) {
         draft = config
+        editing = .current
         if session.isReady { applyDraft() }
+    }
+
+    // MARK: Editing presets
+
+    /// Open a preset in the editor; it plays on Trillium while you edit.
+    func edit(builtIn p: BuiltInPreset) {
+        draft = p.config
+        editing = .builtIn(p.id)
+        if session.isReady { applyDraft() }
+    }
+
+    func edit(saved p: Preset) {
+        draft = p.config
+        editing = .saved(p.id)
+        if session.isReady { applyDraft() }
+    }
+
+    /// Start a new preset from the current sound.
+    func newPreset() {
+        if let a = session.acknowledged, !hasUnappliedEdits { draft = a }
+        editing = .new
+    }
+
+    var editingName: String? {
+        switch editing {
+        case .current: return nil
+        case .new: return "New preset"
+        case let .saved(id): return presets.first { $0.id == id }?.name
+        case let .builtIn(id): return BuiltInPreset.all.first { $0.id == id }?.name
+        }
+    }
+
+    /// The saved version of what is being edited, to show unsaved changes.
+    var editingSavedConfig: DeviceConfig? {
+        switch editing {
+        case .current, .new: return nil
+        case let .saved(id): return presets.first { $0.id == id }?.config
+        case let .builtIn(id): return builtIns.first { $0.id == id }?.config
+        }
+    }
+
+    var hasUnsavedPresetEdits: Bool {
+        guard let c = editingSavedConfig else { return editing == .new }
+        return c != draft
+    }
+
+    /// Save over the preset being edited (built-ins keep their original,
+    /// restorable with `restoreBuiltIn`).
+    func saveEdits() {
+        do {
+            switch editing {
+            case .current, .new:
+                return
+            case let .saved(id):
+                guard var p = presets.first(where: { $0.id == id }) else { return }
+                p.config = draft
+                try presetStore.save(p)
+                presets = presetStore.presets
+            case let .builtIn(id):
+                let existing = builtInStore.presets.first { $0.name == id }
+                try builtInStore.save(Preset(id: existing?.id ?? UUID(), name: id, config: draft))
+                reloadBuiltInEdits()
+            }
+        } catch { presetError = error.localizedDescription }
+    }
+
+    /// Save the editor as a new preset and keep editing that one.
+    func saveAsNew(named name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let p = Preset(name: trimmed, config: draft)
+        do {
+            try presetStore.save(p)
+            presets = presetStore.presets
+            editing = .saved(p.id)
+        } catch { presetError = error.localizedDescription }
+    }
+
+    /// Save a copy without touching the editor or the device.
+    func duplicate(_ config: DeviceConfig, named name: String) {
+        do {
+            try presetStore.save(Preset(name: name, config: config))
+            presets = presetStore.presets
+        } catch { presetError = error.localizedDescription }
+    }
+
+    func isEdited(builtIn id: String) -> Bool { builtInEdits[id] != nil }
+
+    /// Throw away the user's refinement of a built-in preset.
+    func restoreBuiltIn(_ id: String) {
+        do {
+            for p in builtInStore.presets where p.name == id { try builtInStore.delete(id: p.id) }
+            reloadBuiltInEdits()
+            if editing == .builtIn(id), let p = builtIns.first(where: { $0.id == id }) { draft = p.config }
+        } catch { presetError = error.localizedDescription }
+    }
+
+    /// A refined built-in (or any config) as a preset file, e.g. to send back
+    /// for inclusion in the app.
+    func presetForExport(builtIn p: BuiltInPreset) -> Preset { Preset(name: p.name, config: p.config) }
+
+    private func reloadBuiltInEdits() {
+        builtInEdits = Dictionary(builtInStore.presets.map { ($0.name, $0.config) }, uniquingKeysWith: { a, _ in a })
     }
 
     // MARK: Session
@@ -225,6 +367,7 @@ final class AppModel: ObservableObject {
         if !monitorPaused, !newEvents.isEmpty || dropped > 0 {
             monitor.apply(newEvents, dropped: dropped)
         }
+        noteHits(newEvents)
         monitor.idle(now: now)
         let (frames, lost) = telemetryBuffer.drain()
         if !frames.isEmpty || lost > 0 {
@@ -236,6 +379,23 @@ final class AppModel: ObservableObject {
         session.tick(now: now)
         session.maintainTelemetry(desiredRate: sensorsVisible && sensorsLive ? telemetryRateHz : nil, now: now)
         if pending != session.pending { sessionRevision += 1 }
+        // Live editing: send edits once the user pauses for a moment and the
+        // previous request has been answered.
+        if liveApply, editing != .current || settingsPath.contains(.mapping), session.isReady, session.pending == nil,
+           now - draftChangedAt > 0.12, hasUnappliedEdits {
+            applyDraft()
+        }
+    }
+
+    /// Percussion note-ons on port 1, matched to strike directions.
+    private func noteHits(_ events: [MIDIEvent]) {
+        let cfg = session.acknowledged ?? draft
+        for e in events {
+            guard case let .noteOn(ch, note, vel) = e.message, vel > 0, cfg[.percussionEnabled] == 1,
+                  Int(ch) == cfg[.percussionChannel] else { continue }
+            lastHit = Hit(direction: StrikeDirection.matching(channel: Int(ch), note: Int(note), config: cfg),
+                          note: Int(note), velocity: Int(vel), time: e.hostTime)
+        }
     }
 
     func clearMonitor() { monitor.clear() }

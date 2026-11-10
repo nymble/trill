@@ -29,6 +29,11 @@ public struct BuiltInPreset: Identifiable, Equatable, Sendable {
             : needsConfigPages ? TrillProtocol.configPagesMinimumFirmware : nil
     }
 
+    /// The same preset with the user's refined values.
+    public func with(config: DeviceConfig) -> BuiltInPreset {
+        BuiltInPreset(id: id, name: name, summary: summary, symbol: symbol, config: config)
+    }
+
     static func make(_ id: String, _ name: String, _ symbol: String, _ summary: String,
                      _ values: [TrillParam: Int]) -> BuiltInPreset {
         var c = DeviceConfig.firmwareDefaults

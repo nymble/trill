@@ -74,7 +74,7 @@ struct SplashView: View {
             VStack(spacing: 16) {
                 TrilliumMark(size: 110)
                 Text("Trillium").font(.largeTitle.weight(.semibold))
-                Text("Touch and motion, played as MIDI").foregroundStyle(.secondary)
+                Text("Motion and touch to play any synth or music app").foregroundStyle(.secondary)
             }
         }
     }

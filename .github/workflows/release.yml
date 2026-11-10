@@ -1,7 +1,9 @@
 name: Release
 
-# Tag push vX.Y.Z  -> build, checksum, publish a GitHub Release.
-# Manual dispatch  -> build and checksum only; artifacts attached to the run.
+# Tag push vX.Y.Z -> check versions, build everything, create a DRAFT GitHub
+#                    Release with the downloads. Nothing is public until a
+#                    maintainer reviews the draft and presses Publish.
+# Manual dispatch -> the same builds, kept as workflow artifacts; no release.
 on:
   push:
     tags: ["v*.*.*"]
@@ -14,8 +16,32 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-    name: build ${{ matrix.target }}
+  check:
+    name: versions and release notes
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - id: v
+        name: Tag, Cargo, firmware and app versions agree; CHANGELOG has the section
+        run: |
+          v=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          fw=$(sed -n 's/^version = "\(.*\)"/\1/p' firmware/xiao-sense/Cargo.toml | head -1)
+          app=$(sed -n 's/^MARKETING_VERSION = //p' apple/Config/Base.xcconfig)
+          echo "workspace=$v firmware=$fw app=$app ref=${GITHUB_REF_NAME}"
+          [ "$v" = "$fw" ] && [ "$v" = "$app" ] || { echo "::error::versions differ"; exit 1; }
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            [ "${GITHUB_REF_NAME}" = "v$v" ] || { echo "::error::tag ${GITHUB_REF_NAME} != v$v"; exit 1; }
+            python3 tools/release_notes.py "$v" > /dev/null
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
+  cli:
+    name: trill CLI ${{ matrix.target }}
+    needs: check
     runs-on: ubuntu-latest
     strategy:
       fail-fast: true
@@ -44,38 +70,122 @@ jobs:
         run: cargo zigbuild --release --locked -p trill-cli --target ${{ matrix.target }}
       - name: Package
         run: |
-          version="${GITHUB_REF_NAME#v}"
-          [ "${GITHUB_REF_TYPE}" = "tag" ] || version="0.0.0-${GITHUB_SHA::7}"
-          name="trill-${version}-${{ matrix.target }}"
+          name="trill-${{ needs.check.outputs.version }}-${{ matrix.target }}"
           mkdir -p "dist/${name}"
           cp target/${{ matrix.target }}/release/trill LICENSE COMMERCIAL-LICENSE.md README.md "dist/${name}/"
           tar -C dist -czf "dist/${name}.tar.gz" "${name}"
-          (cd dist && sha256sum "${name}.tar.gz" > "${name}.tar.gz.sha256")
       - uses: actions/upload-artifact@v4
         with:
-          name: trill-${{ matrix.target }}
-          path: |
-            dist/*.tar.gz
-            dist/*.sha256
+          name: rel-cli-${{ matrix.target }}
+          path: dist/*.tar.gz
           if-no-files-found: error
 
-  publish:
-    name: publish GitHub Release
+  firmware:
+    name: XIAO Sense firmware
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install Rust
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add thumbv7em-none-eabihf
+      - name: Application-only UF2 (validated)
+        run: make fw-uf2
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rel-firmware
+          path: dist/xiao-sense-fw-*.uf2
+          if-no-files-found: error
+
+  apple:
+    name: Trillium for macOS (unsigned)
+    needs: check
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      XCODEGEN_VERSION: 2.45.4
+      XCODEGEN_SHA256: 090ec29491aad50aec10631bf6e62253fed733c50f3aab0f5ffc86bc170bdbef
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install XcodeGen (pinned, checksum verified)
+        run: |
+          curl -fsSL --retry 5 --retry-delay 15 --retry-all-errors -o "$RUNNER_TEMP/xcodegen.zip" "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          echo "${XCODEGEN_SHA256}  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+      - name: TrillKit tests
+        run: make apple-test
+      - name: Build macOS app (Release, universal, unsigned)
+        run: make apple-mac
+      - name: Package
+        run: |
+          app=build/apple/Build/Products/Release/Trillium.app
+          lipo -info "$app/Contents/MacOS/Trillium"
+          test -f "$app/Contents/Resources/AppIcon.icns"
+          mkdir -p dist
+          ditto -c -k --keepParent "$app" "dist/Trillium-macOS-unsigned-dev-${{ needs.check.outputs.version }}.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rel-apple
+          path: dist/*.zip
+          if-no-files-found: error
+
+  package:
+    name: test kit, checksums, notes
+    needs: [check, cli, firmware, apple]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rel-*
+          path: in
+          merge-multiple: true
+      - name: Assemble downloads
+        run: |
+          v=${{ needs.check.outputs.version }}
+          make test-kit KIT_SHA="${GITHUB_SHA::7}" KIT_APP="in/Trillium-macOS-unsigned-dev-$v.zip" KIT_UF2="in/xiao-sense-fw-$v.uf2"
+          mkdir -p out
+          cp in/*.zip in/*.uf2 in/*.tar.gz dist/Trillium-*.zip tools/xiao_uf2.py out/
+          (cd out && sha256sum * > SHA256SUMS && cat SHA256SUMS)
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            python3 tools/release_notes.py "$v" > notes.md
+          else
+            echo "Manual build of ${GITHUB_SHA::7}; not a release." > notes.md
+          fi
+          ls -l out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trillium-${{ needs.check.outputs.version }}-downloads
+          path: |
+            out/
+            notes.md
+          if-no-files-found: error
+
+  draft:
+    name: draft GitHub Release
     if: github.ref_type == 'tag'
-    needs: build
+    needs: [check, package]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
-          path: dist
-          merge-multiple: true
-      - name: Combine checksums
-        run: cd dist && cat *.sha256 > SHA256SUMS && cat SHA256SUMS
-      - name: Create release
+          name: trillium-${{ needs.check.outputs.version }}-downloads
+          path: rel
+      - name: Create draft release (publish by hand after review)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${GITHUB_REF_NAME}" dist/*.tar.gz dist/SHA256SUMS \
-            --repo "${GITHUB_REPOSITORY}" --title "${GITHUB_REF_NAME}" --generate-notes --verify-tag
+          gh release create "${GITHUB_REF_NAME}" rel/out/* \
+            --repo "${GITHUB_REPOSITORY}" --title "Trillium ${GITHUB_REF_NAME}" \
+            --notes-file rel/notes.md --draft --prerelease --verify-tag
