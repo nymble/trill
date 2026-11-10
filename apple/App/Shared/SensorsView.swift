@@ -142,15 +142,27 @@ struct SensorsView: View {
     @EnvironmentObject var model: AppModel
     @State private var exporting: CSVDocument?
     @State private var showExporter = false
+    @AppStorage("sensorsPage") private var page = SensorsPage.overview
+
+    enum SensorsPage: String { case overview, charts }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    controls
+                    Picker("View", selection: $page) {
+                        Text("Overview").tag(SensorsPage.overview)
+                        Text("Charts").tag(SensorsPage.charts)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(maxWidth: 320)
+                    if page == .charts { controls }
                     StatusBanner()
-                    if model.session.isReady && model.session.supportsTelemetry { dashboard }
-                    UnavailableNotes()
+                    if model.session.isReady && model.session.supportsTelemetry {
+                        if page == .overview { MotionOverview() } else { dashboard }
+                    }
+                    if page == .charts { UnavailableNotes() }
                 }
                 .padding()
             }

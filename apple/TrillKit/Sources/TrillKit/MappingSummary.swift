@@ -30,6 +30,14 @@ public enum StrikeDirection: Int, CaseIterable, Sendable {
         }
     }
     public var param: TrillParam { TrillParam.strikeNotes[rawValue] }
+    /// The direction a percussion note-on came from, if the configuration
+    /// gives that note to exactly one active direction. `nil` for the
+    /// "unclear" note, plain taps, other channels or shared notes.
+    public static func matching(channel: Int, note: Int, config c: DeviceConfig) -> StrikeDirection? {
+        guard c[.percussionEnabled] == 1, channel == c[.percussionChannel] else { return nil }
+        let hits = active(c[.strikeDirections]).filter { c[$0.param] == note }
+        return hits.count == 1 ? hits[0] : nil
+    }
     /// Directions active for a `strikeDirections` value (0, 2, 4 or 6).
     public static func active(_ count: Int) -> [StrikeDirection] { Array(allCases.prefix(max(0, min(count, 6)))) }
 }

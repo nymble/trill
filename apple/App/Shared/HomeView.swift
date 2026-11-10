@@ -29,7 +29,7 @@ struct HomeView: View {
                         TrilliumMark(size: 56)
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Trillium").font(.title.weight(.semibold))
-                            Text("A touch strip and motion sensor that plays any synth or music app over USB MIDI.")
+                            Text("Motion and touch to play any synth or music app over USB MIDI.")
                                 .foregroundStyle(.secondary)
                         }
                     }

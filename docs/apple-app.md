@@ -119,12 +119,15 @@ There is no App Store or TestFlight build. The code is GPL-3.0-only, and App Sto
 
 1. Plug in Trillium. Home changes from "Connect your Trillium" to "Trillium found".
 2. Press **Connect** (or turn on *Connect automatically*). Home shows the current sound.
-3. **Presets:** choose a sound; it is sent immediately. Save your own from the editor with *Save current sound…*.
-4. **Settings › Sound & mapping:** fine-tune, then **Apply to Trillium**. Settings last until the instrument is unplugged; presets keep them on the Mac or iPhone.
+3. **Presets:** choose a sound; it is sent immediately.
+   - **Edit** (on every card) opens the preset in the editor. With *Play changes on Trillium as you edit* on (the default), each change is sent as you make it.
+   - Built-in presets are refined in place: **Save** keeps your version, marked *Edited*, and *Restore original* brings back the shipped one. Export an edited built-in to send it in for the next release.
+   - Your own presets: **New preset** starts from the current sound; **Save as new…** in the editor makes a copy of anything; right-click (or touch and hold) a card to duplicate, export or delete.
+4. **Settings › Sound & mapping** is the same editor for the current sound. Section 6, *Configuration data*, lists every parameter by number with its range, and *Edit as text (JSON)* edits the whole set in the preset file format. Settings last until the instrument is unplugged; presets keep them on the Mac or iPhone.
    - Theremin: set your synth's pitch-bend range to the value shown (default ±24).
    - Strike directions (firmware 0.5.0+): with 2, 4 or 6 directions, the direction Trillium moves when it is stopped picks the note; an unclear strike plays the "unclear direction" note.
    - Not available: circle/twirl gestures, heading (no magnetometer) and position.
-5. **Sensors:** move the board and watch the values; the banner says whether data is live, stale, paused or unsupported.
+5. **Sensors › Overview:** the board drawn tilting like the real one, a bubble level (with the note zone in tilt modes), turning and impact meters against the sound's settings, where the current tilt or touch falls on the note range, and a compass that lights up the direction of each strike (read from the notes on port 1). **Charts** has the raw acceleration, gyro and orientation plots, stream health and CSV export. The banner says whether data is live, stale, paused or unsupported.
 6. **Settings › MIDI monitor:** watch what the instrument sends on port 1. Trill sensor SysEx is hidden by default so tap notes stay visible.
 
 Firmware requirements: settings and the monitor need 0.2.0+, Sensors 0.3.0+, modes/controllers/gestures 0.4.0+, strike directions 0.5.0+. On older firmware the matching controls are disabled and never sent.
@@ -146,4 +149,4 @@ A diagnostics terminal (`screen /dev/cu.usbmodem…`) is optional. The protocol 
 }
 ```
 
-Import rejects files that are the wrong format or version, have unknown keys, or have out-of-range values. Missing keys take the firmware defaults, so 0.3.0 presets load in 0.4.0 unchanged. Presets saved by app 0.4.0 include the page-1 keys (`mode`, `cc_a_source`, `cc_a_number`, `cc_b_source`, `cc_b_number`, `cc_deadzone_percent`, `cc_smoothing_ms`, `tilt_span_deg`, `gate_deg`, `step_hysteresis_percent`, `expression_cc`, `tap_threshold_cg`, `tap_cooldown_ms`, `gesture_axis`, `gesture_threshold_dps`, `gesture_cooldown_ms`, `gesture_base_note`), so app 0.3.0 rejects them as unknown keys. App 0.5.0 adds the page-2 keys `strike_directions` and `strike_note_down`/`_up`/`_left`/`_right`/`_forward`/`_back`; app 0.4.0 rejects such files as unknown keys. Presets are stored in the app's own container (`Application Support/Trill/presets.json`).
+Import rejects files that are the wrong format or version, have unknown keys, or have out-of-range values. Missing keys take the firmware defaults, so 0.3.0 presets load in 0.4.0 unchanged. Presets saved by app 0.4.0 include the page-1 keys (`mode`, `cc_a_source`, `cc_a_number`, `cc_b_source`, `cc_b_number`, `cc_deadzone_percent`, `cc_smoothing_ms`, `tilt_span_deg`, `gate_deg`, `step_hysteresis_percent`, `expression_cc`, `tap_threshold_cg`, `tap_cooldown_ms`, `gesture_axis`, `gesture_threshold_dps`, `gesture_cooldown_ms`, `gesture_base_note`), so app 0.3.0 rejects them as unknown keys. App 0.5.0 adds the page-2 keys `strike_directions` and `strike_note_down`/`_up`/`_left`/`_right`/`_forward`/`_back`; app 0.4.0 rejects such files as unknown keys. Presets are stored in the app's own container (`Application Support/Trill/presets.json`); refined built-ins in `builtin-edits.json` beside it (one preset per built-in, named by its id).

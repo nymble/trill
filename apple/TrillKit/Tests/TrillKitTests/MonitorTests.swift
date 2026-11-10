@@ -90,6 +90,30 @@ final class BuiltInPresetTests: XCTestCase {
 }
 
 final class MappingSummaryTests: XCTestCase {
+    func testStrikeDirectionFromNote() {
+        let c = BuiltInPreset.all.first { $0.id == "drum-strikes" }!.config
+        XCTAssertEqual(StrikeDirection.matching(channel: 9, note: 36, config: c), .left)
+        XCTAssertEqual(StrikeDirection.matching(channel: 9, note: 38, config: c), .down)
+        XCTAssertNil(StrikeDirection.matching(channel: 9, note: 39, config: c), "unclear note")
+        XCTAssertNil(StrikeDirection.matching(channel: 0, note: 36, config: c), "other channel")
+        var shared = c
+        shared[.strikeNoteUp] = 38
+        XCTAssertNil(StrikeDirection.matching(channel: 9, note: 38, config: shared), "two directions share it")
+        var off = c
+        off[.strikeDirections] = 0
+        XCTAssertNil(StrikeDirection.matching(channel: 9, note: 36, config: off))
+    }
+
+    func testBuiltInWithConfigKeepsIdentity() {
+        let p = BuiltInPreset.all[1]
+        var c = p.config
+        c[.baseNote] = 50
+        let e = p.with(config: c)
+        XCTAssertEqual(e.id, p.id)
+        XCTAssertEqual(e.name, p.name)
+        XCTAssertEqual(e.config[.baseNote], 50)
+    }
+
     func testDefaultsDescribeStripAndControllers() {
         let l = MappingSummary.lines(.firmwareDefaults)
         XCTAssertEqual(l.map(\.input), ["Touch strip", "Rotation speed (any axis)", "Pitch forward"])

@@ -97,29 +97,65 @@ struct MappingView: View {
         }
     }
 
+    @State private var showSaveAs = false
+    @State private var saveAsName = ""
+    @State private var showJSON = false
+    @State private var showAll = false
+
+    private var liveBinding: Binding<Bool> { Binding(get: { model.liveApply }, set: { model.liveApply = $0 }) }
+
     var body: some View {
         Form {
             Section {
-                HStack {
-                    Button("Apply to Trillium") { model.applyDraft() }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(!model.session.isReady || !model.hasUnappliedEdits)
-                        .keyboardShortcut(.defaultAction)
-                    Button("Revert") { model.revertDraft() }
-                        .disabled(!model.hasUnappliedEdits)
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(model.editingName.map { "Editing: \($0)" } ?? "Current sound").font(.headline)
+                        if model.editing != .new, model.editing != .current, model.hasUnsavedPresetEdits {
+                            Text("Unsaved changes").font(.caption).foregroundStyle(.orange)
+                        }
+                    }
                     Spacer()
-                    Button("Read from Trillium") { model.readFromDevice() }
-                        .disabled(!model.session.isReady)
+                    switch model.editing {
+                    case .saved, .builtIn:
+                        Button("Save") { model.saveEdits() }
+                            .buttonStyle(.borderedProminent)
+                            .disabled(!model.hasUnsavedPresetEdits)
+                            .keyboardShortcut("s", modifiers: .command)
+                    case .current, .new:
+                        EmptyView()
+                    }
+                    Button(model.editing == .new ? "Save preset…" : "Save as new…") {
+                        saveAsName = model.editing == .new ? "" : (model.editingName.map { $0 + " copy" } ?? "")
+                        showSaveAs = true
+                    }
+                    .buttonStyle(.bordered)
+                }
+                if case let .builtIn(id) = model.editing, model.isEdited(builtIn: id) {
+                    Button("Restore the original \(model.editingName ?? "preset")", role: .destructive) { model.restoreBuiltIn(id) }
+                        .font(.callout)
+                }
+                Toggle("Play changes on Trillium as you edit", isOn: liveBinding)
+                    .disabled(!model.session.isReady)
+                if !model.liveApply || !model.session.isReady {
+                    HStack {
+                        Button("Apply to Trillium") { model.applyDraft() }
+                            .disabled(!model.session.isReady || !model.hasUnappliedEdits)
+                        Button("Revert") { model.revertDraft() }
+                            .disabled(!model.hasUnappliedEdits)
+                        Spacer()
+                        Button("Read from Trillium") { model.readFromDevice() }
+                            .disabled(!model.session.isReady)
+                    }
                 }
                 if !model.session.isReady {
-                    Text("Not connected: you can edit and save presets; applying needs a connection.")
+                    Text("Not connected: you can edit and save presets; hearing them needs a connection.")
                         .font(.caption).foregroundStyle(.secondary)
-                } else if model.hasUnappliedEdits {
+                } else if !model.liveApply, model.hasUnappliedEdits {
                     Text("Orange values show what Trillium is using now; press Apply to send your edits.")
                         .font(.caption).foregroundStyle(.orange)
                 }
             } footer: {
-                Text("Applying stops sounding notes first. Settings last until Trillium is unplugged; save them as presets to keep them.")
+                Text("Built-in presets can be refined and saved in place (Restore brings back the original). Trillium keeps settings until it is unplugged; presets keep them on this \(PresetsView.deviceWord).")
             }
 
             Section("What this sound does") {
@@ -222,8 +258,107 @@ struct MappingView: View {
             } footer: {
                 Text("A quick wrist flick one way plays the first note, the other way the second; flicking back soon after (a zig-zag) also plays the third. Notes use the tap channel.")
             }
+
+            Section {
+                DisclosureGroup("Every parameter (\(TrillParam.allCases.count))", isExpanded: $showAll) {
+                    ForEach(TrillParam.allCases, id: \.rawValue) { p in RawParamRow(param: p) }
+                }
+                Button("Edit as text (JSON)…") { showJSON = true }
+            } header: {
+                Text("6 · Configuration data")
+            } footer: {
+                Text("Every value Trillium stores, by parameter number, with its allowed range. The JSON text is the same format as exported preset files.")
+            }
         }
         .formStyle(.grouped)
-        .navigationTitle("Sound & mapping")
+        .navigationTitle(model.editingName ?? "Sound & mapping")
+        .alert(model.editing == .new ? "Save preset" : "Save as new preset", isPresented: $showSaveAs) {
+            TextField("Name", text: $saveAsName)
+            Button("Save") { model.saveAsNew(named: saveAsName) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Saved on this \(PresetsView.deviceWord) under My presets.")
+        }
+        .sheet(isPresented: $showJSON) { ConfigJSONEditor() }
+    }
+}
+
+/// One parameter by number: exact value entry plus a stepper.
+struct RawParamRow: View {
+    @EnvironmentObject var model: AppModel
+    let param: TrillParam
+
+    var body: some View {
+        let binding = Binding(get: { model.draft[param] }, set: { v in
+            let c = min(max(v, param.range.lowerBound), param.range.upperBound)
+            if param.accepts(c) { model.draft[param] = c } else { model.draft[param] = c + 1 }
+        })
+        HStack {
+            Text("\(param.rawValue)").font(.caption.monospacedDigit()).foregroundStyle(.secondary).frame(width: 24, alignment: .trailing)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(param.key).font(.callout.monospaced())
+                Text("\(param.range.lowerBound)…\(param.range.upperBound) · default \(param.defaultValue)\(model.session.unsupported(param) ? " · needs newer firmware" : "")")
+                    .font(.caption2).foregroundStyle(.secondary)
+            }
+            Spacer()
+            TextField("", value: binding, format: .number)
+                .multilineTextAlignment(.trailing)
+                .frame(width: 64)
+                #if os(iOS)
+                .keyboardType(.numberPad)
+                #endif
+            Stepper("", value: binding, in: param.range).labelsHidden()
+            AckBadge(param: param)
+        }
+        .disabled(model.session.unsupported(param))
+    }
+}
+
+/// The editor's configuration as preset JSON, editable as text.
+struct ConfigJSONEditor: View {
+    @EnvironmentObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
+    @State private var text = ""
+    @State private var error: String?
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 8) {
+                TextEditor(text: $text)
+                    .font(.system(.callout, design: .monospaced))
+                    .autocorrectionDisabled()
+                    #if os(iOS)
+                    .textInputAutocapitalization(.never)
+                    #endif
+                    .border(.quaternary)
+                if let error { Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.red).font(.callout) }
+                Text("Change any value and press Use. Missing keys take firmware defaults; unknown keys and out-of-range values are refused.")
+                    .font(.caption).foregroundStyle(.secondary)
+            }
+            .padding()
+            .navigationTitle("Configuration data")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Use") {
+                        do {
+                            model.draft = try Preset.decode(Data(text.utf8)).config
+                            dismiss()
+                        } catch let e as LocalizedError {
+                            error = e.errorDescription ?? "\(e)"
+                        } catch {
+                            self.error = "Not valid JSON: \(error.localizedDescription)"
+                        }
+                    }
+                }
+            }
+            .onAppear {
+                let p = Preset(name: model.editingName ?? "Current sound", config: model.draft)
+                text = (try? p.jsonData()).flatMap { String(data: $0, encoding: .utf8) } ?? ""
+            }
+        }
+        #if os(macOS)
+        .frame(minWidth: 520, minHeight: 560)
+        #endif
     }
 }
