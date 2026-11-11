@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import shutil
+import struct
 import subprocess
 import sys
 import time
@@ -100,6 +101,31 @@ def bundle_id_from_app(app: Path) -> str:
     if r.returncode == 0 and r.stdout.strip():
         return r.stdout.strip()
     return DEFAULT_BUNDLE
+
+
+
+def png_size(path: Path) -> tuple[int, int]:
+    with path.open("rb") as f:
+        sig = f.read(8)
+        if sig != b"\x89PNG\r\n\x1a\n":
+            raise ValueError(f"{path} is not a PNG")
+        f.read(4)  # length
+        if f.read(4) != b"IHDR":
+            raise ValueError(f"{path} has no IHDR")
+        return struct.unpack(">II", f.read(8))
+
+
+def normalize_landscape_shots(out: Path) -> None:
+    """XCUITest screenshots stay in the portrait framebuffer; rotate those PNGs."""
+    for path in sorted(out.glob("*-landscape.png")):
+        w, h = png_size(path)
+        if w >= h:
+            print(f"{path.name} already landscape ({w}x{h})", flush=True)
+            continue
+        # sips -r is clockwise; 270° makes the landscape UI upright.
+        run_ok(["sips", "-r", "270", str(path)], capture_output=True)
+        nw, nh = png_size(path)
+        print(f"rotated {path.name} {w}x{h} -> {nw}x{nh}", flush=True)
 
 
 def expected_paths(out: Path) -> list[Path]:
@@ -306,6 +332,8 @@ def main(argv: list[str] | None = None) -> int:
             )
         bundle = args.bundle_id or bundle_id_from_app(args.app)
         simctl_fallback(udid, args.app, bundle, out)
+
+    normalize_landscape_shots(out)
 
     still = missing_shots(out)
     print("Note: the iOS Simulator has no USB MIDI device, so Home shows the plug-in prompt.", flush=True)
