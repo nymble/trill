@@ -50,6 +50,21 @@ targets:
         INFOPLIST_FILE: App/iOS/Info.plist
         IPHONEOS_DEPLOYMENT_TARGET: "16.0"
         TARGETED_DEVICE_FAMILY: "1,2"
+  # Simulator screenshot helper used by `make apple-ipad-sim`. Not a product test.
+  TrilliumIOSUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - UITests
+    dependencies:
+      - target: TrilliumIOS
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: $(TRILL_BUNDLE_ID).uitests
+        GENERATE_INFOPLIST_FILE: YES
+        IPHONEOS_DEPLOYMENT_TARGET: "16.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        TEST_TARGET_NAME: TrilliumIOS
 schemes:
   TrilliumMac:
     build:
@@ -59,3 +74,6 @@ schemes:
     build:
       targets:
         TrilliumIOS: all
+    test:
+      targets:
+        - TrilliumIOSUITests

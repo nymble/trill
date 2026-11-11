@@ -17,6 +17,7 @@ DOWNLOADS = """\
 | File | What it is |
 |---|---|
 | `Trillium-macOS-unsigned-dev-{v}.zip` | Trillium app for macOS 13+ (Apple Silicon and Intel) |
+| `Trillium-iOS-Simulator-{v}.zip` | Trillium app for the iPhone and iPad Simulator (iOS/iPadOS 16+). It cannot be installed on a physical device. The Simulator has no USB MIDI device, so Home shows the plug-in prompt. |
 | `xiao-sense-fw-{v}.uf2` | Instrument firmware for the Seeed XIAO nRF52840 Sense (application only; bootloader and SoftDevice untouched) |
 | `xiao_uf2.py` | Checks the firmware file and copies it to the board only when asked |
 | `Trillium-{v}-<commit>.zip` | Everything above from one commit, with docs and a manifest |

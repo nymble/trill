@@ -39,14 +39,16 @@ The CLI only works on Linux. On macOS it compiles to a stub that exits with an e
 |---|---|---|---|
 | Default USB-MIDI firmware UF2 (application-only) | `make fw-uf2` → `dist/xiao-sense-fw-<version>.uf2` | n/a (SHA-256 only) | `xiao-sense-fw-unvalidated-on-hardware` (`xiao-sense-fw.uf2`) |
 | `pcm-synth` debug firmware UF2 | `make fw-uf2-pcm` | n/a | same artifact (`xiao-sense-fw-pcm-synth.uf2`) |
-| TrillKit tests (host / iOS Simulator) | `make apple-test`, `make apple-test-ios-sim` | no | – |
+| TrillKit tests (host / iPhone Simulator / iPad Simulator) | `make apple-test`, `make apple-test-ios-sim`, `make apple-test-ipad-sim` | no | – |
 | macOS app (Release, universal) | `make apple-mac` | ad-hoc linker signature only | `trillium-apple-apps-unsigned-dev` (`Trillium-macOS-unsigned-dev-<version>.zip`) |
-| iOS app for the Simulator | `make apple-ios-sim` | no | same artifact (`Trillium-iOS-Simulator-<version>.zip`) |
+| iOS app for the iPhone and iPad Simulator | `make apple-ios-sim` | no | same artifact (`Trillium-iOS-Simulator-<version>.zip`) |
+| iPad Simulator screenshots | `make apple-ipad-sim` | no | `trillium-ipad-simulator-screenshots` |
 | iOS app for devices | `make apple-ios-device` | no: compile check only, **not installable** | – |
-| Everything Apple | `make apple` (then `make apple-dist`) | | |
-| Test kit: Mac app + matching firmware UF2 + `xiao_uf2.py` + docs + `MANIFEST.txt` + `SHA256SUMS` | `make test-kit` after `apple-mac apple-dist fw-uf2` (or set `KIT_APP`, `KIT_UF2`) → `dist/Trillium-<version>-<commit>.zip` | app: ad-hoc only | `trillium-test-kit-unsigned-dev` |
+| Development IPA for a physical iPhone or iPad | `make apple-ios-ipa` (Mac with Xcode and `Local.xcconfig`; not used by regular CI) | signed with your team | – |
+| Everything Apple (unsigned) | `make apple` (then `make apple-dist`) | | |
+| Test kit: Mac app + iOS Simulator app + matching firmware UF2 + `xiao_uf2.py` + docs + `MANIFEST.txt` + `SHA256SUMS` | `make test-kit` after `apple-mac apple-ios-sim apple-dist fw-uf2` (or set `KIT_APP`, `KIT_IOS`, `KIT_UF2`) → `dist/Trillium-<version>-<commit>.zip` | app: ad-hoc only | `trillium-test-kit-unsigned-dev` |
 
-Sign and install on your own devices from Xcode with your own team ([apple-app.md](apple-app.md#run-and-install)). No signing identity, team or profile is stored in the repository or used by CI.
+Sign and install on your own devices from Xcode, or with `make apple-ios-ipa`, using your own team ([apple-app.md](apple-app.md#run-and-install)). No signing identity, team or profile is stored in the repository. Regular CI and release jobs never sign.
 
 ## Targets
 
@@ -58,7 +60,7 @@ Sign and install on your own devices from Xcode with your own team ([apple-app.m
 | `x86_64-unknown-linux-musl` | Linux PCs (for example with a USB-I²C adapter exposing `/dev/i2c-N`) | `make x86-musl` | built in the release workflow |
 | `thumbv7em-none-eabihf` | nRF52840 (XIAO) | `make check-thumb` | `no_std` libraries |
 | macOS 13+ (arm64 + x86_64) | Mac | `make apple-mac` | built in CI on macOS 15 / Xcode 16.4, unsigned. Not tested with hardware |
-| iOS / iPadOS 16+ | iPhone, iPad, Simulator | `make apple-ios-sim`, `make apple-ios-device` | Simulator build and device compile check in CI, unsigned |
+| iOS / iPadOS 16+ | iPhone, iPad, Simulator | `make apple-ios-sim`, `make apple-ios-device`, `make apple-ipad-sim`, `make apple-ios-ipa` | Simulator build, iPad launch/screenshots, and device compile check in CI, unsigned. A development IPA needs a local team; no physical iPad install has been tested |
 | `thumbv7em-none-eabihf` | XIAO nRF52840 Sense firmware | `make fw-uf2`, `make fw-uf2-pcm` | default USB-MIDI and `pcm-synth` builds: linked ELFs + application-only UF2s in CI (artifact, not a release). Not run on hardware. See [firmware-xiao-sense.md](firmware-xiao-sense.md) |
 
 **Pi Zero W is ARMv6.** Binaries for `armv7-*` targets fail on it with "Illegal instruction". Rust's `arm-unknown-linux-*` targets generate ARMv6 code, but many distribution cross-GCC packages (`arm-linux-gnueabihf-gcc`) default to ARMv7. For that reason this project links with Zig through `cargo-zigbuild` and checks the output with `readelf`. Binaries built for `arm-unknown-linux-musleabihf` also run on 32-bit Pi OS installs on newer Pis.

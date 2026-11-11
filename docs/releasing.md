@@ -8,7 +8,7 @@
 
 ## Release procedure
 
-Releases are posted on GitHub as downloads: the Trillium Mac app, the XIAO Sense firmware, the test kit and the `trill` CLI.
+Releases are posted on GitHub as downloads: the Trillium Mac app, the iOS Simulator app (iPhone and iPad), the XIAO Sense firmware, the test kit and the `trill` CLI.
 
 1. Bump the version everywhere at once: `version` in `Cargo.toml` and `firmware/xiao-sense/Cargo.toml`, `MARKETING_VERSION` in `apple/Config/Base.xcconfig`. Run `cargo update -w` in the root and in `firmware/xiao-sense` so the lock files match.
 2. In `CHANGELOG.md`, move the entries from `[Unreleased]` into a `## [X.Y.Z] - YYYY-MM-DD` section. The release notes come from that section, and the release job fails if it is missing.
@@ -16,19 +16,20 @@ Releases are posted on GitHub as downloads: the Trillium Mac app, the XIAO Sense
 4. **With the maintainer's approval**, tag and push: `git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z`.
 5. `.github/workflows/release.yml` then:
    - checks that the tag, both Cargo versions and the app version agree, and that the changelog has the section;
-   - builds the macOS app (universal, unsigned, with the icon), the application-only firmware UF2, the `trill` CLI for three Linux targets (after the host tests), and the test kit from the same commit;
+   - builds the macOS app (universal, unsigned, with the icon), the iOS Simulator app (iPhone and iPad), the application-only firmware UF2, the `trill` CLI for three Linux targets (after the host tests), and the test kit from the same commit;
    - creates a **draft** pre-release named "Trillium vX.Y.Z" with every download, a combined `SHA256SUMS` and notes from the changelog plus a downloads guide (`tools/release_notes.py`).
 6. Review the draft on GitHub (Releases), try the downloads, then press **Publish**. Nothing is public before that.
 
 A **manual run** (Actions → Release → *Run workflow*) builds and packages the same files from any branch and keeps them as a workflow artifact (`trillium-<version>-downloads`). It does not create a release.
 
-Permissions: every build job has `contents: read`. Only the draft job, which runs on tags, gets `contents: write`, through the built-in `GITHUB_TOKEN`. No other secrets are used: the app is not signed or notarized, because that needs Apple Developer ID credentials (see `docs/apple-app.md`).
+Permissions: every build job has `contents: read`. Only the draft job, which runs on tags, gets `contents: write`, through the built-in `GITHUB_TOKEN`. No other secrets are used: the app is not signed or notarized, because that needs Apple Developer ID credentials (see `docs/apple-app.md`). A development IPA for a physical iPhone or iPad is not a release download; build it locally with `make apple-ios-ipa`.
 
 ## Release downloads
 
 | File | What |
 |---|---|
 | `Trillium-macOS-unsigned-dev-X.Y.Z.zip` | Trillium for macOS 13+, universal, ad-hoc signed only |
+| `Trillium-iOS-Simulator-X.Y.Z.zip` | Trillium for the iPhone and iPad Simulator (iOS/iPadOS 16+). Not installable on a physical device; the Simulator has no USB MIDI, so Home shows the plug-in prompt |
 | `xiao-sense-fw-X.Y.Z.uf2` | Application-only firmware (0x27000+); bootloader and SoftDevice untouched |
 | `xiao_uf2.py` | UF2 check and copy tool |
 | `Trillium-X.Y.Z-<commit>.zip` | Test kit: all of the above plus docs and a manifest |

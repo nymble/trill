@@ -4,7 +4,7 @@ The app is named **Trillium** (bundle `Trillium.app`). *Trill* is Bela's touch-s
 
 `apple/` contains **Trillium**, a SwiftUI companion app for Mac, iPhone and iPad. It monitors and configures the XIAO nRF52840 Sense instrument over class-compliant USB MIDI. **You do not need the app to play.** The instrument is a standard USB-MIDI device and plays straight into GarageBand, Logic, AUM or any CoreMIDI app.
 
-> **Status:** CI builds the macOS app and the iOS app for the Simulator and for devices (compile check, unsigned). The TrillKit tests run on macOS (53 tests; this includes two CoreMIDI loopback tests against a simulated Trill on virtual endpoints) and on the iOS Simulator (same tests; the two loopback tests are skipped there because the Simulator refuses virtual MIDI endpoints, OSStatus -10844). On both, the real-firmware UF2 check is skipped unless `dist/*.uf2` was built first. Firmware 0.2.0–0.4.0 has run on one XIAO Sense from a Mac (handshake, configuration, telemetry at 50 frames/s). **The 0.5.0 screens (Home, merged Presets, Settings) have only been built and unit-tested; they have not been tried against a device, and firmware 0.5.0 has not been flashed.**
+> **Status:** CI builds the macOS app and the iOS app for the Simulator and for devices (compile check, unsigned). The TrillKit tests run on macOS (53 tests; this includes two CoreMIDI loopback tests against a simulated Trill on virtual endpoints) and on the iPhone and iPad Simulators (same tests; the two loopback tests are skipped there because the Simulator refuses virtual MIDI endpoints, OSStatus -10844). CI also boots an iPad Simulator, launches the app, and uploads portrait and landscape screenshots of the main screens. The iOS Simulator has no USB MIDI device, so Home shows the plug-in prompt. On both host and Simulator, the real-firmware UF2 check is skipped unless `dist/*.uf2` was built first. Firmware 0.2.0–0.4.0 has run on one XIAO Sense from a Mac (handshake, configuration, telemetry at 50 frames/s). **The 0.5.0 screens (Home, merged Presets, Settings) have only been built and unit-tested; they have not been tried against a physical iPhone or iPad, and firmware 0.5.0 has not been flashed.**
 
 ## What it does
 
@@ -79,11 +79,14 @@ The same builds CI runs (unsigned, `CODE_SIGNING_ALLOWED=NO`, output in `build/a
 ```sh
 make apple-test           # TrillKit tests on this Mac (incl. CoreMIDI loopback)
 make apple-test-ios-sim   # TrillKit tests on an available iPhone Simulator
+make apple-test-ipad-sim  # TrillKit tests on an available iPad Simulator
 make apple-mac            # Release, universal macOS app
-make apple-ios-sim        # iOS app for the Simulator
+make apple-ios-sim        # iOS app for the iPhone and iPad Simulator
 make apple-ios-device     # iOS app for devices: compile check only, NOT an installable IPA
+make apple-ipad-sim       # boot an iPad Simulator, install, launch, save screenshots
+make apple-ios-ipa        # development IPA (needs Local.xcconfig with your team)
 make apple-dist           # dist/apple/*.zip + SHA256SUMS
-make apple                # all of the above (except the Simulator tests)
+make apple                # test + macOS + iOS Simulator + device compile + dist
 ```
 
 On Linux, `make apple-test` runs the platform-independent TrillKit tests (protocol vectors, UMP, session, presets, UF2). That proves nothing about SwiftUI or CoreMIDI, which only build on macOS.
@@ -97,21 +100,37 @@ The app icon (`apple/App/Shared/Assets.xcassets/AppIcon.appiconset`) is drawn in
 2. The project signs Mac builds ad hoc ("Sign to Run Locally"), so no account is needed.
 3. The app runs in the App Sandbox. Its only entitlement is access to files you pick in open/save dialogs.
 
-**iPhone/iPad, from Xcode:**
+**iPhone or iPad Simulator, from a downloaded zip or a local build:**
+1. Unzip `Trillium-iOS-Simulator-<version>.zip`, or run `make apple-ios-sim`.
+2. Boot a simulator (`xcrun simctl boot "iPad Pro 13-inch (M4)"` or an iPhone, then `open -a Simulator`).
+3. `xcrun simctl install booted Trillium.app && xcrun simctl launch booted com.nymble.trill`.
+4. Home shows "Connect your Trillium": the Simulator has no USB MIDI device, so the instrument cannot be detected there.
+
+**iPhone/iPad, from Xcode (physical device):**
 1. Add your Apple ID in *Xcode › Settings › Accounts*.
 2. Copy `apple/Config/Local.xcconfig.example` to `apple/Config/Local.xcconfig`. That file is git-ignored.
 3. In it, set `DEVELOPMENT_TEAM` to your team ID. If `com.nymble.trill` is not available to your team, set `TRILL_BUNDLE_ID` to your own reverse-DNS ID. Run `make apple-project` again afterwards. Alternatively, choose the team in *Signing & Capabilities* for this session only.
-4. Connect the device, enable *Settings › Privacy & Security › Developer Mode*, select the **TrilliumIOS** scheme and the device, then press Run.
-5. With a free Personal Team the provisioning profile expires after about a week, and Apple limits how many apps and devices it can be used with. Re-run from Xcode to renew it. A paid membership removes these limits but is not needed for development.
+4. Connect the device (USB-C, or a Lightning iPad/iPhone with Apple's Lightning to USB 3 Camera Adapter and power — see [USB MIDI](usb-midi.md#hardware-acceptance-procedure)). Enable *Settings › Privacy & Security › Developer Mode*, trust the computer, and register the device with the team if Xcode asks. iPadOS or iOS 16 or newer is required.
+5. Select the **TrilliumIOS** scheme and the device, then press Run.
+6. With a free Personal Team the provisioning profile expires after about a week, and Apple limits how many apps and devices it can be used with. Re-run from Xcode to renew it. A paid membership removes these limits but is not needed for development.
 
-No team, certificate or profile is committed, and CI never signs.
+**Development IPA, from a Mac with Xcode** (`make apple-ios-ipa`):
+1. Complete steps 1–3 above so `apple/Config/Local.xcconfig` has your team (never commit that file).
+2. Connect the device once so Xcode can register it with the team, and enable Developer Mode.
+3. Run `make apple-ios-ipa`. This archives the **TrilliumIOS** scheme and exports a development IPA to `dist/apple/Trillium-iOS-dev-<version>.ipa`. It does not use `CODE_SIGNING_ALLOWED=NO`.
+4. Install the IPA with Xcode, Apple Configurator, or:
+   `xcrun devicectl device install app --device <udid> dist/apple/Trillium-iOS-dev-<version>.ipa`
+5. This path has not been tested on a physical iPad in this project's CI.
+
+No team, certificate or profile is committed. The regular CI and release jobs never sign. An optional, manual-dispatch workflow (`.github/workflows/ios-dev-ipa.yml`) can build a signed development IPA when the repository secrets `IOS_DEVELOPMENT_TEAM`, `IOS_CERTIFICATE_BASE64`, `IOS_CERTIFICATE_PASSWORD` and `IOS_PROVISIONING_PROFILE_BASE64` are present; that workflow is untested, because those secrets are not configured.
 
 **CI artifacts:** the workflow artifact `trillium-apple-apps-unsigned-dev` holds:
 - `Trillium-macOS-unsigned-dev-<version>.zip`: the macOS app. It is not notarized and carries only the linker's ad-hoc signature, so entitlements (sandbox) are not applied. Gatekeeper blocks it after download. Only if you trust the build and its checksum: on macOS 15 try to open it once, then use *System Settings › Privacy & Security › Open Anyway*; on macOS 13/14 use *right-click › Open*; or run `xattr -dr com.apple.quarantine Trillium.app`.
-- `Trillium-iOS-Simulator-<version>.zip`: for the Simulator only. Install it with `xcrun simctl install booted Trillium.app`. It cannot be installed on a device.
+- `Trillium-iOS-Simulator-<version>.zip`: for the iPhone or iPad Simulator only. Install it with `xcrun simctl install booted Trillium.app`. It cannot be installed on a device. Home shows the plug-in prompt, because the Simulator has no USB MIDI device.
 - `README.txt` with this disclaimer, and `SHA256SUMS` (for the zips).
+- CI also uploads `trillium-ipad-simulator-screenshots`: portrait and landscape captures of Home, Presets, Sensors and Settings on an iPad Simulator.
 
-**Test kit:** the artifact `trillium-test-kit-unsigned-dev` holds `Trillium-<version>-<commit>.zip`: the macOS app zip and the application-only firmware UF2 from the same CI run, `tools/xiao_uf2.py`, docs, `MANIFEST.txt` and `SHA256SUMS` ([kit README](test-kit.md)). Locally on a Mac: `make apple-mac apple-dist fw-uf2 test-kit`.
+**Test kit:** the artifact `trillium-test-kit-unsigned-dev` holds `Trillium-<version>-<commit>.zip`: the macOS app zip, the iOS Simulator zip, and the application-only firmware UF2 from the same CI run, `tools/xiao_uf2.py`, docs, `MANIFEST.txt` and `SHA256SUMS` ([kit README](test-kit.md)). Locally on a Mac: `make apple-mac apple-ios-sim apple-dist fw-uf2 test-kit`.
 
 There is no App Store or TestFlight build. The code is GPL-3.0-only, and App Store distribution of GPL software has known licence conflicts, so any store release would need a decision under the commercial licence ([COMMERCIAL-LICENSE.md](../COMMERCIAL-LICENSE.md)).
 
@@ -123,7 +142,7 @@ There is no App Store or TestFlight build. The code is GPL-3.0-only, and App Sto
    - **Edit** (on every card) opens the preset in the editor. With *Play changes on Trillium as you edit* on (the default), each change is sent as you make it.
    - Built-in presets are refined in place: **Save** keeps your version, marked *Edited*, and *Restore original* brings back the shipped one. Export an edited built-in to send it in for the next release.
    - Your own presets: **New preset** starts from the current sound; **Save as new…** in the editor makes a copy of anything; right-click (or touch and hold) a card to duplicate, export or delete.
-4. **Settings › Sound & mapping** is the same editor for the current sound. Section 6, *Configuration data*, lists every parameter by number with its range, and *Edit as text (JSON)* edits the whole set in the preset file format. Settings last until the instrument is unplugged; presets keep them on the Mac or iPhone.
+4. **Settings › Sound & mapping** is the same editor for the current sound. Section 6, *Configuration data*, lists every parameter by number with its range, and *Edit as text (JSON)* edits the whole set in the preset file format. Settings last until the instrument is unplugged; presets keep them on the Mac, iPhone or iPad.
    - Theremin: set your synth's pitch-bend range to the value shown (default ±24).
    - Strike directions (firmware 0.5.0+): with 2, 4 or 6 directions, the direction Trillium moves when it is stopped picks the note; an unclear strike plays the "unclear direction" note.
    - Not available: circle/twirl gestures, heading (no magnetometer) and position.

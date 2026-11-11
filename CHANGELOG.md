@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Versions follow [Semant
 
 ## [Unreleased]
 
+### Added
+- **iPad Simulator testing**: `make apple-test-ipad-sim` runs the TrillKit tests on an available iPad Simulator; `make apple-ipad-sim` boots an iPad Simulator, installs the app, and captures portrait and landscape screenshots of Home, Presets, Sensors and Settings. CI uploads them as `trillium-ipad-simulator-screenshots`. The Simulator has no USB MIDI device, so Home shows the plug-in prompt.
+- The iOS Simulator app (`Trillium-iOS-Simulator-X.Y.Z.zip`) is included in GitHub Release downloads, the test kit and `SHA256SUMS`. It runs on iPhone and iPad Simulators and cannot be installed on a physical device.
+- `make apple-ios-ipa` archives and exports a development IPA on a Mac with Xcode, reading the team from the git-ignored `apple/Config/Local.xcconfig`. An optional, manual-dispatch workflow (`.github/workflows/ios-dev-ipa.yml`) can build a signed IPA when signing secrets are present; it is untested, because this repository has no such secrets. No physical iPad install has been tested.
+
 ## [0.5.0]
 
 The first release published on GitHub, so it also lists the 0.4.0 work that was never released separately.

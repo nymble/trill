@@ -1,0 +1,89 @@
+# Optional, untested. Manual dispatch only. Produces a development IPA when
+# the named repository secrets are present. The repository currently has no
+# signing certificates or profiles, and this workflow has never been run
+# successfully. The supported path is still `make apple-ios-ipa` on a Mac
+# with Xcode and a git-ignored apple/Config/Local.xcconfig. CI never signs
+# in the regular jobs; no team is committed.
+name: iOS development IPA (opt-in)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notice:
+    name: Signing secrets check
+    if: ${{ secrets.IOS_DEVELOPMENT_TEAM == '' || secrets.IOS_CERTIFICATE_BASE64 == '' || secrets.IOS_CERTIFICATE_PASSWORD == '' || secrets.IOS_PROVISIONING_PROFILE_BASE64 == '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Explain the skip
+        run: |
+          echo "This optional workflow did not build an IPA."
+          echo "It is untested, and it only runs the signing job when all of these"
+          echo "repository secrets are set: IOS_DEVELOPMENT_TEAM,"
+          echo "IOS_CERTIFICATE_BASE64, IOS_CERTIFICATE_PASSWORD,"
+          echo "IOS_PROVISIONING_PROFILE_BASE64."
+          echo "Until then, make a development IPA on a Mac with Xcode:"
+          echo "  copy apple/Config/Local.xcconfig.example to Local.xcconfig,"
+          echo "  set DEVELOPMENT_TEAM, then run make apple-ios-ipa."
+          echo "See docs/apple-app.md."
+
+  ipa:
+    name: Signed development IPA (untested)
+    if: ${{ secrets.IOS_DEVELOPMENT_TEAM != '' && secrets.IOS_CERTIFICATE_BASE64 != '' && secrets.IOS_CERTIFICATE_PASSWORD != '' && secrets.IOS_PROVISIONING_PROFILE_BASE64 != '' }}
+    runs-on: macos-15
+    timeout-minutes: 45
+    env:
+      XCODEGEN_VERSION: 2.45.4
+      XCODEGEN_SHA256: 090ec29491aad50aec10631bf6e62253fed733c50f3aab0f5ffc86bc170bdbef
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install XcodeGen (pinned, checksum verified)
+        run: |
+          curl -fsSL --retry 5 --retry-delay 15 --retry-all-errors -o "$RUNNER_TEMP/xcodegen.zip" "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          echo "${XCODEGEN_SHA256}  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+      - name: Import signing certificate and profile
+        env:
+          IOS_CERTIFICATE_BASE64: ${{ secrets.IOS_CERTIFICATE_BASE64 }}
+          IOS_CERTIFICATE_PASSWORD: ${{ secrets.IOS_CERTIFICATE_PASSWORD }}
+          IOS_PROVISIONING_PROFILE_BASE64: ${{ secrets.IOS_PROVISIONING_PROFILE_BASE64 }}
+          IOS_DEVELOPMENT_TEAM: ${{ secrets.IOS_DEVELOPMENT_TEAM }}
+          KEYCHAIN_PASSWORD: ${{ github.run_id }}${{ github.run_attempt }}
+        run: |
+          # Untested: no signing secrets exist in this repository yet.
+          set -euo pipefail
+          CERT="$RUNNER_TEMP/build_certificate.p12"
+          PROFILE="$RUNNER_TEMP/profile.mobileprovision"
+          KEYCHAIN="$RUNNER_TEMP/app-signing.keychain-db"
+          echo -n "$IOS_CERTIFICATE_BASE64" | base64 --decode > "$CERT"
+          echo -n "$IOS_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$CERT" -P "$IOS_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security list-keychain -d user -s "$KEYCHAIN" login.keychain
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$PROFILE" "$HOME/Library/MobileDevice/Provisioning Profiles/"
+          printf 'DEVELOPMENT_TEAM = %s\n' "$IOS_DEVELOPMENT_TEAM" > apple/Config/Local.xcconfig
+      - name: Archive and export a development IPA
+        run: make apple-ios-ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trillium-ios-dev-ipa-untested
+          path: dist/apple/Trillium-iOS-dev-*.ipa
+          if-no-files-found: error
+          retention-days: 7
+      - name: Remove signing material
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/app-signing.keychain-db" || true
+          rm -f apple/Config/Local.xcconfig
+          rm -f "$HOME/Library/MobileDevice/Provisioning Profiles/"*.mobileprovision
+          rm -f "$RUNNER_TEMP/build_certificate.p12" "$RUNNER_TEMP/profile.mobileprovision"
