@@ -4,6 +4,9 @@ All notable changes to this project are documented here. Versions follow [Semant
 
 ## [Unreleased]
 
+### Added
+- **Trillium Zero** hardware build guide (`docs/hardware/trillium-zero.md`) and a single canonical schematic (`docs/images/trillium-zero.svg`): Seeed XIAO nRF52840 Sense, optional Bela Trill Flex, LiPo, and a battery+ on/off switch, with a bill of materials, wiring, power notes and verification steps. The earlier XIAO wiring drawing is superseded by this diagram.
+
 ## [0.5.0]
 
 The first release published on GitHub, so it also lists the 0.4.0 work that was never released separately.

@@ -1,8 +1,8 @@
 # Design: Trill Flex → Seeed Studio XIAO nRF52840
 
-**Status:** design proposal, **not hardware-validated**. Firmware for the XIAO nRF52840 **Sense** builds and links but has not been flashed: see [firmware-xiao-sense.md](firmware-xiao-sense.md).
+**Status:** design proposal, **not hardware-validated** as a complete build. Firmware 0.5.0 has been run on one XIAO nRF52840 Sense (IMU and USB MIDI); a Trill Flex was not attached, and battery operation has not been measured. See [firmware-xiao-sense.md](firmware-xiao-sense.md). The shareable build guide, including both the motion-only and Flex variants and the battery switch, is [Trillium Zero](hardware/trillium-zero.md).
 
-![Trill Flex to XIAO nRF52840 wiring, with the on-board power and battery circuit](images/trill-flex-xiao-nrf52840.svg)
+![Trillium Zero schematic: XIAO nRF52840 Sense, Bela Trill Flex, LiPo, and battery switch](images/trillium-zero.svg)
 
 ## Scope
 
@@ -66,7 +66,8 @@ The XIAO nRF52840 Sense can run from USB, from one rechargeable lithium cell on 
 **Rules:**
 - One **rechargeable** Li-ion / LiPo cell only, 3.7 V nominal class, 4.2 V full charge. Never primary (non-rechargeable) cells and never multi-cell packs.
 - Use a cell with **its own protection circuit** (over-charge, over-discharge, short circuit). The board has no NTC input and no battery-side protection beyond the charger's own functions.
-- **Polarity is critical:** battery + to pad `BAT0` (VBAT), battery − to pad `GND0` (GND). These are schematic names. Confirm the rear-side silkscreen and pad positions on your board and on Seeed's back-side photo before soldering. The diagram deliberately does not draw them.
+- **Polarity is critical:** battery + to pad `BAT0` (VBAT), battery − to pad `GND0` (GND). These are schematic names. Confirm the rear-side silkscreen and pad positions on your board and on Seeed's back-side photo before soldering. The canonical diagram does not draw the pad positions.
+- The [Trillium Zero](hardware/trillium-zero.md) build adds a user-supplied SPST switch in the **battery+** lead only (between the cell and `BAT0`). That switch is not part of the XIAO module. With the switch open, the cell is isolated from VBAT: the board can still run from USB, and the charger cannot reach the cell.
 - **Never** connect the battery, or VBAT, to the 3V3 pin, the 5V pin, the Trill, or a Raspberry Pi. The Trill stays on 3V3 only.
 - Capacity is not specified here. With ≈ 50 mA charge current and the 10-hour safety timer, large cells may not reach full charge in one session.
 
@@ -97,7 +98,7 @@ These are the same as in the Raspberry Pi design: [FFC attachment](design-raspbe
 | 1 | — | QWIIC-to-pin cable | Supplied with Trill Flex |
 | 1 | U1 | Seeed Studio XIAO nRF52840 or nRF52840 Sense | — |
 | 2 | R1, R2 | 4.7 kΩ resistor, 1/8 W or larger, 5 % or better | SDA and SCL to 3V3 |
-| — | — | Headers or wire, optional single-cell LiPo | See [Power, USB and battery](#power-usb-and-battery) |
+| — | — | Headers or wire, optional single-cell LiPo, optional battery+ switch | See [Power, USB and battery](#power-usb-and-battery) and [Trillium Zero](hardware/trillium-zero.md) |
 
 ## Firmware
 
