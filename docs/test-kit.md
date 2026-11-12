@@ -1,4 +1,4 @@
-# Trill test kit (Mac app + matching XIAO firmware)
+# Trill test kit (Mac app + iOS Simulator app + matching XIAO firmware)
 
 A development bundle attached to each GitHub Release, also built by CI
 (`trillium-test-kit-unsigned-dev` artifact) or locally with `make test-kit`. Everything in it comes from one commit, named in
@@ -9,6 +9,7 @@ hardware. Check `SHA256SUMS` first (`shasum -a 256 -c SHA256SUMS`).
 | File | What |
 |---|---|
 | `Trillium-macOS-unsigned-dev-<version>.zip` | Universal macOS 13+ app, ad-hoc signed only |
+| `Trillium-iOS-Simulator-<version>.zip` | App for the iPhone and iPad Simulator (iOS/iPadOS 16+). Not installable on a device; the Simulator has no USB MIDI, so Home shows the plug-in prompt |
 | `firmware/xiao-sense-fw-<version>.uf2` | Application-only UF2 (0x27000+, bootloader and SoftDevice untouched) |
 | `tools/xiao_uf2.py` | Checks a UF2 and copies it to the XIAO drive only when asked |
 | `docs/` | App, configuration/telemetry protocol, firmware and USB MIDI docs |
@@ -25,8 +26,13 @@ hardware. Check `SHA256SUMS` first (`shasum -a 256 -c SHA256SUMS`).
    (dry run), and the same command with `--write` to copy it. The tool refuses
    full-flash dumps and anything outside the application region.
    Keep your own backup of the previous firmware outside this folder.
-2. **App.** Unzip and open `Trillium.app`. Gatekeeper blocks unsigned apps: on
+2. **App (Mac).** Unzip and open `Trillium.app`. Gatekeeper blocks unsigned apps: on
    macOS 15+ try once, then System Settings › Privacy & Security › Open Anyway.
+   **App (iPhone/iPad Simulator).** Unzip `Trillium-iOS-Simulator-<version>.zip`
+   and install it with `xcrun simctl install booted Trillium.app`. Home will show
+   the plug-in prompt: the Simulator has no USB MIDI device. For a physical iPad
+   or iPhone, build a development IPA with `make apple-ios-ipa` (see
+   [apple-app.md](apple-app.md)).
 3. **Connect.** Home shows "Trillium found": press Connect (or turn on
    *Connect automatically*). Ports can be checked under Settings › Connection.
 4. **Presets.** Choose a sound; it is sent straight away. *Drum strikes*

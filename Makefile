@@ -17,7 +17,7 @@ FW_ELF  := $(FW_DIR)/target/thumbv7em-none-eabihf/release/xiao-sense-fw
 FW_UF2  := $(DIST)/xiao-sense-fw-$(VERSION).uf2
 
 .PHONY: all ci fmt fmt-check clippy test tools-test check-thumb fw fw-check fw-uf2 fw-uf2-pcm synth-demo build pi-zero pi-arm64 x86-musl dist clean \
-        protocol-vectors apple apple-project apple-test apple-test-ios-sim apple-mac apple-ios-sim apple-ios-device apple-dist apple-icon test-kit
+        protocol-vectors apple apple-project apple-test apple-test-ios-sim apple-test-ipad-sim apple-mac apple-ios-sim apple-ios-device apple-ipad-sim apple-ios-ipa apple-dist apple-icon test-kit
 
 all: ci
 
@@ -106,7 +106,8 @@ dist:
 # ---- Apple (macOS host only) ---------------------------------------------
 # Unsigned builds (CODE_SIGNING_ALLOWED=NO): the macOS app is linker
 # ad-hoc signed only; the iOS device build is a compile check, not an
-# installable IPA. Sign and install from Xcode with your own team instead.
+# installable IPA. For a development IPA, `make apple-ios-ipa` signs with
+# the team in the git-ignored apple/Config/Local.xcconfig (not used by CI).
 APPLE    := apple
 APPLE_DD := build/apple
 XCODEGEN ?= xcodegen
@@ -128,7 +129,10 @@ apple-test:
 	swift test --package-path $(APPLE)/TrillKit
 
 apple-test-ios-sim:
-	cd $(APPLE)/TrillKit && xcodebuild test -scheme TrillKit -destination "id=$$(python3 ../scripts/pick_simulator.py)" CODE_SIGNING_ALLOWED=NO
+	cd $(APPLE)/TrillKit && xcodebuild test -scheme TrillKit -destination "id=$$(python3 ../scripts/pick_simulator.py iphone)" CODE_SIGNING_ALLOWED=NO
+
+apple-test-ipad-sim:
+	cd $(APPLE)/TrillKit && xcodebuild test -scheme TrillKit -destination "id=$$(python3 ../scripts/pick_simulator.py ipad)" CODE_SIGNING_ALLOWED=NO
 
 apple-mac: apple-project
 	$(XCB) -scheme TrilliumMac -configuration Release -destination 'generic/platform=macOS' build
@@ -139,6 +143,22 @@ apple-ios-sim: apple-project
 apple-ios-device: apple-project
 	$(XCB) -scheme TrilliumIOS -configuration Release -destination 'generic/platform=iOS' build
 
+# Boot an iPad Simulator, install the iOS app, launch it, and write
+# portrait + landscape screenshots of the main tabs to
+# dist/ipad-screenshots/. Kept outside dist/apple so `make apple-dist`
+# (which replaces that folder) cannot delete them. The Simulator has no
+# USB MIDI device, so Home shows the plug-in prompt.
+apple-ipad-sim: apple-ios-sim
+	python3 $(APPLE)/scripts/ipad_sim_shots.py --out $(DIST)/ipad-screenshots \
+		--project $(APPLE)/Trillium.xcodeproj --derived-data $(APPLE_DD) \
+		--app $(APPLE_DD)/Build/Products/Debug-iphonesimulator/Trillium.app
+
+# Development IPA for a physical iPhone or iPad. Needs a Mac with Xcode
+# and apple/Config/Local.xcconfig (git-ignored) with DEVELOPMENT_TEAM.
+# Never run in the unsigned CI jobs; does not use CODE_SIGNING_ALLOWED=NO.
+apple-ios-ipa: apple-project
+	python3 $(APPLE)/scripts/export_ipa.py
+
 # Zip the built apps into dist/apple with SHA-256 sums.
 apple-dist:
 	rm -rf $(DIST)/apple && mkdir -p $(DIST)/apple
@@ -147,32 +167,36 @@ apple-dist:
 	cp $(APPLE)/DIST-README.txt $(DIST)/apple/README.txt
 	cd $(DIST)/apple && shasum -a 256 *.zip > SHA256SUMS && cat SHA256SUMS
 
-# ---- Test kit: Mac app + matching firmware for bring-up -------------------
+# ---- Test kit: Mac app + iOS Simulator app + matching firmware -----------
 # Packages already-built inputs (no build, no device access):
-#   KIT_APP  macOS app zip   (make apple-mac apple-dist, macOS only)
+#   KIT_APP  macOS app zip          (make apple-mac apple-dist, macOS only)
+#   KIT_IOS  iOS Simulator app zip  (make apple-ios-sim apple-dist, macOS only)
 #   KIT_UF2  application-only UF2 for the same commit (make fw-uf2)
 # into dist/Trillium-<version>-<commit>/ plus a zip of it. The kit holds only
 # repository build outputs, tools and docs; never add device backups.
 KIT_SHA ?= $(shell git rev-parse --short=7 HEAD 2>/dev/null || echo unknown)
 KIT_APP ?= $(DIST)/apple/Trillium-macOS-unsigned-dev-$(VERSION).zip
+KIT_IOS ?= $(DIST)/apple/Trillium-iOS-Simulator-$(VERSION).zip
 KIT_UF2 ?= $(FW_UF2)
 KIT     := Trillium-$(VERSION)-$(KIT_SHA)
 SHA256  := $(shell command -v sha256sum >/dev/null 2>&1 && echo sha256sum || echo shasum -a 256)
 
 test-kit:
 	@test -f "$(KIT_APP)" || { echo "missing $(KIT_APP) (make apple-mac apple-dist)"; exit 1; }
+	@test -f "$(KIT_IOS)" || { echo "missing $(KIT_IOS) (make apple-ios-sim apple-dist)"; exit 1; }
 	@test -f "$(KIT_UF2)" || { echo "missing $(KIT_UF2) (make fw-uf2)"; exit 1; }
 	@grep -q "^MARKETING_VERSION = $(VERSION)$$" $(APPLE)/Config/Base.xcconfig || { echo "app MARKETING_VERSION != $(VERSION)"; exit 1; }
 	rm -rf $(DIST)/$(KIT) $(DIST)/$(KIT).zip
 	mkdir -p $(DIST)/$(KIT)/firmware $(DIST)/$(KIT)/tools $(DIST)/$(KIT)/docs
 	cp "$(KIT_APP)" $(DIST)/$(KIT)/Trillium-macOS-unsigned-dev-$(VERSION).zip
+	cp "$(KIT_IOS)" $(DIST)/$(KIT)/Trillium-iOS-Simulator-$(VERSION).zip
 	cp "$(KIT_UF2)" $(DIST)/$(KIT)/firmware/xiao-sense-fw-$(VERSION).uf2
 	python3 tools/xiao_uf2.py inspect $(DIST)/$(KIT)/firmware/xiao-sense-fw-$(VERSION).uf2
 	cp tools/xiao_uf2.py $(DIST)/$(KIT)/tools/
 	cp docs/test-kit.md $(DIST)/$(KIT)/README.md
 	cp docs/apple-app.md docs/config-protocol.md docs/firmware-xiao-sense.md docs/usb-midi.md LICENSE $(DIST)/$(KIT)/docs/
-	printf 'name=%s\nversion=%s\ncommit=%s\napp=Trillium-macOS-unsigned-dev-%s.zip (unsigned, ad-hoc)\nfirmware=firmware/xiao-sense-fw-%s.uf2 (application-only, 0x27000+)\nminimum_firmware_for_sensors=0.3.0\nminimum_firmware_for_modes_and_gestures=0.4.0\nhardware_validated=no\n' \
-	  "$(KIT)" "$(VERSION)" "$(KIT_SHA)" "$(VERSION)" "$(VERSION)" > $(DIST)/$(KIT)/MANIFEST.txt
+	printf 'name=%s\nversion=%s\ncommit=%s\napp=Trillium-macOS-unsigned-dev-%s.zip (unsigned, ad-hoc)\nios_simulator=Trillium-iOS-Simulator-%s.zip (iPhone and iPad Simulator only; no USB MIDI)\nfirmware=firmware/xiao-sense-fw-%s.uf2 (application-only, 0x27000+)\nminimum_firmware_for_sensors=0.3.0\nminimum_firmware_for_modes_and_gestures=0.4.0\nhardware_validated=no\n' \
+	  "$(KIT)" "$(VERSION)" "$(KIT_SHA)" "$(VERSION)" "$(VERSION)" "$(VERSION)" > $(DIST)/$(KIT)/MANIFEST.txt
 	cd $(DIST)/$(KIT) && find . -type f ! -name SHA256SUMS | LC_ALL=C sort | sed 's|^\./||' | xargs $(SHA256) > SHA256SUMS && cat SHA256SUMS
 	cd $(DIST) && zip -qr $(KIT).zip $(KIT) && ls -l $(KIT).zip
 

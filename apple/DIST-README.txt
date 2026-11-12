@@ -19,9 +19,13 @@ Trillium-macOS-unsigned-dev-<version>.zip
   your own team (docs/apple-app.md).
 
 Trillium-iOS-Simulator-<version>.zip
-  For the iOS Simulator only (xcrun simctl install booted Trillium.app).
-  It cannot be installed on an iPhone or iPad. For a device, build from
-  source in Xcode with your own team.
+  For the iPhone or iPad Simulator only (iOS/iPadOS 16+). Install it with
+    xcrun simctl install booted Trillium.app
+    xcrun simctl launch booted com.nymble.trill
+  The Simulator has no USB MIDI device, so Home shows the plug-in prompt
+  rather than a live instrument. It cannot be installed on a physical
+  iPhone or iPad. For a device, build a development IPA on a Mac with
+  Xcode and your own team (`make apple-ios-ipa`, see docs/apple-app.md).
 
 The app talks to Trill firmware 0.2.0 or newer over USB MIDI; its Sensors
 tab needs firmware 0.3.0 or newer, and the sensor modes (tilt notes,

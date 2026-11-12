@@ -102,7 +102,7 @@ jobs:
           if-no-files-found: error
 
   apple:
-    name: Trillium for macOS (unsigned)
+    name: Trillium for macOS and iOS Simulator (unsigned)
     needs: check
     runs-on: macos-15
     timeout-minutes: 45
@@ -123,13 +123,17 @@ jobs:
         run: make apple-test
       - name: Build macOS app (Release, universal, unsigned)
         run: make apple-mac
+      - name: Build iOS app for the Simulator (iPhone and iPad)
+        run: make apple-ios-sim
       - name: Package
         run: |
+          make apple-dist
           app=build/apple/Build/Products/Release/Trillium.app
           lipo -info "$app/Contents/MacOS/Trillium"
           test -f "$app/Contents/Resources/AppIcon.icns"
+          test -f dist/apple/Trillium-iOS-Simulator-${{ needs.check.outputs.version }}.zip
           mkdir -p dist
-          ditto -c -k --keepParent "$app" "dist/Trillium-macOS-unsigned-dev-${{ needs.check.outputs.version }}.zip"
+          cp dist/apple/*.zip dist/
       - uses: actions/upload-artifact@v4
         with:
           name: rel-apple
@@ -152,7 +156,7 @@ jobs:
       - name: Assemble downloads
         run: |
           v=${{ needs.check.outputs.version }}
-          make test-kit KIT_SHA="${GITHUB_SHA::7}" KIT_APP="in/Trillium-macOS-unsigned-dev-$v.zip" KIT_UF2="in/xiao-sense-fw-$v.uf2"
+          make test-kit KIT_SHA="${GITHUB_SHA::7}" KIT_APP="in/Trillium-macOS-unsigned-dev-$v.zip" KIT_IOS="in/Trillium-iOS-Simulator-$v.zip" KIT_UF2="in/xiao-sense-fw-$v.uf2"
           mkdir -p out
           cp in/*.zip in/*.uf2 in/*.tar.gz dist/Trillium-*.zip tools/xiao_uf2.py out/
           (cd out && sha256sum * > SHA256SUMS && cat SHA256SUMS)
