@@ -131,7 +131,13 @@ public final class ConfigSession {
     /// Edits in `desired` that would be sent to this device.
     public func unappliedChanges(_ desired: DeviceConfig) -> [(TrillParam, Int)] {
         guard let ack = acknowledged else { return [] }
-        return desired.changes(from: ack, pages: supportedPages)
+        return sendable(desired.changes(from: ack, pages: supportedPages))
+    }
+
+    /// Drops values this firmware would reject as out of range (tilt-strike
+    /// mode and major/minor scales before 0.5.0).
+    private func sendable(_ diff: [(TrillParam, Int)]) -> [(TrillParam, Int)] {
+        supportsStrikes ? diff : diff.filter { !$0.0.requiresStrikes($0.1) }
     }
 
     /// Request a parameter set. Only differences from the acknowledged set
@@ -141,7 +147,7 @@ public final class ConfigSession {
         guard isReady, let ack = acknowledged else { return false }
         // Parameters the firmware does not have are never sent (0.3.0 would
         // reject the whole request as unknownParam).
-        let diff = desired.changes(from: ack, pages: supportedPages)
+        let diff = sendable(desired.changes(from: ack, pages: supportedPages))
         guard !diff.isEmpty else { return false }
         // Replace already queued (not yet sent) sets with the newer ones.
         queue.removeAll { if case .setConfig = $0 { return true } else { return false } }

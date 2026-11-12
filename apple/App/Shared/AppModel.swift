@@ -387,14 +387,19 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// Percussion note-ons on port 1, matched to strike directions.
+    /// Percussion note-ons on port 1, matched to strike directions (and, in
+    /// tilt + strike, the struck melody notes).
     private func noteHits(_ events: [MIDIEvent]) {
         let cfg = session.acknowledged ?? draft
+        let strikeMode = SensorMode(rawValue: cfg[.mode]) == .tiltStrike
         for e in events {
-            guard case let .noteOn(ch, note, vel) = e.message, vel > 0, cfg[.percussionEnabled] == 1,
-                  Int(ch) == cfg[.percussionChannel] else { continue }
-            lastHit = Hit(direction: StrikeDirection.matching(channel: Int(ch), note: Int(note), config: cfg),
-                          note: Int(note), velocity: Int(vel), time: e.hostTime)
+            guard case let .noteOn(ch, note, vel) = e.message, vel > 0 else { continue }
+            if strikeMode, Int(ch) == cfg[.channel] {
+                lastHit = Hit(direction: nil, note: Int(note), velocity: Int(vel), time: e.hostTime)
+            } else if !strikeMode, cfg[.percussionEnabled] == 1, Int(ch) == cfg[.percussionChannel] {
+                lastHit = Hit(direction: StrikeDirection.matching(channel: Int(ch), note: Int(note), config: cfg),
+                              note: Int(note), velocity: Int(vel), time: e.hostTime)
+            }
         }
     }
 

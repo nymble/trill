@@ -140,7 +140,7 @@ fn every_parameter_roundtrips_and_rejects_out_of_range() {
         assert!(lo <= d && d <= hi);
     }
     assert_eq!(Param::from_id(0), None);
-    assert_eq!(Param::from_id(38), None);
+    assert_eq!(Param::from_id(42), None);
 }
 
 #[test]
@@ -297,7 +297,7 @@ fn config_pages_fit_and_page0_is_the_0_3_reply() {
         assert_eq!(r.len(), 7 + 3 + 3 * params.len() + 1);
         assert_eq!(r[10], params[0].id());
     }
-    assert_eq!(ids, (1..=37).collect::<Vec<u8>>());
+    assert_eq!(ids, (1..=41).collect::<Vec<u8>>());
     // An empty GET_CONFIG (all a 0.3 host sends) is exactly page 0.
     let plain = handle(&request::get_config(1), false, &cfg, 7, &INFO)
         .unwrap()
@@ -348,6 +348,28 @@ fn strike_directions_reject_odd_values_and_page2_sets_atomically() {
     let new = o.config.unwrap();
     assert_eq!(new.strike_directions, 6);
     assert_eq!(new.strike_notes[5], 70);
+    // Tilt-strike settings (page 2) reach the engine.
+    let req = request::set_config(
+        6,
+        &[
+            (Param::NoteLengthMs, 450),
+            (Param::StrikeVoicing, 0),
+            (Param::ZoneCurve, 0),
+        ],
+    );
+    let o = handle(&req.unwrap(), false, &c, 1, &INFO).unwrap();
+    let new = o.config.unwrap();
+    assert_eq!(new.note_len_us, 450_000);
+    assert!(!new.strike_voicing && !new.zone_quadratic && new.register_tilt);
+    assert!(Param::NoteLengthMs.set(&mut c, 19).is_err());
+    // Mode 3 and scales 2/3 are valid from firmware 0.5.
+    let mut c = Config::default();
+    Param::Mode.set(&mut c, 3).unwrap();
+    Param::Scale.set(&mut c, 3).unwrap();
+    assert_eq!(c.mode, instrument_events::Mode::TiltStrike);
+    assert_eq!(c.scale, instrument_events::Scale::Minor);
+    assert!(Param::Mode.set(&mut c, 4).is_err() && Param::Scale.set(&mut c, 4).is_err());
+    let c = Config::default();
     // Parameter IDs above 31 are tracked for duplicates too.
     let dup = request::set_config(5, &[(Param::StrikeNoteBack, 1), (Param::StrikeNoteBack, 2)]);
     let o = handle(&dup.unwrap(), false, &c, 1, &INFO).unwrap();

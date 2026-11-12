@@ -30,6 +30,17 @@ public enum StrikeDirection: Int, CaseIterable, Sendable {
         }
     }
     public var param: TrillParam { TrillParam.strikeNotes[rawValue] }
+    /// Tilt-strike mode: chord tone this direction adds.
+    public var chordTone: String {
+        switch self {
+        case .down: return "the note"
+        case .up: return "octave"
+        case .left: return "third"
+        case .right: return "fifth"
+        case .forward: return "second"
+        case .back: return "octave below"
+        }
+    }
     /// The direction a percussion note-on came from, if the configuration
     /// gives that note to exactly one active direction. `nil` for the
     /// "unclear" note, plain taps, other channels or shared notes.
@@ -72,7 +83,7 @@ public enum MappingSummary {
         let mode = has(1) ? SensorMode(rawValue: c[.mode]) ?? .touch : .touch
         let top = min(127, c[.baseNote] + c[.rangeSemitones])
         let range = "\(NoteName.name(UInt8(c[.baseNote])))–\(NoteName.name(UInt8(top)))"
-        let scale = c[.scale] == 1 ? "pentatonic" : "chromatic"
+        let scale = ScaleKind(rawValue: c[.scale])?.name.lowercased() ?? "chromatic"
         switch mode {
         case .touch:
             let pitch = c[.pitchMode] == 1 ? "\(scale) steps" : "gliding pitch (bend ±\(c[.bendRange]))"
@@ -81,8 +92,23 @@ public enum MappingSummary {
             out.append(.init(input: "Tilt forward + roll", symbol: "level", output: "\(scale.capitalized) notes \(range), \(ch(c[.channel]))"))
         case .theremin:
             out.append(.init(input: "Tilt forward + roll", symbol: "waveform", output: "Gliding pitch from \(NoteName.name(UInt8(c[.baseNote]))), bend ±\(c[.bendRange]), \(ch(c[.channel]))"))
+        case .tiltStrike:
+            let t = TiltStrike(c)
+            out.append(.init(input: "Roll", symbol: "arrow.left.and.right",
+                             output: "Chooses 1 of \(t.zoneCount) \(scale) notes \(range)\(c[.zoneCurve] == 1 ? ", finer near level" : "")"))
+            if c[.registerTilt] == 1 {
+                out.append(.init(input: "Tilt forward / back", symbol: "arrow.up.and.down", output: "Octave up / down (past \(c[.gateDeg])°)"))
+            }
+            out.append(.init(input: "Strike or tap", symbol: "hand.tap", output: "Plays the chosen note, \(ch(c[.channel])), \(c[.noteLengthMs]) ms"))
+            if c[.strikeVoicing] == 1, has(2) {
+                let dirs = StrikeDirection.active(c[.strikeDirections]).filter { $0 != .down }
+                if !dirs.isEmpty {
+                    out.append(.init(input: "Strike direction", symbol: "arrow.up.and.down.and.arrow.left.and.right",
+                                     output: dirs.map { "\($0.name.lowercased()) = \($0.chordTone)" }.joined(separator: ", ")))
+                }
+            }
         }
-        if mode != .touch, c[.expressionCC] > 0 {
+        if mode != .touch, mode != .tiltStrike, c[.expressionCC] > 0 {
             out.append(.init(input: "Tilt depth", symbol: "arrow.down.forward", output: cc(c[.expressionCC])))
         }
         if c[.motionEnabled] == 1 {
@@ -96,7 +122,7 @@ public enum MappingSummary {
                 out.append(.init(input: src.title, symbol: src == .rotation ? "rotate.3d" : "arrow.triangle.2.circlepath", output: cc(c[n])))
             }
         }
-        if c[.percussionEnabled] == 1 {
+        if c[.percussionEnabled] == 1, mode != .tiltStrike {
             let dirs = has(2) ? StrikeDirection.active(c[.strikeDirections]) : []
             if dirs.isEmpty {
                 out.append(.init(input: "Tap", symbol: "hand.tap", output: "\(note(c[.percussionNote])), \(ch(c[.percussionChannel]))"))
@@ -111,5 +137,98 @@ public enum MappingSummary {
             out.append(.init(input: "Flick / zig-zag", symbol: "wind", output: "Notes \(b), \(b + 1), \(b + 2), \(ch(c[.percussionChannel]))"))
         }
         return out
+    }
+}
+
+/// Values of `TrillParam.scale`.
+public enum ScaleKind: Int, CaseIterable, Sendable {
+    case chromatic = 0, pentatonic, major, minor
+    public var name: String {
+        switch self {
+        case .chromatic: return "Chromatic"
+        case .pentatonic: return "Pentatonic"
+        case .major: return "Major"
+        case .minor: return "Minor"
+        }
+    }
+    /// Needs firmware 0.5.0.
+    public var needsStrikes: Bool { rawValue >= 2 }
+    public var degrees: [Int] {
+        switch self {
+        case .chromatic: return Array(0..<12)
+        case .pentatonic: return [0, 2, 4, 7, 9]
+        case .major: return [0, 2, 4, 5, 7, 9, 11]
+        case .minor: return [0, 2, 3, 5, 7, 8, 10]
+        }
+    }
+    /// Semitones of scale step `i` (any integer).
+    public func offset(_ i: Int) -> Int {
+        let n = degrees.count
+        let q = Int((Double(i) / Double(n)).rounded(.down))
+        return q * 12 + degrees[i - q * n]
+    }
+    /// Scale steps nearest to `semitones` (third = 2 steps in major).
+    public func steps(for semitones: Int) -> Int {
+        let n = degrees.count
+        return (semitones * n * 2 + 12 * semitones.signum()) / 24
+    }
+}
+
+/// The firmware's tilt-strike note choice (instrument_events
+/// `Mode::TiltStrike`), without hysteresis, for the app's displays.
+public struct TiltStrike: Sendable {
+    public let scale: ScaleKind
+    public let base: Int
+    public let zoneCount: Int
+    public let span: Double
+    public let quadratic: Bool
+    public let gate: Double
+    public let register: Bool
+
+    public init(_ c: DeviceConfig) {
+        scale = ScaleKind(rawValue: c[.scale]) ?? .chromatic
+        base = c[.baseNote]
+        span = Double(c[.tiltSpanDeg])
+        quadratic = c[.zoneCurve] == 1
+        gate = Double(c[.gateDeg])
+        register = c[.registerTilt] == 1
+        var n = 0
+        while n < 128, scale.offset(n) <= c[.rangeSemitones] { n += 1 }
+        zoneCount = max(n, 1)
+    }
+
+    /// Zone position 0...zoneCount for a roll angle.
+    public func position(roll: Double) -> Double {
+        let x = max(-1, min(1, roll / span))
+        let y = quadratic ? (x < 0 ? -1 : 1) * abs(x).squareRoot() : x
+        return (y + 1) / 2 * Double(zoneCount)
+    }
+
+    public func zone(roll: Double) -> Int { min(zoneCount - 1, max(0, Int(position(roll: roll)))) }
+
+    /// Roll angle of the edge between zone `k - 1` and `k` (0...zoneCount).
+    public func edge(_ k: Int) -> Double {
+        let y = Double(k) / Double(zoneCount) * 2 - 1
+        let x = quadratic ? (y < 0 ? -1 : 1) * y * y : y
+        return x * span
+    }
+
+    public func octave(pitch: Double) -> Int {
+        guard register else { return 0 }
+        return pitch >= gate ? 1 : pitch <= -gate ? -1 : 0
+    }
+
+    public func note(zone: Int, octave: Int = 0, direction: StrikeDirection? = nil, voicing: Bool = false) -> Int {
+        let n = scale.degrees.count
+        let extra: Int
+        switch voicing ? direction : nil {
+        case nil, .down?: extra = 0
+        case .up?: extra = n
+        case .left?: extra = scale.steps(for: 4)
+        case .right?: extra = scale.steps(for: 7)
+        case .forward?: extra = scale.steps(for: 2)
+        case .back?: extra = -n
+        }
+        return max(0, min(127, base + scale.offset(zone + extra) + 12 * octave))
     }
 }

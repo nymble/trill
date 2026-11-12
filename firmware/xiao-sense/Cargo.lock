@@ -547,6 +547,7 @@ name = "instrument-events"
 version = "0.5.0"
 dependencies = [
  "heapless",
+ "libm",
 ]
 
 [[package]]

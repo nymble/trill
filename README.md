@@ -10,10 +10,11 @@ Open hardware designs and Rust software for using [Bela Trill](https://bela.io/t
 |---|---|---|
 | Trill Flex → Raspberry Pi | Pi 40-pin header, I²C bus 1, Linux | [docs/design-raspberry-pi.md](docs/design-raspberry-pi.md) |
 | Trill Flex → Seeed Studio XIAO nRF52840 | XIAO D4/D5, Cortex-M4F, USB-MIDI; optional LiPo on the on-board charger | [docs/design-xiao-nrf52840.md](docs/design-xiao-nrf52840.md) ([power and battery](docs/design-xiao-nrf52840.md#power-usb-and-battery)) |
+| Trillium Zero | Shareable build of the XIAO Sense instruments: motion-only, or with Trill Flex, LiPo and a battery switch | [docs/hardware/trillium-zero.md](docs/hardware/trillium-zero.md) |
 
 [![Trill Flex to Raspberry Pi wiring](docs/images/trill-flex-raspberry-pi.svg)](docs/design-raspberry-pi.md)
 
-[![Trill Flex to XIAO nRF52840 wiring, power and battery](docs/images/trill-flex-xiao-nrf52840.svg)](docs/design-xiao-nrf52840.md)
+[![Trillium Zero schematic: XIAO nRF52840 Sense, Bela Trill Flex, LiPo, and battery switch](docs/images/trillium-zero.svg)](docs/hardware/trillium-zero.md)
 
 ## Documentation
 
@@ -21,6 +22,7 @@ Open hardware designs and Rust software for using [Bela Trill](https://bela.io/t
 - [Apple app (Mac + iPhone)](docs/apple-app.md): **Trillium**, the companion app: device, monitor, mapping, presets, Mac firmware assistant; build, run, sign with your own team.
 - [Configuration protocol](docs/config-protocol.md): versioned SysEx protocol on the second USB-MIDI port, with shared test vectors.
 - [MIDI mapping](docs/midi-mapping.md): touch and motion events → MIDI messages, priorities, reconnect/panic, example trace.
+- [Trillium Zero](docs/hardware/trillium-zero.md): canonical schematic and hardware build guide (motion-only and Trill Flex variants). This page is hardware only.
 - [XIAO nRF52840 Sense firmware](docs/firmware-xiao-sense.md): build, safe UF2 loading with backup/restore, USB diagnostics, bring-up checklist, latency measurement.
 - [Motion-to-music engine](docs/motion-synth.md): motion processing, and the optional on-board debug synth.
 - [Current design and status](docs/current-design.md): block diagram, real rates, what is compiled, tested or untested, known limitations.
@@ -79,6 +81,8 @@ make apple-project && open apple/Trillium.xcodeproj   # run, or sign with your o
 ## Licence
 
 Copyright © 2026 Nymble ([@nymble](https://github.com/nymble)).
+
+This project is dual-licensed: you may use it under the GNU GPL v3.0 only or under a commercial license from M-of-N. For commercial terms, contact <https://m-of-n.com/contact>.
 
 - Code, documentation, and diagrams in this repository: [GNU GPL v3.0 only](LICENSE) (`SPDX-License-Identifier: GPL-3.0-only`).
 - Commercial or proprietary licensing on separate terms: see [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).

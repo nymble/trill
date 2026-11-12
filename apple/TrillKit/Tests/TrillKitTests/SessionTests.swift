@@ -222,10 +222,28 @@ final class SessionTests: XCTestCase {
         // All 17 page-1 parameters at once: more than one request holds.
         var all = want
         for p in TrillParam.params(page: 1) { all[p] = p.range.upperBound }
+        all[.mode] = SensorMode.theremin.rawValue // mode 3 needs 0.5.0
         XCTAssertTrue(session.apply(all, now: now))
         pump()
         XCTAssertEqual(device.config, all)
         XCTAssertEqual(session.acknowledged, all)
+    }
+
+    func testTiltStrikeValuesAreNeverSentToFirmware04() {
+        device.pages = true
+        session.connect(now: now); pump()
+        XCTAssertFalse(session.supportsStrikes)
+        var want = DeviceConfig.firmwareDefaults
+        want[.mode] = SensorMode.tiltStrike.rawValue
+        want[.scale] = ScaleKind.minor.rawValue
+        XCTAssertTrue(session.unappliedChanges(want).isEmpty)
+        XCTAssertFalse(session.apply(want, now: now), "nothing this firmware accepts")
+        want[.baseNote] = 50
+        XCTAssertTrue(session.apply(want, now: now))
+        pump()
+        XCTAssertEqual(device.config[.baseNote], 50)
+        XCTAssertEqual(device.config[.mode], 0)
+        XCTAssertEqual(device.config[.scale], 0)
     }
 
     func testOldFirmwareNeverGetsPageOneParametersOrActions() {

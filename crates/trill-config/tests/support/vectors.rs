@@ -213,6 +213,32 @@ pub fn vectors() -> Vec<(&'static str, Vec<u8>)> {
                 .unwrap()
                 .to_vec(),
         ),
+        (
+            "set_tilt_strike_page2",
+            request::set_config(
+                34,
+                &[
+                    (Param::NoteLengthMs, 450),
+                    (Param::RegisterTilt, 0),
+                    (Param::ZoneCurve, 0),
+                    (Param::StrikeVoicing, 0),
+                ],
+            )
+            .unwrap()
+            .to_vec(),
+        ),
+        (
+            "set_mode_tilt_strike",
+            request::set_config(35, &[(Param::Mode, 3)])
+                .unwrap()
+                .to_vec(),
+        ),
+        (
+            "set_scale_minor",
+            request::set_config(36, &[(Param::Scale, 3)])
+                .unwrap()
+                .to_vec(),
+        ),
     ]
 }
 

@@ -126,7 +126,7 @@ pid.codes test PIDs are for private development only. Distributed hardware needs
 | `s` | Status now. Also any unlisted key |
 | `m` | MIDI map and all engine counters |
 | `p` | MIDI panic: CC123, CC120, bend centre, pressure 0, RPN 0 (lift finger before the next note) |
-| `k` / `q` | Toggle pitch mode bend/steps; toggle scale chromatic/pentatonic (not persisted) |
+| `k` / `q` | Toggle pitch mode bend/steps; next scale: chromatic → pentatonic → major → minor (not persisted) |
 | `t` / `x` | Toggle tap percussion; toggle motion controllers (not persisted) |
 | `c` | Recalibrate gyro (hold still) |
 | `b`, `v`, `h`/`?` | Boot report, version + USB IDs, help |

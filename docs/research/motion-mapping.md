@@ -208,7 +208,9 @@ Caramiaux and Tanaka's review is a good map of the trade-offs [Caramiaux & Tanak
 
 ## 8. Recommendations for Trillium
 
-Listed in order of value against effort. None of these changes is implemented, and none has been tested on hardware.
+Listed in order of value against effort.
+
+**Implementation status (firmware/app 0.5.0, simulation and unit tests only):** 1 is done (±8 g). 3 is done in a simpler form: the direction is taken from the gravity-referenced acceleration at the detection sample, without first-lobe integration or a gyro second opinion. 4 is done as the *tilt + strike* mode (roll selects in quadratic zones, forward/back tilt selects the octave, a strike plays, strike direction adds chord tones), with one-octave presets per §6.1. The rest are not started.
 
 | # | Change | Firmware / app / hardware | Notes |
 |---|---|---|---|

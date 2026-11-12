@@ -24,7 +24,7 @@ final class VectorTests: XCTestCase {
 
     func testRequestsMatchRustEncoder() throws {
         let v = try Self.loadVectors()
-        XCTAssertEqual(v.count, 36)
+        XCTAssertEqual(v.count, 39)
         XCTAssertEqual(TrillCodec.hello(1), v["hello"]!.request)
         XCTAssertEqual(TrillCodec.getConfig(2), v["get_config"]!.request)
         XCTAssertEqual(TrillCodec.setConfig(3, [(.channel, 2), (.pitchMode, 1)]), v["set_channel_steps"]!.request)
@@ -40,6 +40,10 @@ final class VectorTests: XCTestCase {
         XCTAssertEqual(TrillCodec.getConfig(31, page: 2), v["get_config_page2"]!.request)
         XCTAssertEqual(TrillCodec.setConfig(32, [(.strikeDirections, 4), (.strikeNoteDown, 36), (.strikeNoteRight, 46)]), v["set_strikes"]!.request)
         XCTAssertNil(TrillCodec.setConfig(33, [(.strikeDirections, 3)]))
+        XCTAssertEqual(TrillCodec.setConfig(34, [(.noteLengthMs, 450), (.registerTilt, 0), (.zoneCurve, 0), (.strikeVoicing, 0)]),
+                       v["set_tilt_strike_page2"]!.request)
+        XCTAssertEqual(TrillCodec.setConfig(35, [(.mode, 3)]), v["set_mode_tilt_strike"]!.request)
+        XCTAssertEqual(TrillCodec.setConfig(36, [(.scale, 3)]), v["set_scale_minor"]!.request)
         // The app refuses to encode requests the device would reject.
         XCTAssertNil(TrillCodec.setConfig(5, [(.channel, 2), (.bendRange, 30)]))
         XCTAssertNil(TrillCodec.setConfig(7, [(.baseNote, 60), (.baseNote, 61)]))
