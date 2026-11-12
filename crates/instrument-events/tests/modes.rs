@@ -512,3 +512,195 @@ fn strikes_off_play_the_single_note_and_bad_input_is_rejected() {
     assert_eq!(s.strike_directions, 4);
     assert_eq!(s.strike_notes, [127; 6]);
 }
+
+// ---- Tilt chooses, strike plays (0.5.0) ----
+
+fn strike_cfg() -> Config {
+    Config {
+        mode: Mode::TiltStrike,
+        scale: instrument_events::Scale::Major,
+        base_note: 60,
+        range_semitones: 12.0,
+        strike_directions: 4,
+        motion_enabled: false,
+        ..Config::default()
+    }
+}
+
+/// A strike at the given orientation; returns notes switched on.
+fn hit(e: &mut Engine, t: u32, pitch: f32, roll: f32, dir: [f32; 3]) -> Vec<(u8, u8)> {
+    e.motion(t, m(pitch, roll));
+    let _ = drain(e, t);
+    e.motion(
+        t + 1_000,
+        MotionSample {
+            tap: Some(1.0),
+            tap_dir: dir,
+            ..m(pitch, roll)
+        },
+    );
+    notes_on(&drain(e, t + 1_000))
+}
+
+const DOWN: [f32; 3] = [1.0, 0.0, 0.0];
+
+#[test]
+fn scale_steps_and_chord_tones() {
+    use instrument_events::Scale;
+    assert_eq!(Scale::Major.offset(7), 12);
+    assert_eq!(Scale::Major.offset(-1), -1);
+    assert_eq!(Scale::Minor.offset(2), 3);
+    assert_eq!(Scale::Pentatonic.offset(5), 12);
+    // Third and fifth in scale steps.
+    assert_eq!(
+        (Scale::Major.steps_for(4), Scale::Major.steps_for(7)),
+        (2, 4)
+    );
+    assert_eq!(
+        (
+            Scale::Pentatonic.steps_for(4),
+            Scale::Pentatonic.steps_for(7)
+        ),
+        (2, 3)
+    );
+    assert_eq!(
+        (Scale::Chromatic.steps_for(4), Scale::Chromatic.steps_for(7)),
+        (4, 7)
+    );
+}
+
+#[test]
+fn tilt_strike_selects_by_roll_and_plays_only_on_a_strike() {
+    let cfg = strike_cfg();
+    let mut e = running(cfg, 0);
+    let mut t = still(&mut e, 0, 2_000_000);
+    assert_eq!(e.zone_count(), 8, "C major over one octave: C..C");
+    // Holding a tilt plays nothing by itself.
+    for _ in 0..20 {
+        t += 10_000;
+        e.motion(t, m(30.0, -40.0));
+        assert!(notes_on(&drain(&mut e, t)).is_empty());
+    }
+    t += 200_000;
+    assert_eq!(
+        hit(&mut e, t, 0.0, -45.0, DOWN),
+        vec![(0, 60)],
+        "full left = lowest"
+    );
+    t += 200_000;
+    assert_eq!(
+        hit(&mut e, t, 0.0, 45.0, DOWN),
+        vec![(0, 72)],
+        "full right = highest"
+    );
+    t += 200_000;
+    assert_eq!(
+        hit(&mut e, t, 0.0, 0.0, DOWN),
+        vec![(0, 67)],
+        "level = middle zone"
+    );
+    // Taps never play percussion in this mode, even if it is enabled.
+    let mut e2 = running(
+        Config {
+            percussion_enabled: true,
+            ..cfg
+        },
+        0,
+    );
+    let t2 = still(&mut e2, 0, 2_000_000);
+    assert_eq!(hit(&mut e2, t2 + 1000, 0.0, -45.0, DOWN), vec![(0, 60)]);
+}
+
+#[test]
+fn tilt_strike_register_voicing_length_and_release() {
+    let cfg = strike_cfg();
+    let mut e = running(cfg, 0);
+    let mut t = still(&mut e, 0, 2_000_000);
+    #[allow(clippy::type_complexity)]
+    let cases: [(f32, [f32; 3], u8, &str); 6] = [
+        (20.0, DOWN, 72, "forward = octave up"),
+        (-20.0, DOWN, 48, "back = octave down"),
+        (0.0, [-1.0, 0.0, 0.0], 72, "up = octave"),
+        (0.0, [0.0, 0.0, -1.0], 64, "left = third"),
+        (0.0, [0.0, 0.0, 1.0], 67, "right = fifth"),
+        (0.0, [0.7, 0.0, 0.7], 60, "ambiguous = the chosen note"),
+    ];
+    for (pitch, dir, note, why) in cases {
+        t += 500_000;
+        assert_eq!(hit(&mut e, t, pitch, -45.0, dir), vec![(0, note)], "{why}");
+        // Keep motion flowing (no motion for 100 ms counts as sensor loss).
+        let mut off = Vec::new();
+        let mut at = t + 1_000;
+        while at < t + 1_000 + 310_000 {
+            at += 5_000;
+            e.motion(at, m(pitch, -45.0));
+            e.tick(at);
+            for x in notes_off(&drain(&mut e, at)) {
+                off.push((x, at - (t + 1_000)));
+            }
+        }
+        assert_eq!(off.len(), 1, "{why}: {off:?}");
+        assert_eq!(off[0].0, (0, note), "{why}");
+        assert!(
+            (300_000..=305_000).contains(&off[0].1),
+            "{why}: released after {} µs",
+            off[0].1
+        );
+    }
+    // A new strike releases the previous note first.
+    t += 500_000;
+    hit(&mut e, t, 0.0, -45.0, DOWN);
+    e.motion(
+        t + 50_000,
+        MotionSample {
+            tap: Some(1.0),
+            tap_dir: DOWN,
+            ..m(0.0, 45.0)
+        },
+    );
+    let v = drain(&mut e, t + 50_000);
+    assert_eq!(
+        (notes_off(&v), notes_on(&v)),
+        (vec![(0, 60)], vec![(0, 72)])
+    );
+    // Voicing off: every direction plays the chosen note.
+    let mut e = running(
+        Config {
+            strike_voicing: false,
+            ..cfg
+        },
+        0,
+    );
+    let t = still(&mut e, 0, 2_000_000);
+    assert_eq!(
+        hit(&mut e, t + 1000, 0.0, -45.0, [-1.0, 0.0, 0.0]),
+        vec![(0, 60)]
+    );
+}
+
+#[test]
+fn tilt_strike_zones_are_finer_near_level_and_have_hysteresis() {
+    let quad = strike_cfg();
+    let lin = Config {
+        zone_quadratic: false,
+        ..quad
+    };
+    let zone_at = |cfg: Config, roll: f32| {
+        let mut e = running(cfg, 0);
+        e.motion(10_000, m(0.0, roll));
+        e.selection().unwrap().0
+    };
+    // 5° of roll moves one zone with the quadratic curve, none linearly.
+    assert_eq!(zone_at(quad, 5.0), 5);
+    assert_eq!(zone_at(lin, 5.0), 4);
+    // Both reach the ends.
+    assert_eq!((zone_at(quad, -45.0), zone_at(quad, 45.0)), (0, 7));
+    // Hysteresis: just past a zone edge and back does not flicker.
+    let mut e = running(lin, 0);
+    e.motion(10_000, m(0.0, 14.0)); // pos 5.24 → zone 5 (from 4)
+    assert_eq!(e.selection().unwrap().0, 5);
+    e.motion(20_000, m(0.0, 10.0)); // pos 4.89, within 0.2 of zone 5
+    assert_eq!(e.selection().unwrap().0, 5);
+    e.motion(30_000, m(0.0, 6.0)); // pos 4.53: clearly zone 4
+    assert_eq!(e.selection().unwrap().0, 4);
+}

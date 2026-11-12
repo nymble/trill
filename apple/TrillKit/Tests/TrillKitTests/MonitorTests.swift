@@ -48,8 +48,9 @@ final class MonitorTests: XCTestCase {
 
 final class BuiltInPresetTests: XCTestCase {
     func testBuiltInsAreValidAndGestureFreeExceptTheGesturePreset() {
-        XCTAssertEqual(BuiltInPreset.all.first?.config, .firmwareDefaults)
-        XCTAssertFalse(BuiltInPreset.all[0].needsConfigPages)
+        let strip = BuiltInPreset.all.first { $0.id == "default" }!
+        XCTAssertEqual(strip.config, .firmwareDefaults)
+        XCTAssertFalse(strip.needsConfigPages)
         XCTAssertEqual(Set(BuiltInPreset.all.map(\.id)).count, BuiltInPreset.all.count)
         for p in BuiltInPreset.all {
             for param in TrillParam.allCases { XCTAssertTrue(param.range.contains(p.config[param]), "\(p.id) \(param)") }
@@ -66,9 +67,22 @@ final class BuiltInPresetTests: XCTestCase {
         XCTAssertTrue(strikes.needsStrikes)
         XCTAssertEqual(strikes.config[.strikeDirections], 4)
         XCTAssertEqual(strikes.minimumFirmware, TrillProtocol.strikesMinimumFirmware)
-        XCTAssertNil(BuiltInPreset.all[0].minimumFirmware)
-        // Only the strikes preset turns strikes on.
-        for p in BuiltInPreset.all { XCTAssertEqual(p.config[.strikeDirections] != 0, p.id == "drum-strikes", p.id) }
+        XCTAssertNil(strip.minimumFirmware)
+        // Strikes: the drum preset and the chord-tone voicings.
+        for p in BuiltInPreset.all {
+            XCTAssertEqual(p.config[.strikeDirections] != 0, ["drum-strikes", "strum-chords", "minor-bass"].contains(p.id), p.id)
+        }
+        // Tilt + strike presets need 0.5.0 even where only page-1/0 values say so.
+        for id in ["tilt-melody", "strum-chords", "minor-bass"] {
+            let p = BuiltInPreset.all.first { $0.id == id }!
+            XCTAssertEqual(p.config[.mode], SensorMode.tiltStrike.rawValue)
+            XCTAssertTrue(p.needsStrikes, id)
+            XCTAssertEqual(p.minimumFirmware, TrillProtocol.strikesMinimumFirmware, id)
+            // One octave of 5-8 notes (motion-mapping report §6.1).
+            XCTAssertTrue((5...8).contains(TiltStrike(p.config).zoneCount), id)
+        }
+        // Motion-only sounds come first.
+        XCTAssertEqual(BuiltInPreset.all.first?.id, "tilt-melody")
     }
 
     func testStrikeDirectionsStayEven() {
@@ -86,6 +100,53 @@ final class BuiltInPresetTests: XCTestCase {
         XCTAssertEqual(p.config[.channel], 2)
         XCTAssertEqual(p.config[.mode], 0)
         XCTAssertEqual(p.config[.gestureAxis], 0)
+    }
+}
+
+final class TiltStrikeTests: XCTestCase {
+    /// Same expectations as instrument-events/tests/modes.rs (C major, one octave).
+    func testMatchesFirmwareSelection() {
+        var c = DeviceConfig.firmwareDefaults
+        c[.mode] = SensorMode.tiltStrike.rawValue
+        c[.scale] = ScaleKind.major.rawValue
+        c[.baseNote] = 60
+        c[.rangeSemitones] = 12
+        let t = TiltStrike(c)
+        XCTAssertEqual(t.zoneCount, 8)
+        XCTAssertEqual(t.note(zone: t.zone(roll: -45)), 60)
+        XCTAssertEqual(t.note(zone: t.zone(roll: 45)), 72)
+        XCTAssertEqual(t.note(zone: t.zone(roll: 0)), 67)
+        XCTAssertEqual(t.zone(roll: 5), 5, "quadratic: finer near level")
+        XCTAssertEqual(t.note(zone: 0, octave: t.octave(pitch: 20)), 72)
+        XCTAssertEqual(t.note(zone: 0, octave: t.octave(pitch: -20)), 48)
+        XCTAssertEqual(t.note(zone: 0, direction: .left, voicing: true), 64)
+        XCTAssertEqual(t.note(zone: 0, direction: .right, voicing: true), 67)
+        XCTAssertEqual(t.note(zone: 0, direction: .up, voicing: true), 72)
+        XCTAssertEqual(t.note(zone: 0, direction: .right, voicing: false), 60)
+        // Zone edges are symmetric and squeeze towards level.
+        XCTAssertEqual(t.edge(0), -45)
+        XCTAssertEqual(t.edge(8), 45)
+        XCTAssertEqual(t.edge(4), 0)
+        XCTAssertLessThan(abs(t.edge(5) - t.edge(4)), abs(t.edge(8) - t.edge(7)))
+        var lin = c
+        lin[.zoneCurve] = 0
+        XCTAssertEqual(TiltStrike(lin).zone(roll: 5), 4)
+    }
+
+    func testScales() {
+        XCTAssertEqual(ScaleKind.major.offset(7), 12)
+        XCTAssertEqual(ScaleKind.major.offset(-1), -1)
+        XCTAssertEqual(ScaleKind.minor.offset(2), 3)
+        XCTAssertEqual(ScaleKind.pentatonic.steps(for: 7), 3)
+        XCTAssertEqual(ScaleKind.chromatic.steps(for: 4), 4)
+    }
+
+    func testSummaryDescribesSelectionAndStrikes() {
+        let c = BuiltInPreset.all.first { $0.id == "strum-chords" }!.config
+        let l = MappingSummary.lines(c)
+        XCTAssertEqual(l.map(\.input), ["Roll", "Tilt forward / back", "Strike or tap", "Strike direction"])
+        XCTAssertTrue(l[0].output.contains("1 of 8 major notes"), l[0].output)
+        XCTAssertEqual(l[3].output, "up = octave, left = third, right = fifth")
     }
 }
 

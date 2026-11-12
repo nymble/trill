@@ -37,8 +37,11 @@ struct MotionOverview: View {
             Card {
                 Text("Level").font(.headline)
                 if let f, f.imuValid {
-                    BubbleLevel(pitch: f.pitch, roll: f.roll, gate: SensorMode(rawValue: cfg[.mode]) == .touch ? nil : Double(cfg[.gateDeg]),
-                                span: Double(cfg[.tiltSpanDeg]))
+                    let mode = SensorMode(rawValue: cfg[.mode]) ?? .touch
+                    BubbleLevel(pitch: f.pitch, roll: f.roll,
+                                gate: mode == .touch || mode == .tiltStrike ? nil : Double(cfg[.gateDeg]),
+                                span: Double(cfg[.tiltSpanDeg]),
+                                octaveLines: mode == .tiltStrike && cfg[.registerTilt] == 1 ? Double(cfg[.gateDeg]) : nil)
                         .frame(height: 200)
                         .frame(maxWidth: .infinity)
                     Text("The dot moves like a bubble: right when rolled right, up when tilted forward. In tilt modes the band is where notes sound and the side marks are the ends of the range.")
@@ -98,7 +101,12 @@ struct MotionOverview: View {
     }
 
     @ViewBuilder private func strikeText(_ c: DeviceConfig) -> some View {
-        if c[.percussionEnabled] == 0 {
+        if SensorMode(rawValue: c[.mode]) == .tiltStrike {
+            Text(c[.strikeVoicing] == 1 && c[.strikeDirections] > 0
+                 ? "Strikes play the note chosen by roll; the direction adds a chord tone: up = octave, left = third, right = fifth."
+                 : "Every strike plays the note chosen by roll.")
+                .font(.caption).foregroundStyle(.secondary)
+        } else if c[.percussionEnabled] == 0 {
             Text("Taps are off in this sound. Choose Tap drum or Drum strikes, or turn on taps in the editor (section 4).")
                 .font(.caption).foregroundStyle(.secondary)
         } else if c[.strikeDirections] == 0 {
@@ -153,6 +161,8 @@ struct BubbleLevel: View {
     let gate: Double?
     /// Roll to each end of the note range (tilt modes only).
     let span: Double
+    /// Tilt + strike: forward/back tilt that changes the octave.
+    var octaveLines: Double?
 
     var body: some View {
         GeometryReader { g in
@@ -175,6 +185,14 @@ struct BubbleLevel: View {
                         .clipShape(Circle().size(width: 2 * r, height: 2 * r).offset(x: c.x - r, y: c.y - r))
                     Path { p in p.move(to: CGPoint(x: c.x - span * s, y: c.y - gate * s)); p.addLine(to: CGPoint(x: c.x + span * s, y: c.y - gate * s)) }
                         .stroke(.green, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                }
+                if let o = octaveLines {
+                    ForEach([o, -o], id: \.self) { d in
+                        Path { p in p.move(to: CGPoint(x: c.x - r, y: c.y - d * s)); p.addLine(to: CGPoint(x: c.x + r, y: c.y - d * s)) }
+                            .stroke(.blue, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                        Text(d > 0 ? "octave up" : "octave down").font(.caption2).foregroundStyle(.blue)
+                            .position(x: c.x, y: c.y - d * s + (d > 0 ? -8 : 8))
+                    }
                 }
                 let x = max(-90, min(90, roll)) * s
                 let y = max(-90, min(90, pitch)) * s
@@ -226,7 +244,20 @@ struct PlayingNow: View {
             Label(mode.name, systemImage: mode.symbol).font(.callout.weight(.medium))
             let low = config[.baseNote]
             let high = min(127, low + config[.rangeSemitones])
-            if let f = frame, f.imuValid || mode == .touch {
+            if mode == .tiltStrike, let f = frame, f.imuValid {
+                let t = TiltStrike(config)
+                let oct = t.octave(pitch: f.pitch)
+                ZoneStrip(config: config, roll: f.roll, octave: oct)
+                HStack(spacing: 6) {
+                    Image(systemName: oct > 0 ? "arrow.up.circle.fill" : oct < 0 ? "arrow.down.circle.fill" : "circle")
+                    Text(oct > 0 ? "Octave up (tilted forward)" : oct < 0 ? "Octave down (tilted back)" : "Middle octave")
+                    Spacer()
+                    Text("Strike to play \(NoteName.name(UInt8(t.note(zone: t.zone(roll: f.roll), octave: oct))))").bold()
+                }
+                .font(.callout)
+                Text("Roll chooses, a strike plays: the note doesn't sound until you hit. Approximate: ignores a level set with \"Set current position as level\".")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else if let f = frame, f.imuValid || mode == .touch {
                 let pos: Double? = mode == .touch
                     ? f.touchPosition
                     : max(0, min(1, (f.roll + Double(config[.tiltSpanDeg])) / (2 * Double(config[.tiltSpanDeg]))))
@@ -318,7 +349,8 @@ struct StrikeCompass: View {
                     let p = offset(d, r)
                     VStack(spacing: 1) {
                         Image(systemName: d.symbol).font(.title3.weight(lit ? .bold : .regular))
-                        Text(on ? "\(d.name) \(NoteName.name(UInt8(config[d.param])))" : d.name).font(.caption2)
+                        Text(on ? "\(d.name) \(SensorMode(rawValue: config[.mode]) == .tiltStrike ? d.chordTone : NoteName.name(UInt8(config[d.param])))" : d.name)
+                            .font(.caption2)
                     }
                     .foregroundStyle(lit ? Color.orange : on ? Color.primary : Color.secondary.opacity(0.4))
                     .scaleEffect(lit ? 1.25 : 1)
@@ -340,5 +372,53 @@ struct StrikeCompass: View {
         case .forward: return CGPoint(x: r * 0.72, y: -r * 0.72)
         case .back: return CGPoint(x: -r * 0.72, y: r * 0.72)
         }
+    }
+}
+
+/// Tilt + strike note zones across the roll range, with the current roll
+/// (if known) and the zone it selects.
+struct ZoneStrip: View {
+    let config: DeviceConfig
+    var roll: Double?
+    var octave = 0
+
+    var body: some View {
+        let t = TiltStrike(config)
+        let sel = roll.map { t.zone(roll: $0) }
+        VStack(alignment: .leading, spacing: 3) {
+            GeometryReader { g in
+                let w = g.size.width
+                let x = { (deg: Double) in CGFloat((deg + t.span) / (2 * t.span)) * w }
+                ZStack(alignment: .topLeading) {
+                    ForEach(0..<t.zoneCount, id: \.self) { k in
+                        let x0 = x(t.edge(k)), x1 = x(t.edge(k + 1))
+                        let on = sel == k
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(on ? Color.green.opacity(0.75) : (k % 2 == 0 ? Color.secondary.opacity(0.18) : Color.secondary.opacity(0.10)))
+                            .frame(width: max(1, x1 - x0 - 2), height: 30)
+                            .offset(x: x0 + 1)
+                        Text(NoteName.name(UInt8(t.note(zone: k, octave: octave))))
+                            .font(.system(size: 10, weight: on ? .bold : .regular).monospacedDigit())
+                            .lineLimit(1).minimumScaleFactor(0.5)
+                            .frame(width: max(1, x1 - x0 - 2), height: 30)
+                            .offset(x: x0 + 1)
+                    }
+                    if let r = roll {
+                        Rectangle().fill(.primary).frame(width: 2, height: 38).offset(x: x(max(-t.span, min(t.span, r))) - 1, y: -4)
+                    }
+                }
+            }
+            .frame(height: 30)
+            HStack {
+                Text(String(format: "← roll left %.0f°", t.span))
+                Spacer()
+                Text("level")
+                Spacer()
+                Text(String(format: "roll right %.0f° →", t.span))
+            }
+            .font(.caption2).foregroundStyle(.secondary)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(t.zoneCount) note zones" + (sel.map { ", selected \(NoteName.name(UInt8(t.note(zone: $0, octave: octave))))" } ?? ""))
     }
 }

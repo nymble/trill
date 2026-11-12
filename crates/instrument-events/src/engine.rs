@@ -57,6 +57,37 @@ pub enum Scale {
     Chromatic,
     /// Major pentatonic (0, 2, 4, 7, 9) relative to `base_note`.
     Pentatonic,
+    /// Major (0, 2, 4, 5, 7, 9, 11).
+    Major,
+    /// Natural minor (0, 2, 3, 5, 7, 8, 10).
+    Minor,
+}
+
+impl Scale {
+    /// Semitone offsets of one octave of the scale, ascending from 0.
+    pub fn degrees(self) -> &'static [u8] {
+        match self {
+            Scale::Chromatic => &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+            Scale::Pentatonic => &[0, 2, 4, 7, 9],
+            Scale::Major => &[0, 2, 4, 5, 7, 9, 11],
+            Scale::Minor => &[0, 2, 3, 5, 7, 8, 10],
+        }
+    }
+
+    /// Semitone offset of scale step `i` (may be negative or above one
+    /// octave): step 0 = 0, step `degrees().len()` = 12.
+    pub fn offset(self, i: i32) -> i32 {
+        let d = self.degrees();
+        let n = d.len() as i32;
+        i.div_euclid(n) * 12 + i32::from(d[i.rem_euclid(n) as usize])
+    }
+
+    /// Scale steps closest to `semitones` (for chord tones: a third is 2
+    /// steps in a 7-note scale, 2 in pentatonic, 4 in chromatic).
+    pub fn steps_for(self, semitones: i32) -> i32 {
+        let n = self.degrees().len() as i32;
+        (semitones * n * 2 + 12 * semitones.signum()) / 24
+    }
 }
 
 /// How pitch follows the finger after the note starts.
@@ -86,6 +117,15 @@ pub enum Mode {
     /// and roll then bends the pitch smoothly (theremin-like). The receiver's
     /// bend range must equal `bend_range_semitones` (sent as RPN 0).
     Theremin,
+    /// Selection and excitation separated (motion-mapping report §6.2):
+    /// roll picks a scale step in zones across `±tilt_span_deg` (finer near
+    /// level with `zone_quadratic`), forward/back tilt past `gate_deg` picks
+    /// the octave above/below (`register_tilt`), and a tap or strike plays
+    /// the chosen note on `channel`, velocity from the impact, for
+    /// `note_len_us`. With `strike_voicing` and `strike_directions` > 0 the
+    /// strike direction adds a chord tone (see [`Engine::voicing_steps`]).
+    /// Taps play these notes instead of percussion.
+    TiltStrike,
 }
 
 /// Motion quantity feeding a controller slot. "Forward/back/right/left"
@@ -252,6 +292,16 @@ pub struct Config {
     pub strike_directions: u8,
     /// Note per direction, in [`StrikeDirection`] order.
     pub strike_notes: [u8; 6],
+    /// [`Mode::TiltStrike`]: how long a struck note sounds.
+    pub note_len_us: u32,
+    /// [`Mode::TiltStrike`]: forward/back tilt past `gate_deg` shifts the
+    /// chosen note an octave up/down.
+    pub register_tilt: bool,
+    /// [`Mode::TiltStrike`]: zones narrow near level and wide towards the
+    /// ends (zone edges at (k/n)² of the span, after Rahman et al. 2009).
+    pub zone_quadratic: bool,
+    /// [`Mode::TiltStrike`]: strike direction adds a chord tone.
+    pub strike_voicing: bool,
 }
 
 /// Direction of travel of a tap, relative to gravity. Index into
@@ -369,6 +419,10 @@ impl Default for Config {
             strike_directions: 0,
             // GM drums: snare, crash, kick, closed hi-hat, low tom, ride.
             strike_notes: [38, 49, 36, 42, 45, 51],
+            note_len_us: 300_000,
+            register_tilt: true,
+            zone_quadratic: true,
+            strike_voicing: true,
         }
     }
 }
@@ -427,6 +481,7 @@ impl Config {
         for n in &mut self.strike_notes {
             *n = (*n).min(127);
         }
+        self.note_len_us = self.note_len_us.clamp(20_000, 2_000_000);
         self
     }
 
@@ -436,6 +491,7 @@ impl Config {
             Mode::Touch => self.pitch_mode,
             Mode::TiltNotes => PitchMode::Steps,
             Mode::Theremin => PitchMode::Bend,
+            Mode::TiltStrike => PitchMode::Steps,
         }
     }
 }
@@ -637,6 +693,12 @@ pub struct Engine {
     last_flick: Option<(u32, bool)>,
     percussion_off_at: Option<(u8, u8, u32)>,
     gesture_off_at: [Option<(u8, u8, u32)>; 2],
+    /// [`Mode::TiltStrike`] selection: scale zone (with hysteresis) and
+    /// register (−1, 0, +1).
+    zone: Option<usize>,
+    register: i8,
+    /// [`Mode::TiltStrike`] sounding note: (channel, note, start time).
+    strike_off_at: Option<(u8, u8, u32)>,
     stats: Stats,
 }
 
@@ -692,6 +754,9 @@ impl Engine {
             last_flick: None,
             percussion_off_at: None,
             gesture_off_at: [None; 2],
+            zone: None,
+            register: 0,
+            strike_off_at: None,
             stats: Stats::default(),
         }
     }
@@ -739,6 +804,8 @@ impl Engine {
         self.armed = false;
         self.percussion_release();
         self.gesture_release();
+        self.strike_release();
+        self.zone = None;
         let old = self.cfg;
         // Controllers whose number or source changes (or that are switched
         // off) go back to 0 on their old number first, so nothing is left
@@ -839,6 +906,7 @@ impl Engine {
         self.voice = None;
         self.percussion_off_at = None;
         self.gesture_off_at = [None; 2];
+        self.strike_off_at = None;
         self.armed = false;
         for s in [
             &mut self.pressure,
@@ -865,6 +933,7 @@ impl Engine {
         self.voice = None;
         self.percussion_off_at = None;
         self.gesture_off_at = [None; 2];
+        self.strike_off_at = None;
         self.armed = false;
         self.channel_reset(self.cfg.channel, true);
         if self.cfg.percussion_channel != self.cfg.channel {
@@ -955,14 +1024,13 @@ impl Engine {
         let top = (range as i32) as f32; // highest whole semitone on the strip
         match self.cfg.scale {
             Scale::Chromatic => round_pos(s).min(top),
-            Scale::Pentatonic => {
-                const DEG: [f32; 5] = [0.0, 2.0, 4.0, 7.0, 9.0];
+            scale => {
                 let oct = ((s / 12.0) as i32) as f32 * 12.0;
                 let mut best = 0.0f32;
                 let mut best_d = f32::MAX;
                 for o in [oct - 12.0, oct, oct + 12.0] {
-                    for d in DEG {
-                        let n = o + d;
+                    for &d in scale.degrees() {
+                        let n = o + f32::from(d);
                         if n < 0.0 || n > top {
                             continue;
                         }
@@ -1201,13 +1269,24 @@ impl Engine {
                 }
             }
         }
-        if c.mode != Mode::Touch {
-            self.tilt_voice(t, pitch, roll);
+        match c.mode {
+            Mode::TiltNotes | Mode::Theremin => self.tilt_voice(t, pitch, roll),
+            Mode::TiltStrike => self.select(pitch, roll),
+            Mode::Touch => {}
         }
         if !self.motion_armed {
             return;
         }
-        if let Some(g) = m.tap {
+        if let (Some(g), Mode::TiltStrike) = (m.tap, c.mode) {
+            if g > 0.0 {
+                let dir = if c.strike_voicing && c.strike_directions > 0 {
+                    classify_strike(m.tap_dir, c.strike_directions)
+                } else {
+                    None
+                };
+                self.strike_note(t, g, dir);
+            }
+        } else if let Some(g) = m.tap {
             if c.percussion_enabled && g > 0.0 {
                 let note = if c.strike_directions == 0 {
                     c.percussion_note
@@ -1286,6 +1365,101 @@ impl Engine {
         if self.cfg.mode != Mode::Touch {
             self.release_voice(false);
             self.armed = false;
+        }
+        self.zone = None;
+    }
+
+    /// [`Mode::TiltStrike`]: number of scale steps between `base_note` and
+    /// `base_note + range_semitones` (inclusive), at least 1.
+    pub fn zone_count(&self) -> usize {
+        let top = self.cfg.range_semitones as i32;
+        let mut n = 0;
+        while n < 128 && self.cfg.scale.offset(n as i32) <= top {
+            n += 1;
+        }
+        n.max(1)
+    }
+
+    /// [`Mode::TiltStrike`]: current selection (scale zone, register).
+    pub fn selection(&self) -> Option<(usize, i8)> {
+        self.zone.map(|z| (z, self.register))
+    }
+
+    /// Update the zone (roll) and register (pitch) with hysteresis.
+    fn select(&mut self, pitch: f32, roll: f32) {
+        let c = self.cfg;
+        let n = self.zone_count();
+        let x = (roll / c.tilt_span_deg).clamp(-1.0, 1.0);
+        let y = if c.zone_quadratic {
+            x.signum() * libm::sqrtf(x.abs())
+        } else {
+            x
+        };
+        let pos = (y + 1.0) * 0.5 * n as f32;
+        let h = c.step_hysteresis;
+        self.zone = Some(match self.zone {
+            Some(z) if z < n && pos >= z as f32 - h && pos < (z + 1) as f32 + h => z,
+            _ => (pos as usize).min(n - 1),
+        });
+        self.register = if !c.register_tilt {
+            0
+        } else {
+            let (thr, hy) = (c.gate_deg, GATE_HYSTERESIS_DEG);
+            match self.register {
+                1 if pitch >= thr - hy => 1,
+                -1 if pitch <= -(thr - hy) => -1,
+                _ if pitch >= thr => 1,
+                _ if pitch <= -thr => -1,
+                _ => 0,
+            }
+        };
+    }
+
+    /// Chord tone added by a strike direction, in scale steps: down = the
+    /// chosen note, up = octave above, left = third, right = fifth,
+    /// forward = second (ninth), back = octave below.
+    pub fn voicing_steps(scale: Scale, dir: Option<StrikeDirection>) -> i32 {
+        let n = scale.degrees().len() as i32;
+        match dir {
+            None | Some(StrikeDirection::Down) => 0,
+            Some(StrikeDirection::Up) => n,
+            Some(StrikeDirection::Left) => scale.steps_for(4),
+            Some(StrikeDirection::Right) => scale.steps_for(7),
+            Some(StrikeDirection::Forward) => scale.steps_for(2),
+            Some(StrikeDirection::Back) => -n,
+        }
+    }
+
+    /// [`Mode::TiltStrike`]: play the selected note now.
+    fn strike_note(&mut self, t: u32, g: f32, dir: Option<StrikeDirection>) {
+        let Some(zone) = self.zone else {
+            return;
+        };
+        self.strike_release();
+        if self.free() < 1 + NOTE_OFF_RESERVE {
+            self.stats.note_on_deferred = self.stats.note_on_deferred.wrapping_add(1);
+            return;
+        }
+        let c = self.cfg;
+        let step = zone as i32 + Self::voicing_steps(c.scale, dir);
+        let n = i32::from(c.base_note) + c.scale.offset(step) + 12 * i32::from(self.register);
+        let note = n.clamp(0, 127) as u8;
+        let v = c.velocity_min as f32 + unit(g / c.tap_full_g) * (127 - c.velocity_min) as f32;
+        let velocity = ((v + 0.5) as u8).clamp(1, 127);
+        let _ = self.critical.push_back(MidiMessage::NoteOn {
+            channel: c.channel,
+            note,
+            velocity,
+        });
+        self.note_high_water();
+        self.stats.note_on = self.stats.note_on.wrapping_add(1);
+        self.stats.taps = self.stats.taps.wrapping_add(1);
+        self.strike_off_at = Some((c.channel, note, t));
+    }
+
+    fn strike_release(&mut self) {
+        if let Some((ch, note, _)) = self.strike_off_at.take() {
+            self.push_note_off(ch, note);
         }
     }
 
@@ -1396,6 +1570,7 @@ impl Engine {
         self.motion_armed = false;
         self.percussion_release();
         self.gesture_release();
+        self.strike_release();
         self.tilt_voice_stop();
         self.cc_smooth = [None; 2];
         if self.connected {
@@ -1428,6 +1603,12 @@ impl Engine {
         if let Some((_, _, at)) = self.percussion_off_at {
             if !before(now, at) {
                 self.percussion_release();
+            }
+        }
+        if let Some((_, _, start)) = self.strike_off_at {
+            // Signed like the gesture notes: `start` is an IMU timestamp.
+            if (now.wrapping_sub(start) as i32) >= self.cfg.note_len_us as i32 {
+                self.strike_release();
             }
         }
         for i in 0..2 {

@@ -52,7 +52,7 @@ The device **never answers a reply-typed message** (`type & 0x40`), anything wit
 
 **Pages (firmware 0.4.0, capability bit 4 `0x10`).** One 64-byte reply holds at most 17 parameters (7 + 3 + 3n + 1 ≤ 64), so parameters are grouped in pages: page 0 = IDs 1–13, exactly the firmware 0.2/0.3 set and reply (an empty GET_CONFIG still returns it byte for byte); page 1 = IDs 14–30. A host that does not see bit 4 must not send page-1 parameters, `GET_CONFIG` with a payload or action 5: firmware 0.3.0 answers UnknownParam / BadLength / UnknownAction and changes nothing. The app enforces this (`ConfigSession.supportedPages`, tested against a fake 0.3.0 device), and sends one SET_CONFIG per page, at most 16 parameters each, so every CONFIG reply covers what it changed. The generation increases whenever the mapping changes, through this protocol or a diagnostics key. Unchanged values leave it as it is. Hosts should skip unknown parameter IDs, because a newer firmware may add some.
 
-**Page 2 (firmware 0.5.0, capability bit 5 `0x20`).** IDs 31–37, directional strikes. `HELLO_REPLY` reports 37 parameters. A host that does not see bit 5 must not send page-2 parameters or `GET_CONFIG` page 2; firmware 0.4.0 answers UnknownParam / OutOfRange and changes nothing. Parameter 31 takes only 0, 2, 4 or 6; odd values are rejected as OutOfRange.
+**Page 2 (firmware 0.5.0, capability bit 5 `0x20`).** IDs 31–41: directional strikes (31–37) and tilt + strike settings (38–41). `HELLO_REPLY` reports 41 parameters. The same bit also allows mode 3 (parameter 14) and scales 2–3 (parameter 4); firmware 0.4.0 rejects those values as OutOfRange. A host that does not see bit 5 must not send page-2 parameters or `GET_CONFIG` page 2; firmware 0.4.0 answers UnknownParam / OutOfRange and changes nothing. Parameter 31 takes only 0, 2, 4 or 6; odd values are rejected as OutOfRange.
 
 **SET_CONFIG is atomic.** All values are checked first. If any parameter is unknown, repeated or out of range, nothing changes and the reply is an ERROR naming that parameter. Values are rejected, never clamped. Applying a change releases a sounding note. The engine then waits for the finger to lift, and re-centres pitch bend and resends RPN 0 if the channel, pitch mode or bend range changed. Remapping therefore cannot leave a stuck note.
 
@@ -78,7 +78,7 @@ These match `instrument_events::Config` ([MIDI mapping](midi-mapping.md)). Page 
 | 1 | Touch voice channel (0 = MIDI channel 1) | 0–15 | 0 |
 | 2 | Base note (left end of the strip) | 0–127 | 48 |
 | 3 | Range across the strip, semitones | 1–96 | 24 |
-| 4 | Scale: 0 chromatic, 1 pentatonic | 0–1 | 0 |
+| 4 | Scale: 0 chromatic, 1 major pentatonic, 2 major, 3 natural minor (2–3 need 0.5.0) | 0–3 | 0 |
 | 5 | Pitch: 0 continuous bend, 1 stepped notes | 0–1 | 0 |
 | 6 | Pitch-bend range, semitones (RPN 0) | 1–24 | 24 |
 | 7 | Velocity at the onset threshold | 1–127 | 30 |
@@ -93,7 +93,7 @@ Page 1 (firmware 0.4.0+):
 
 | ID | Parameter | Range | Default |
 |---|---|---|---|
-| 14 | Mode: 0 touch strip, 1 tilt notes, 2 theremin | 0–2 | 0 |
+| 14 | Mode: 0 touch strip, 1 tilt notes, 2 theremin, 3 tilt + strike (0.5.0) | 0–3 | 0 |
 | 15 | Controller A source (below) | 0–7 | 1 rotation |
 | 16 | Controller A CC number | 1–119 | 74 |
 | 17 | Controller B source | 0–7 | 2 pitch forward |
@@ -111,7 +111,7 @@ Page 1 (firmware 0.4.0+):
 | 29 | Minimum time between flicks, ms | 100–2000 | 300 |
 | 30 | Flick notes: negative = n, positive = n + 1, zig-zag = n + 2 | 0–125 | 60 |
 
-Page 2 (firmware 0.5.0+, [directional strikes](midi-mapping.md#directional-strikes-firmware-050)):
+Page 2 (firmware 0.5.0+, [directional strikes](midi-mapping.md#directional-strikes-firmware-050) and [tilt + strike](midi-mapping.md#tilt-chooses-strike-plays-firmware-050)):
 
 | ID | Parameter | Range | Default |
 |---|---|---|---|
@@ -122,6 +122,10 @@ Page 2 (firmware 0.5.0+, [directional strikes](midi-mapping.md#directional-strik
 | 35 | Note for a strike moving right | 0–127 | 42 |
 | 36 | Note for a strike moving forward | 0–127 | 45 |
 | 37 | Note for a strike moving back | 0–127 | 51 |
+| 38 | Tilt + strike: note length, ms | 20–2000 | 300 |
+| 39 | Tilt + strike: forward/back tilt past parameter 22 shifts the octave | 0–1 | 1 |
+| 40 | Tilt + strike: note zones 0 equal, 1 finer near level | 0–1 | 1 |
+| 41 | Tilt + strike: strike direction adds a chord tone (directions from parameter 31) | 0–1 | 1 |
 
 Controller sources: 0 off, 1 rotation speed (full scale = param 9), 2 pitch forward, 3 pitch back, 4 roll right, 5 roll left (full scale = param 10; "back" and "left" are the inversions), 6 pitch centred, 7 roll centred (±param 10 → 0–127, 64 level). Pitch and roll are relative to the zero set by action 5. Other thresholds and timing constants are not exposed.
 

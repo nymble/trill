@@ -152,3 +152,18 @@ With 2, 4 or 6 directions, the engine picks the largest of the considered compon
 
 The accelerometer range is ±8 g from 0.5.0 (±4 g before), so hard taps no longer clip; clipping flattened velocity and would distort the direction.
 
+
+## Tilt chooses, strike plays (firmware 0.5.0)
+
+**Simulated and unit-tested only; not yet run on hardware.** Mode 3 (parameter 14). This is recommendation 4 of the [motion-mapping report](research/motion-mapping.md#62-separate-selection-from-excitation): selection and excitation go to different gestures, so notes can be played in time without the touch strip.
+
+| Gesture | Role | Effect |
+|---|---|---|
+| Roll | selection | Picks a scale step. The steps from `base_note` up to `base_note + range` (parameters 2, 3, 4) are spread across ±parameter 21. With parameter 40 = 1 the zone edges sit at (k/n)² of the span, so zones are narrow near level and wide at the ends (Rahman et al. 2009). Parameter 23 is the hysteresis, in fractions of a zone. |
+| Forward / back tilt | selection | Past ±parameter 22 (3° hysteresis) the note moves an octave up or down (parameter 39). |
+| Tap / strike | excitation | Plays the selected note **at the strike** on the main channel (parameter 1). Velocity from impact strength (parameter 7 at the threshold up to 127 at 3 g). Length parameter 38; a new strike ends the previous note first. Taps do not play percussion in this mode. |
+| Strike direction | modification | With parameter 41 and parameter 31 = 2, 4 or 6: down = the note, up = octave above, left = third, right = fifth, forward = second, back = octave below. Thirds and fifths are counted in scale steps, so they stay in the scale (major: 2 and 4 steps; pentatonic: 2 and 3). Ambiguous strikes play the selected note. |
+
+Nothing sounds from tilting alone. The presets keep one octave of 5–8 notes (report §6.1). New scales for every mode: major (parameter 4 = 2) and natural minor (3).
+
+Example, *Strum chords* preset (C major from C4, 8 zones, 4 directions): rolled fully left and struck down plays C4; struck left, E4; right, G4; up, C5; tilted forward past 20°, the same strikes play an octave higher.

@@ -11,3 +11,4 @@ publish = false
 
 [dependencies]
 heapless = "0.9"
+libm = "0.2"

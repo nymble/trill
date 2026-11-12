@@ -7,8 +7,8 @@
 //! message (at most [`PAGE_MAX`] parameters each). Page 0 (IDs 1..=13) is
 //! exactly the firmware 0.3 parameter set; page 1 (IDs 14..=30) was added in
 //! firmware 0.4 and is only present when `HELLO_REPLY` advertises
-//! `CAP_CONFIG_PAGES`; page 2 (IDs 31..=37, directional strikes) was added in
-//! firmware 0.5 and is only present with `CAP_STRIKES`.
+//! `CAP_CONFIG_PAGES`; page 2 (IDs 31..=41: directional strikes and the tilt-strike mode)
+//! was added in firmware 0.5 and is only present with `CAP_STRIKES`.
 
 use instrument_events::{Axis, CcSource, Config, Mode, PitchMode, Scale, StrikeDirection};
 
@@ -22,7 +22,8 @@ pub enum Param {
     BaseNote = 2,
     /// Semitones across the strip (integer).
     RangeSemitones = 3,
-    /// 0 = chromatic, 1 = pentatonic.
+    /// 0 = chromatic, 1 = pentatonic, 2 = major, 3 = natural minor (2 and 3
+    /// from firmware 0.5).
     Scale = 4,
     /// 0 = continuous pitch bend, 1 = stepped notes.
     PitchMode = 5,
@@ -42,7 +43,8 @@ pub enum Param {
     PercussionChannel = 12,
     /// Percussion note number.
     PercussionNote = 13,
-    /// Sensor mode: 0 = touch strip (default), 1 = tilt notes, 2 = theremin.
+    /// Sensor mode: 0 = touch strip (default), 1 = tilt notes, 2 = theremin,
+    /// 3 = tilt chooses / strike plays (firmware 0.5).
     Mode = 14,
     /// Controller A source (0 off, 1 rotation, 2 pitch forward, 3 pitch back,
     /// 4 roll right, 5 roll left, 6 pitch centred, 7 roll centred).
@@ -93,6 +95,14 @@ pub enum Param {
     StrikeNoteForward = 36,
     /// Note for a strike moving back.
     StrikeNoteBack = 37,
+    /// Tilt-strike mode: struck note length, ms.
+    NoteLengthMs = 38,
+    /// Tilt-strike mode: forward/back tilt shifts the octave (0/1).
+    RegisterTilt = 39,
+    /// Tilt-strike mode: 0 = equal note zones, 1 = finer near level.
+    ZoneCurve = 40,
+    /// Tilt-strike mode: strike direction adds a chord tone (0/1).
+    StrikeVoicing = 41,
 }
 
 /// Most parameters in one page (a `CONFIG` reply is 7 + 3 + 3·n + 1 bytes).
@@ -106,7 +116,7 @@ pub struct OutOfRange;
 
 impl Param {
     /// Every parameter, in ID order.
-    pub const ALL: [Param; 37] = [
+    pub const ALL: [Param; 41] = [
         Param::Channel,
         Param::BaseNote,
         Param::RangeSemitones,
@@ -144,6 +154,10 @@ impl Param {
         Param::StrikeNoteRight,
         Param::StrikeNoteForward,
         Param::StrikeNoteBack,
+        Param::NoteLengthMs,
+        Param::RegisterTilt,
+        Param::ZoneCurve,
+        Param::StrikeVoicing,
     ];
 
     /// Page 0: the firmware 0.3 parameters, in ID order.
@@ -188,13 +202,14 @@ impl Param {
             Param::Channel | Param::PercussionChannel => (0, 15),
             Param::BaseNote | Param::PercussionNote => (0, 127),
             Param::RangeSemitones => (1, 96),
-            Param::Scale | Param::PitchMode => (0, 1),
+            Param::Scale => (0, 3),
+            Param::PitchMode => (0, 1),
             Param::BendRange => (1, 24),
             Param::VelocityMin => (1, 127),
             Param::MotionEnabled | Param::PercussionEnabled => (0, 1),
             Param::RotationFullDps => (30, 2000),
             Param::TiltFullDeg => (5, 90),
-            Param::Mode => (0, 2),
+            Param::Mode => (0, 3),
             Param::CcASource | Param::CcBSource => (0, 7),
             Param::CcANumber | Param::CcBNumber => (1, 119),
             Param::CcDeadzone => (0, 50),
@@ -216,6 +231,8 @@ impl Param {
             | Param::StrikeNoteRight
             | Param::StrikeNoteForward
             | Param::StrikeNoteBack => (0, 127),
+            Param::NoteLengthMs => (20, 2000),
+            Param::RegisterTilt | Param::ZoneCurve | Param::StrikeVoicing => (0, 1),
         }
     }
 
@@ -237,6 +254,8 @@ impl Param {
             Param::Scale => match cfg.scale {
                 Scale::Chromatic => 0,
                 Scale::Pentatonic => 1,
+                Scale::Major => 2,
+                Scale::Minor => 3,
             },
             Param::PitchMode => match cfg.pitch_mode {
                 PitchMode::Bend => 0,
@@ -254,6 +273,7 @@ impl Param {
                 Mode::Touch => 0,
                 Mode::TiltNotes => 1,
                 Mode::Theremin => 2,
+                Mode::TiltStrike => 3,
             },
             Param::CcASource => source_code(cfg.cc_a.source),
             Param::CcANumber => u16::from(cfg.cc_a.control).max(1),
@@ -277,6 +297,10 @@ impl Param {
             Param::GestureCooldownMs => f(cfg.gesture_cooldown_us as f32 / 1000.0),
             Param::GestureBaseNote => u16::from(cfg.gesture_base_note).min(125),
             Param::StrikeDirections => u16::from(cfg.strike_directions).min(6),
+            Param::NoteLengthMs => f(cfg.note_len_us as f32 / 1000.0),
+            Param::RegisterTilt => u16::from(cfg.register_tilt),
+            Param::ZoneCurve => u16::from(cfg.zone_quadratic),
+            Param::StrikeVoicing => u16::from(cfg.strike_voicing),
             _ => match self.strike_index() {
                 Some(i) => u16::from(cfg.strike_notes[i]).min(127),
                 None => 0,
@@ -299,10 +323,11 @@ impl Param {
             Param::BaseNote => cfg.base_note = b,
             Param::RangeSemitones => cfg.range_semitones = f32::from(v),
             Param::Scale => {
-                cfg.scale = if v == 0 {
-                    Scale::Chromatic
-                } else {
-                    Scale::Pentatonic
+                cfg.scale = match v {
+                    0 => Scale::Chromatic,
+                    1 => Scale::Pentatonic,
+                    2 => Scale::Major,
+                    _ => Scale::Minor,
                 }
             }
             Param::PitchMode => {
@@ -324,7 +349,8 @@ impl Param {
                 cfg.mode = match v {
                     0 => Mode::Touch,
                     1 => Mode::TiltNotes,
-                    _ => Mode::Theremin,
+                    2 => Mode::Theremin,
+                    _ => Mode::TiltStrike,
                 }
             }
             Param::CcASource => cfg.cc_a.source = CcSource::ALL[usize::from(v)],
@@ -351,6 +377,10 @@ impl Param {
             Param::GestureCooldownMs => cfg.gesture_cooldown_us = u32::from(v) * 1000,
             Param::GestureBaseNote => cfg.gesture_base_note = b,
             Param::StrikeDirections => cfg.strike_directions = b,
+            Param::NoteLengthMs => cfg.note_len_us = u32::from(v) * 1000,
+            Param::RegisterTilt => cfg.register_tilt = v == 1,
+            Param::ZoneCurve => cfg.zone_quadratic = v == 1,
+            Param::StrikeVoicing => cfg.strike_voicing = v == 1,
             _ => {
                 if let Some(i) = self.strike_index() {
                     cfg.strike_notes[i] = b;
