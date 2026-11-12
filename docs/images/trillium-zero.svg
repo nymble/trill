@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  SPDX-License-Identifier: GPL-3.0-only
+  Trillium Zero canonical hardware diagram for the nymble/trill project.
+  Facts in this drawing are taken from docs/design-xiao-nrf52840.md,
+  docs/design-raspberry-pi.md (Flex attachment and address), firmware
+  board constants, the Trill datasheet Rev C v1.3, the Seeed XIAO
+  nRF52840 Sense schematic Rev V1.1, and the Seeed XIAO nRF52840 wiki.
+  Battery-pad silkscreen positions are not drawn; confirm them on the board.
+  The battery switch is a user-supplied series switch in the battery+ lead;
+  it is not part of the XIAO module.
+  Signal colours are a key only and are not wire-colour codes.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="1020" viewBox="0 0 1120 1020" font-family="Helvetica, Arial, sans-serif" font-size="13">
+  <rect width="1120" height="1020" fill="#ffffff"/>
+  <text x="24" y="32" font-size="22" font-weight="bold" fill="#14181f">Trillium Zero</text>
+  <text x="24" y="54" font-size="14" fill="#3e4654">Seeed Studio XIAO nRF52840 Sense, Bela Trill Flex, LiPo, and battery switch</text>
+  <text x="24" y="74" font-size="13" fill="#b00020">Early / experimental. Wiring, pull-ups, battery and switch have not been hardware-validated in this project.</text>
+  <text x="24" y="92" font-size="13" fill="#b00020">Identify signals by label, not by wire colour.</text>
+
+  <!-- Flex sensor -->
+  <rect x="24" y="150" width="148" height="58" rx="6" fill="#f3e2b3" stroke="#8a6d1f"/>
+  <path d="M36 164 l10 15 l-10 15 M56 164 l10 15 l-10 15 M76 164 l10 15 l-10 15 M96 164 l10 15 l-10 15 M116 164 l10 15 l-10 15 M136 164 l10 15 l-10 15" fill="none" stroke="#8a6d1f" stroke-width="1.5"/>
+  <rect x="172" y="165" width="28" height="26" fill="#f3e2b3" stroke="#8a6d1f"/>
+  <text x="24" y="228" font-size="12" fill="#3e4654">Stock flex PCB, chevrons up</text>
+  <text x="24" y="244" font-size="11" fill="#5a6270">32-pin 0.5 mm FFC into the base</text>
+
+  <!-- Trill Flex base -->
+  <rect x="200" y="110" width="210" height="170" rx="8" fill="#e8eef7" stroke="#2b4a7a" stroke-width="2"/>
+  <rect x="200" y="163" width="14" height="30" fill="#444"/>
+  <text x="220" y="136" font-weight="bold" font-size="15" fill="#14181f">Trill Flex base</text>
+  <text x="220" y="156" font-size="12" fill="#3e4654">Default I²C address 0x48</text>
+  <text x="220" y="172" font-size="12" fill="#3e4654">No on-sensor pull-ups</text>
+  <rect x="330" y="186" width="68" height="76" fill="#ffffff" stroke="#2b4a7a"/>
+  <text x="404" y="186" font-size="11" fill="#2b4a7a">QWIIC (JST SH)</text>
+  <text x="338" y="204" font-size="12">1  GND</text>
+  <text x="338" y="221" font-size="12">2  VCC</text>
+  <text x="338" y="238" font-size="12">3  SDA</text>
+  <text x="338" y="255" font-size="12">4  SCL</text>
+
+  <!-- XIAO -->
+  <rect x="760" y="96" width="228" height="318" rx="14" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+  <rect x="844" y="82" width="60" height="26" rx="6" fill="#6d6d6d" stroke="#444"/>
+  <text x="874" y="100" font-size="11" fill="#ffffff" text-anchor="middle">USB-C</text>
+  <text x="874" y="132" font-size="13" font-weight="bold" text-anchor="middle" fill="#1565c0">XIAO nRF52840 Sense</text>
+  <text x="874" y="148" font-size="11" text-anchor="middle" fill="#3e4654">front, USB-C at the top</text>
+  <text x="874" y="166" font-size="11" text-anchor="middle" fill="#3e4654">On-board LSM6DS3TR-C IMU</text>
+  <text x="874" y="180" font-size="11" text-anchor="middle" fill="#3e4654">(internal I²C, no external wiring)</text>
+
+  <g font-size="12" fill="#14181f">
+    <circle cx="774" cy="200" r="6.5" fill="#ffffff" stroke="#000"/>
+    <text x="786" y="204">1  D0</text>
+    <circle cx="774" cy="230" r="6.5" fill="#ffffff" stroke="#000"/>
+    <text x="786" y="234">2  D1</text>
+    <circle cx="774" cy="260" r="6.5" fill="#ffffff" stroke="#000"/>
+    <text x="786" y="264">3  D2</text>
+    <circle cx="774" cy="290" r="6.5" fill="#ffffff" stroke="#000"/>
+    <text x="786" y="294">4  D3</text>
+    <circle cx="774" cy="320" r="6.5" fill="#ffffff" stroke="#1b7f3a" stroke-width="2"/>
+    <text x="786" y="324" fill="#1b7f3a">5  D4 / SDA  P0.04</text>
+    <circle cx="774" cy="350" r="6.5" fill="#ffffff" stroke="#6a1b9a" stroke-width="2"/>
+    <text x="786" y="354" fill="#6a1b9a">6  D5 / SCL  P0.05</text>
+    <circle cx="774" cy="380" r="6.5" fill="#ffffff" stroke="#000"/>
+    <text x="786" y="384">7  D6</text>
+
+    <circle cx="974" cy="200" r="6.5" fill="#eeeeee" stroke="#888"/>
+    <text x="966" y="204" text-anchor="end" fill="#666">14  5V</text>
+    <circle cx="974" cy="230" r="6.5" fill="#ffffff" stroke="#000" stroke-width="2"/>
+    <text x="966" y="234" text-anchor="end">13  GND</text>
+    <circle cx="974" cy="260" r="6.5" fill="#ffffff" stroke="#c62828" stroke-width="2"/>
+    <text x="966" y="264" text-anchor="end" fill="#c62828">12  3V3</text>
+    <circle cx="974" cy="290" r="6.5" fill="#ffffff" stroke="#000"/>
+    <text x="966" y="294" text-anchor="end">11  D10</text>
+    <circle cx="974" cy="320" r="6.5" fill="#ffffff" stroke="#000"/>
+    <text x="966" y="324" text-anchor="end">10  D9</text>
+    <circle cx="974" cy="350" r="6.5" fill="#ffffff" stroke="#000"/>
+    <text x="966" y="354" text-anchor="end">9  D8</text>
+    <circle cx="974" cy="380" r="6.5" fill="#ffffff" stroke="#000"/>
+    <text x="966" y="384" text-anchor="end">8  D7</text>
+  </g>
+  <text x="874" y="426" font-size="11" text-anchor="middle" fill="#b00020">Pin 14 (5V / VBUS): do not connect to Trill</text>
+
+  <!-- Wires: Trill to XIAO -->
+  <g fill="none" stroke-width="3">
+    <polyline points="398,198 710,198 710,452 1090,452 1090,230 981,230" stroke="#222222"/>
+    <polyline points="398,215 698,215 698,440 1074,440 1074,260 981,260" stroke="#c62828"/>
+    <polyline points="398,232 640,232 640,320 767,320" stroke="#1b7f3a"/>
+    <polyline points="398,249 620,249 620,350 767,350" stroke="#6a1b9a"/>
+  </g>
+  <text x="410" y="192" font-size="11" fill="#222222">GND</text>
+  <text x="430" y="274" font-size="11" fill="#1b7f3a">SDA</text>
+  <text x="470" y="274" font-size="11" fill="#6a1b9a">SCL</text>
+
+  <!-- Pull-ups -->
+  <line x1="520" y1="215" x2="520" y2="130" stroke="#c62828" stroke-width="2"/>
+  <line x1="520" y1="130" x2="600" y2="130" stroke="#c62828" stroke-width="2"/>
+  <rect x="552" y="130" width="16" height="44" fill="#ffffff" stroke="#333" stroke-width="2"/>
+  <rect x="592" y="130" width="16" height="44" fill="#ffffff" stroke="#333" stroke-width="2"/>
+  <line x1="560" y1="174" x2="560" y2="232" stroke="#1b7f3a" stroke-width="2"/>
+  <line x1="600" y1="174" x2="600" y2="249" stroke="#6a1b9a" stroke-width="2"/>
+  <circle cx="560" cy="232" r="3.5" fill="#1b7f3a"/>
+  <circle cx="600" cy="249" r="3.5" fill="#6a1b9a"/>
+  <circle cx="560" cy="130" r="3.5" fill="#c62828"/>
+  <circle cx="600" cy="130" r="3.5" fill="#c62828"/>
+  <circle cx="520" cy="215" r="3.5" fill="#c62828"/>
+  <text x="548" y="156" font-size="12" text-anchor="end" fill="#14181f">R1</text>
+  <text x="614" y="148" font-size="12" fill="#14181f">R2</text>
+  <text x="614" y="164" font-size="11" fill="#3e4654">4.7 kΩ each</text>
+  <text x="614" y="178" font-size="11" fill="#c62828">to 3V3</text>
+
+  <!-- Battery + switch + pads -->
+  <rect x="24" y="470" width="1072" height="270" rx="8" fill="#fffdf5" stroke="#c9a227"/>
+  <text x="40" y="492" font-size="15" font-weight="bold" fill="#14181f">Battery, switch, and on-board power</text>
+  <text x="40" y="504" font-size="12" fill="#3e4654">The charger, power path and 3.3 V regulator are on the XIAO. The switch is a user-supplied part in the battery+ lead. Underside pad positions are not drawn; confirm the silkscreen on your board.</text>
+
+  <!-- LiPo cell -->
+  <rect x="40" y="530" width="130" height="86" rx="8" fill="#fff3e0" stroke="#ef6c00" stroke-width="2"/>
+  <text x="105" y="556" text-anchor="middle" font-weight="bold" font-size="13">1-cell LiPo / Li-ion</text>
+  <text x="105" y="574" text-anchor="middle" font-size="11">3.7 V nominal, 4.2 V full</text>
+  <text x="105" y="590" text-anchor="middle" font-size="11">with protection circuit</text>
+  <circle cx="170" cy="548" r="5" fill="#c62828" stroke="#8e0000"/>
+  <text x="180" y="544" font-size="11" fill="#c62828">+</text>
+  <circle cx="170" cy="600" r="5" fill="#ffffff" stroke="#222" stroke-width="2"/>
+  <text x="180" y="604" font-size="11">−</text>
+
+  <!-- Switch -->
+  <polyline points="175,548 230,548" fill="none" stroke="#c62828" stroke-width="3"/>
+  <circle cx="230" cy="548" r="4" fill="#ffffff" stroke="#c62828" stroke-width="2"/>
+  <line x1="234" y1="548" x2="268" y2="530" stroke="#c62828" stroke-width="3"/>
+  <circle cx="280" cy="548" r="4" fill="#ffffff" stroke="#c62828" stroke-width="2"/>
+  <rect x="214" y="516" width="82" height="52" rx="6" fill="none" stroke="#c9a227" stroke-dasharray="3 3"/>
+  <text x="255" y="590" font-size="12" font-weight="bold" text-anchor="middle">SW1  SPST</text>
+  <text x="255" y="606" font-size="11" text-anchor="middle" fill="#3e4654">on / off in battery+</text>
+  <polyline points="280,548 360,548" fill="none" stroke="#c62828" stroke-width="3"/>
+
+  <!-- Pads -->
+  <circle cx="372" cy="548" r="10" fill="#ffd54f" stroke="#c62828" stroke-width="2"/>
+  <text x="392" y="544" font-size="13" font-weight="bold">pad BAT0  =  battery +  (VBAT)</text>
+  <text x="392" y="560" font-size="11" fill="#3e4654">XIAO underside. Schematic name; confirm silkscreen.</text>
+  <polyline points="175,600 372,600" fill="none" stroke="#222" stroke-width="3"/>
+  <circle cx="372" cy="600" r="10" fill="#ffd54f" stroke="#222" stroke-width="2"/>
+  <text x="392" y="596" font-size="13" font-weight="bold">pad GND0  =  battery −  (GND)</text>
+  <text x="392" y="612" font-size="11" fill="#3e4654">Leave this lead unswitched.</text>
+
+  <text x="40" y="646" font-size="12" fill="#b00020" font-weight="bold">Polarity is critical. Rechargeable single cell only — never primary cells or multi-cell packs.</text>
+  <text x="40" y="664" font-size="12" fill="#b00020">Never connect the battery, or VBAT, to 3V3 (pin 12), 5V (pin 14), or the Trill.</text>
+  <text x="40" y="686" font-size="12" fill="#3e4654">SW1 open: cell isolated (no battery power, charger cannot reach the cell). USB can still power the board.</text>
+  <text x="40" y="704" font-size="12" fill="#3e4654">SW1 closed: cell powers the board when USB is unplugged, and charges when USB is present.</text>
+  <text x="40" y="722" font-size="12" fill="#3e4654">Charger (U2 BQ25101, Seeed Sense schematic Rev V1.1): 4.20 V, default ≈ 50 mA. Current has not been measured.</text>
+
+  <!-- On-board block -->
+  <rect x="760" y="528" width="316" height="148" rx="6" fill="#ffffff" stroke="#c9a227"/>
+  <text x="776" y="548" font-size="12" font-weight="bold">On the XIAO module (not user-wired)</text>
+  <text x="776" y="568" font-size="12">USB-C VBUS → BQ25101 IN, and D1 → VIN</text>
+  <text x="776" y="586" font-size="12">BQ25101 OUT → VBAT (BAT0)</text>
+  <text x="776" y="604" font-size="12">Q1: VBAT → VIN when USB is absent</text>
+  <text x="776" y="622" font-size="12">U6 LDO: VIN → 3V3 (pin 12)</text>
+  <text x="776" y="640" font-size="12">~CHG → red charge LED and P0.17</text>
+  <text x="776" y="658" font-size="11" fill="#5a6270">Firmware does not control or report charging.</text>
+
+  <!-- Notes -->
+  <rect x="24" y="756" width="1072" height="200" rx="8" fill="#f7f8fa" stroke="#cdd3e4"/>
+  <text x="40" y="780" font-size="15" font-weight="bold">Connections and variants</text>
+  <text x="40" y="804">Trill 1 GND → XIAO GND (13)    ·    Trill 2 VCC → XIAO 3V3 (12)    ·    Trill 3 SDA → XIAO D4 (5, P0.04)    ·    Trill 4 SCL → XIAO D5 (6, P0.05)</text>
+  <text x="40" y="824">Fit R1 and R2 (4.7 kΩ to 3V3) unless a Trill Hub or another board on this bus already provides pull-ups. The XIAO has no pull-ups on D4/D5. The IMU bus pull-ups are separate.</text>
+  <text x="40" y="844">nRF52840 I/O is not 5 V tolerant. Power the Trill from 3V3 only (about 4 mA typical, Trill datasheet Table 4).</text>
+  <text x="40" y="868" font-weight="bold">Two build variants</text>
+  <text x="40" y="888">Motion-only: XIAO nRF52840 Sense, battery, SW1, and USB-C. Omit the Trill Flex, QWIIC cable, and R1/R2. The on-board IMU is the sensor.</text>
+  <text x="40" y="908">With Trill Flex: the motion-only parts, plus the Flex base, stock flex PCB, QWIIC cable, and R1/R2, wired as above. Leave ADR pads unbridged for address 0x48.</text>
+  <text x="40" y="936" font-size="11" fill="#5a6270">Hardware design uses the Bela Trill Flex. Trill is a trademark of Bela. Seeed, XIAO, and nRF52840 are trademarks of their owners. No affiliation is implied. Sources are listed in docs/hardware/trillium-zero.md.</text>
+</svg>
