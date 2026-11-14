@@ -4,9 +4,10 @@
 // of its own version (BundledFirmware). Install flow:
 //   1. Restart into the UF2 bootloader: the EnterBootloader action on
 //      firmware 0.6+, otherwise the user double-presses RESET.
-//   2. A drive appears (XIAO-SENSE). The user grants access to it once
-//      (open panel on macOS, folder picker on iOS): the App Sandbox allows
-//      no other way to write to a removable drive.
+//   2. A drive appears (XIAO-SENSE) and the app installs right away: the
+//      Mac app is entitled to /Volumes/XIAO-SENSE/. Only if the system
+//      refuses access (another drive name, iOS) does the user grant it
+//      with a drive picker; no file is ever chosen.
 //   3. Back up CURRENT.UF2 (plus an app-only restore image) into
 //      Application Support, then copy the image (UF2Installer).
 //   4. Wait for Trillium to come back, reconnect and check that it reports
@@ -130,6 +131,14 @@ extension AppModel {
         default: return
         }
         guard let d = bootloaderDrives.first else { return }
+        // The firmware is inside the app and the drive is readable (the Mac
+        // app may use /Volumes/XIAO-SENSE): install straight away.
+        if FileManager.default.isReadableFile(atPath: d.appendingPathComponent("INFO_UF2.TXT").path) {
+            installFirmware(onDrive: d)
+            return
+        }
+        // Only if the system refuses access (another drive name, or iOS):
+        // the user has to allow Trillium to use the drive.
         install = .needsDriveAccess(d)
         #if os(macOS)
         requestDriveAccess(suggested: d)
@@ -140,9 +149,9 @@ extension AppModel {
     /// Ask the user to confirm the drive (this grants the sandboxed app access).
     func requestDriveAccess(suggested: URL?) {
         let p = NSOpenPanel()
-        p.message = "Choose the board's drive (\(suggested?.lastPathComponent ?? "XIAO-SENSE")) and click Install. "
-            + "Trillium backs up the firmware on the board, then installs version \(bundledFirmware?.version.description ?? "?")."
-        p.prompt = "Install"
+        p.message = "macOS needs your permission for Trillium to use the board's drive (\(suggested?.lastPathComponent ?? "XIAO-SENSE")). "
+            + "Click Allow. You don't need to choose a file: the firmware (\(bundledFirmware?.version.description ?? "?")) is inside Trillium."
+        p.prompt = "Allow"
         p.canChooseDirectories = true
         p.canChooseFiles = false
         p.allowsMultipleSelection = false

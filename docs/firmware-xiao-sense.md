@@ -11,7 +11,7 @@ Source: [`firmware/xiao-sense`](../firmware/xiao-sense) (its own Cargo workspace
 | Board | MCU | This firmware |
 |---|---|---|
 | XIAO nRF52840 **Sense** (XIAO BLE Sense) | nRF52840 | **Yes** |
-| XIAO nRF52840 (no Sense) | nRF52840 | Boots, but has no IMU (IMU state stays `retry`) |
+| XIAO nRF52840 (no Sense) | nRF52840 | **Not supported.** Boots (0.6.0+: IMU `absent`, no fault LED, reported to the app). It has no IMU and no microphone; its bootloader can still report the Sense Board-ID and drive name, so only the running firmware can tell the boards apart |
 | XIAO **ESP32-S3** Sense (used by omiGlass) | ESP32-S3 | **No.** Different CPU architecture. The UF2 tool refuses it because its bootloader does not report an nRF52840 |
 | Omi Consumer (CV1) | nRF5340 | **No.** Different chip and MCUboot bootloader |
 
@@ -83,6 +83,8 @@ Cargo features: `pcm-synth` (debug synth + PCM port, USB PID `1209:0003`), `timi
 
 ## Loading over USB (explicit steps only)
 
+**From the Trillium app (0.6.0):** the app carries the firmware of its own version and offers to install it when the connected board runs an older one, when a board is waiting in bootloader mode, or when a XIAO with other firmware is plugged in (macOS). It backs up `CURRENT.UF2` and an app-only restore image into `Application Support/Trill/firmware-backups/` first, applies the same rules as `xiao_uf2.py`, then checks the version the board reports after it restarts. Firmware 0.6.0+ restarts into the bootloader on request (action 6); older firmware needs a double-press of RESET. The steps below are the command-line equivalent.
+
 Nothing loads automatically. Every write needs an explicit drive path, the Board-ID you read from that drive, and `--write`.
 
 1. **Enter the bootloader.** Connect USB-C and double-press RESET quickly. A drive appears: `XIAO-SENSE` on Omi DevKits (`/Volumes/XIAO-SENSE` on macOS, usually `/media/$USER/XIAO-SENSE` on Linux). Use the exact path. The tool rejects wildcards.
@@ -150,6 +152,7 @@ which also reports CRC errors, sequence gaps, device-side drops, and the sample 
 
 ## Fault handling
 
+- **IMU probe (0.6.0):** at boot the IMU is probed at 0x6A and 0x6B, three power-cycled rounds (~0.2 s). If nothing usable answers, the internal bus (P0.07/P0.27) is scanned once, the IMU is reported `absent` (status line, telemetry state 5, HELLO variant bit 1 clear), its supply is switched off and the task stops. The diagnostics banner (`b`) prints `imu: LSM6DS3TR-C at 0x6a` or `imu: absent … internal bus: <addresses>`.
 - **IMU:** WHO_AM_I check and software reset at init. After five consecutive read errors, or an init failure, the sensor is powered off and the bias estimate discarded, then retried with exponential backoff (100 ms → 2 s). A missing data-ready edge for 20 ms is counted and the sample is polled anyway.
 - **Trill:** optional; firmware ≥ 3 required (frame ID). If absent or failing (4 consecutive read errors), the engine releases any touch note, touch reads as "not touched", and the sensor is retried every 1–2 s. If frames simply stop, the engine releases after 50 ms. A finger still on the strip when the sensor returns does not sound until lifted.
 - **IMU absent or failing:** touch MIDI is unaffected. The engine ends any percussion note and returns CC74/CC1 to 0 (also after 100 ms without IMU frames).

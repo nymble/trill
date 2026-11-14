@@ -98,6 +98,8 @@ jobs:
   apple:
     name: Apple apps (macOS + iOS, unsigned) and TrillKit tests
     runs-on: macos-15
+    # The apps carry the firmware built by the firmware job from this commit.
+    needs: firmware
     timeout-minutes: 45
     env:
       XCODEGEN_VERSION: 2.45.4
@@ -124,6 +126,16 @@ jobs:
         run: make apple-test-ios-sim
       - name: TrillKit tests on the iPad Simulator
         run: make apple-test-ipad-sim
+      - uses: actions/download-artifact@v4
+        with:
+          name: xiao-sense-fw-unvalidated-on-hardware
+          path: in/fw
+      - name: Firmware for the app bundle (same commit, checksum verified)
+        run: |
+          (cd in/fw && shasum -a 256 -c SHA256SUMS)
+          v=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          mkdir -p dist && cp in/fw/xiao-sense-fw.uf2 "dist/xiao-sense-fw-$v.uf2"
+          make apple-firmware
       - name: Generate Xcode project
         run: make apple-project && xcodegen --version
       - name: Build macOS app (Release, universal, unsigned)
@@ -139,6 +151,8 @@ jobs:
           make apple-dist
           make apple-dmg
           app=build/apple/Build/Products/Release/Trillium.app
+          cat "$app/Contents/Resources/Firmware/firmware.json"
+          test -f "$app/Contents/Resources/Firmware/xiao-sense-fw.uf2"
           lipo -info "$app/Contents/MacOS/Trillium"
           plutil -p "$app/Contents/Info.plist"
           codesign -dv "$app" 2>&1 || true

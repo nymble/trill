@@ -37,23 +37,24 @@ struct FirmwareCard: View {
         case .waitingForDrive:
             return AnyView(VStack(alignment: .leading, spacing: 8) {
                 Label("Double-press RESET on the board", systemImage: "hand.tap").font(.headline)
-                Text("Press the tiny RESET button next to the USB socket twice, quickly. The LED pulses and a drive called XIAO-SENSE appears; Trillium continues from there.")
+                Text("Press the tiny RESET button next to the USB socket twice, quickly. The LED pulses and a drive called XIAO-SENSE appears; Trillium then installs the firmware by itself.")
                     .font(.callout).foregroundStyle(.secondary)
                 #if os(iOS)
-                Button("Choose the XIAO-SENSE drive…") { pickDrive = true }.buttonStyle(.borderedProminent)
+                Text("On iPhone and iPad, then choose the XIAO-SENSE drive once to allow access.").font(.caption).foregroundStyle(.secondary)
+                Button("Allow access to XIAO-SENSE…") { pickDrive = true }.buttonStyle(.borderedProminent)
                 #endif
                 Button("Cancel", role: .cancel) { model.cancelFirmwareInstall() }.controlSize(.small)
             })
         case let .needsDriveAccess(url):
             return AnyView(VStack(alignment: .leading, spacing: 8) {
-                Label("Board ready for firmware \(bundled)", systemImage: "externaldrive.badge.checkmark").font(.headline)
-                Text("Allow Trillium to use the \(url.lastPathComponent) drive: choose it and click Install. The firmware on the board is backed up first.")
+                Label("Allow Trillium to use the board's drive", systemImage: "externaldrive.badge.checkmark").font(.headline)
+                Text("The system needs your permission for Trillium to use the \(url.lastPathComponent) drive. You don't choose a file: firmware \(bundled) is inside Trillium. The firmware on the board is backed up first.")
                     .font(.callout).foregroundStyle(.secondary)
                 HStack {
                     #if os(macOS)
-                    Button("Choose drive…") { model.requestDriveAccess(suggested: url) }.buttonStyle(.borderedProminent)
+                    Button("Allow…") { model.requestDriveAccess(suggested: url) }.buttonStyle(.borderedProminent)
                     #else
-                    Button("Choose drive…") { pickDrive = true }.buttonStyle(.borderedProminent)
+                    Button("Allow…") { pickDrive = true }.buttonStyle(.borderedProminent)
                     #endif
                     Button("Cancel", role: .cancel) { model.cancelFirmwareInstall() }
                 }

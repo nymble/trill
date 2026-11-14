@@ -19,7 +19,7 @@ The app has four tabs. The first three are for everyday use; everything detailed
 | **Settings › Connection** | MIDI ports (port 1 instrument, port 2 settings), Connect / Disconnect, automatic connection |
 | **Settings › MIDI monitor** | Per-channel state and a bounded log with CoreMIDI timestamps, filters and CSV export |
 | **Settings › Device** | Status, MIDI panic, recalibrate, LED self-test, restore defaults (confirmed), activity log |
-| **Settings › Firmware** (Mac) | Read-only UF2 assistant: validates an image and the bootloader drive, then shows the exact `tools/xiao_uf2.py` commands. **It never writes to the board** |
+| **Settings › Firmware** | The firmware carried in the app (version, SHA-256), the connected board (model, firmware, motion sensor, microphone) and **installs** (below). Backups are listed in Finder. Under *Advanced* (Mac), the read-only UF2 assistant still validates any image and drive and shows the `tools/xiao_uf2.py` commands |
 | **Settings › About** | What Trillium is, hardware, licence |
 
 Protocol behaviour is unchanged: one request in flight, 1 s timeout, request IDs, boot-ID restart detection, and **nothing is sent until you connect**, either by pressing Connect or by turning on *Connect automatically*. Only the configuration pages the firmware advertises are read or written.
@@ -162,6 +162,17 @@ Firmware requirements: settings and the monitor need 0.2.0+, Sensors 0.3.0+, mod
    In a DAW (GarageBand, Logic): enable the `…Port 1` input (GarageBand: Settings › Audio/MIDI; Logic: MIDI inputs, all enabled by default), put a software-instrument track in record/monitor, and for taps use a drum kit on, or a track receiving, channel 10. Port 2 should not be routed to an instrument.
 
 A diagnostics terminal (`screen /dev/cu.usbmodem…`) is optional. The protocol does not use it.
+
+## Firmware in the app (0.6.0)
+
+Each Trillium build carries the firmware of its own version in `Trillium.app/…/Firmware/` (`xiao-sense-fw.uf2` and `firmware.json` with version, SHA-256 and board). `make apple-firmware` puts it there from `make fw-uf2`, and refuses an image whose version differs from `MARKETING_VERSION`; CI and the release workflow bundle the UF2 built by their firmware job from the same commit, so the app and the release download carry the same file.
+
+- **Board identification:** HELLO (firmware 0.6.0+) says whether the IMU is fitted. *Seeed Studio XIAO nRF52840 Sense* is the supported board; a XIAO nRF52840 without the motion sensor is reported as not supported. Firmware before 0.6.0 is assumed to be on a Sense.
+- **Version check:** older firmware → *Firmware update* card on Home; newer firmware → "update the Trillium app".
+- **New boards:** on macOS the app spots a XIAO running other firmware (Seeed, Zephyr or Adafruit USB vendor IDs, read from the I/O Registry without opening the device) and any mounted `XIAO…` bootloader drive, and offers to install.
+- **Install:** firmware 0.6.0+ restarts into the bootloader on request; otherwise the app asks for a double-press of RESET. When the drive appears the app installs straight away; you never choose a file or the drive (the Mac app is entitled to `/Volumes/XIAO-SENSE/`; only if the system refuses access does it ask once for permission to use the drive). It backs up `CURRENT.UF2`, `INFO_UF2.TXT` and an app-only restore image to `Application Support/Trill/firmware-backups/<date>-<Board-ID>/` (never overwriting), writes the image with the `xiao_uf2.py` rules (application window only, nRF52840 family, SoftDevice S140 7.3.0, never a bootloader image), waits for Trillium to come back, reconnects and checks the version. macOS shows "Disk Not Ejected Properly" because the bootloader restarts the board itself; that is expected.
+- **iOS/iPadOS:** the same flow, but iOS needs you to choose the XIAO-SENSE drive once to allow access; not yet tried on a device.
+- **Automatic connection** is on by default.
 
 ## Presets
 

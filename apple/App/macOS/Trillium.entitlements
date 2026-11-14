@@ -9,5 +9,13 @@
 	     (preset import/export, reading a UF2 and INFO_UF2.TXT). -->
 	<key>com.apple.security.files.user-selected.read-write</key>
 	<true/>
+	<!-- Firmware installs: the UF2 bootloader drive of a XIAO nRF52840 Sense
+	     (both bootloader versions name it XIAO-SENSE). The app reads
+	     INFO_UF2.TXT and CURRENT.UF2 (backup) and copies the firmware it
+	     carries, so no drive or file has to be picked. -->
+	<key>com.apple.security.temporary-exception.files.absolute-path.read-write</key>
+	<array>
+		<string>/Volumes/XIAO-SENSE/</string>
+	</array>
 </dict>
 </plist>
