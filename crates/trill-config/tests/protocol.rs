@@ -182,6 +182,7 @@ fn hello_reports_version_variant_caps_and_not_persistent() {
             | trill_config::CAP_TELEMETRY
             | trill_config::CAP_CONFIG_PAGES
             | trill_config::CAP_STRIKES
+            | trill_config::CAP_BOARD
     );
     assert_eq!(r[12] & CAP_PERSISTENT, 0);
     assert_eq!(r[13] as usize, MAX_MESSAGE_LEN);
@@ -197,12 +198,28 @@ fn hello_reports_version_variant_caps_and_not_persistent() {
 }
 
 #[test]
+fn hello_reports_board_sensors_in_the_variant_byte() {
+    for variant in [0, VARIANT_IMU, VARIANT_IMU | VARIANT_PCM_SYNTH] {
+        let info = DeviceInfo { variant, ..INFO };
+        let o = handle(&request::hello(1), false, &Config::default(), 0, &info).unwrap();
+        assert_eq!(o.reply[11], variant);
+        assert_ne!(o.reply[12] & CAP_BOARD, 0);
+        assert_eq!(
+            o.reply[11] & VARIANT_MIC,
+            0,
+            "no firmware reports a microphone yet"
+        );
+    }
+}
+
+#[test]
 fn actions_map_to_side_effects() {
     let cfg = Config::default();
     for (a, code) in [
         (Action::Panic, 1),
         (Action::RecalibrateGyro, 2),
         (Action::LedSelfTest, 3),
+        (Action::EnterBootloader, 6),
     ] {
         let o = handle(&request::action(1, a), false, &cfg, 0, &INFO).unwrap();
         assert_eq!(o.action, Some(a));

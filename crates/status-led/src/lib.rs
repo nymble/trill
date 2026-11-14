@@ -244,6 +244,9 @@ pub enum Sensor {
     Retry,
     /// Disabled on purpose (safe mode).
     Disabled,
+    /// Not fitted on this board (probed once at boot). Not a fault: the
+    /// LED skips booting/calibrating and shows the touch and ready states.
+    Absent,
 }
 
 /// Snapshot of the system state; cheap to build every tick.
@@ -456,9 +459,9 @@ impl StatusLed {
             Indication::TrillLost
         } else if inp.previous_crash && !self.crash_shown {
             Indication::PreviousCrash
-        } else if inp.imu != Sensor::Running {
+        } else if !matches!(inp.imu, Sensor::Running | Sensor::Absent) {
             Indication::Booting
-        } else if !inp.imu_calibrated {
+        } else if inp.imu == Sensor::Running && !inp.imu_calibrated {
             Indication::Calibrating
         } else if tap {
             Indication::Tap

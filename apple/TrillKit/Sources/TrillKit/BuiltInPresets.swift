@@ -25,6 +25,9 @@ public struct BuiltInPreset: Identifiable, Equatable, Sendable {
     public var needsStrikes: Bool {
         usedPages.contains(2) || config.changes(from: .firmwareDefaults).contains { $0.0.requiresStrikes($0.1) }
     }
+    /// The sound comes from the touch strip (motion only adds expression),
+    /// so it plays on a board without a motion sensor.
+    public var playsWithoutMotion: Bool { config.playsWithoutMotion }
     /// Oldest firmware that plays this preset completely (nil = any).
     public var minimumFirmware: String? {
         needsStrikes ? TrillProtocol.strikesMinimumFirmware

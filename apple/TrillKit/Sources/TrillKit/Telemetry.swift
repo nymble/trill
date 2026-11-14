@@ -10,7 +10,7 @@ import Foundation
 
 /// Sensor state codes reported by the firmware.
 public enum SensorState: Int, Sendable {
-    case off = 0, initializing, running, retrying, disabled
+    case off = 0, initializing, running, retrying, disabled, absent
     public var title: String {
         switch self {
         case .off: return "off"
@@ -18,6 +18,7 @@ public enum SensorState: Int, Sendable {
         case .running: return "running"
         case .retrying: return "not detected / retrying"
         case .disabled: return "disabled (safe mode)"
+        case .absent: return "not fitted on this board"
         }
     }
 }

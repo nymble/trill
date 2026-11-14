@@ -44,6 +44,8 @@ pub enum SensorState {
     Retry = 3,
     /// Disabled (safe mode).
     Disabled = 4,
+    /// Not fitted on this board: probed at boot, never answered; not retried.
+    Absent = 5,
 }
 
 impl SensorState {
@@ -54,6 +56,7 @@ impl SensorState {
             2 => Self::Running,
             3 => Self::Retry,
             4 => Self::Disabled,
+            5 => Self::Absent,
             _ => Self::Off,
         }
     }
@@ -65,6 +68,7 @@ impl SensorState {
             Self::Running => "run",
             Self::Retry => "retry",
             Self::Disabled => "disabled",
+            Self::Absent => "absent",
         }
     }
 }
@@ -156,6 +160,39 @@ pub static STATS: Stats = Stats {
     control_age_us_last: Z,
     control_age_us_max: Z,
 };
+
+/// What the boot probe found on the internal (IMU) I²C bus.
+pub struct ImuProbe {
+    /// `IMU_*` presence code.
+    pub presence: AtomicU8,
+    /// 7-bit address the IMU answered at (0 = none).
+    pub address: AtomicU8,
+    /// WHO_AM_I read back (0 = no answer).
+    pub who_am_i: AtomicU8,
+    /// Addresses 0..=127 that acknowledged the bus scan (bit n = address n).
+    /// Filled only when no supported IMU answered.
+    pub bus: [AtomicU32; 4],
+}
+
+/// Boot probe not finished yet.
+pub const IMU_UNKNOWN: u8 = 0;
+/// A supported IMU answered.
+pub const IMU_PRESENT: u8 = 1;
+/// No supported IMU on this board (plain XIAO nRF52840, or an unknown part).
+pub const IMU_ABSENT: u8 = 2;
+
+pub static IMU_PROBE: ImuProbe = ImuProbe {
+    presence: AtomicU8::new(IMU_UNKNOWN),
+    address: AtomicU8::new(0),
+    who_am_i: AtomicU8::new(0),
+    bus: [Z, Z, Z, Z],
+};
+
+/// `true` unless the boot probe concluded there is no usable IMU. Reported
+/// to hosts in `HELLO_REPLY` (variant bit `VARIANT_IMU`).
+pub fn imu_fitted() -> bool {
+    IMU_PROBE.presence.load(Ordering::Relaxed) != IMU_ABSENT
+}
 
 /// Set a sensor state.
 pub fn set_state(slot: &AtomicU8, s: SensorState) {

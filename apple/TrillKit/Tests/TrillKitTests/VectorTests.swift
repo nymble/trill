@@ -24,7 +24,7 @@ final class VectorTests: XCTestCase {
 
     func testRequestsMatchRustEncoder() throws {
         let v = try Self.loadVectors()
-        XCTAssertEqual(v.count, 39)
+        XCTAssertEqual(v.count, 40)
         XCTAssertEqual(TrillCodec.hello(1), v["hello"]!.request)
         XCTAssertEqual(TrillCodec.getConfig(2), v["get_config"]!.request)
         XCTAssertEqual(TrillCodec.setConfig(3, [(.channel, 2), (.pitchMode, 1)]), v["set_channel_steps"]!.request)
@@ -44,10 +44,29 @@ final class VectorTests: XCTestCase {
                        v["set_tilt_strike_page2"]!.request)
         XCTAssertEqual(TrillCodec.setConfig(35, [(.mode, 3)]), v["set_mode_tilt_strike"]!.request)
         XCTAssertEqual(TrillCodec.setConfig(36, [(.scale, 3)]), v["set_scale_minor"]!.request)
+        XCTAssertEqual(TrillCodec.action(37, .enterBootloader), v["action_enter_bootloader"]!.request)
         // The app refuses to encode requests the device would reject.
         XCTAssertNil(TrillCodec.setConfig(5, [(.channel, 2), (.bendRange, 30)]))
         XCTAssertNil(TrillCodec.setConfig(7, [(.baseNote, 60), (.baseNote, 61)]))
         XCTAssertNil(TrillCodec.setConfig(7, []))
+    }
+
+    func testBoardSensorReport() {
+        func hello(variant: UInt8, caps: UInt8) -> TrillReply.Hello {
+            TrillReply.Hello(protocolVersion: 1, firmware: (0, 6, 0), variant: variant, capabilities: caps,
+                             maxMessageLength: 64, paramCount: 41, uptimeSeconds: 1, bootID: 1)
+        }
+        let all: UInt8 = 0x3B
+        // Firmware before 0.6.0 does not report sensors: assume the Sense board's IMU.
+        XCTAssertTrue(hello(variant: 0, caps: all).hasMotionSensor)
+        // 0.6.0 on a plain XIAO nRF52840: no IMU.
+        XCTAssertFalse(hello(variant: 0, caps: all | TrillProtocol.capBoard).hasMotionSensor)
+        XCTAssertTrue(hello(variant: TrillProtocol.variantIMU, caps: all | TrillProtocol.capBoard).hasMotionSensor)
+        XCTAssertFalse(hello(variant: TrillProtocol.variantMic, caps: all).hasMicrophone, "mic bit needs the capability")
+        XCTAssertEqual(SensorState(rawValue: 5), .absent)
+        // Only strip-played presets work without a motion sensor.
+        let touchOnly = BuiltInPreset.all.filter(\.playsWithoutMotion).map(\.id)
+        XCTAssertEqual(Set(touchOnly), ["default", "expressive-cc"])
     }
 
     func testRepliesDecode() throws {
@@ -63,6 +82,8 @@ final class VectorTests: XCTestCase {
         XCTAssertEqual(h.paramCount, TrillParam.allCases.count)
         XCTAssertFalse(h.persistent)
         XCTAssertFalse(h.isPCMSynthBuild)
+        XCTAssertTrue(h.hasMotionSensor, "vector device reports an IMU")
+        XCTAssertFalse(h.hasMicrophone)
 
         guard case let .config(_, gen, persistent, page0, cfg)? = TrillCodec.decodeReply(v["get_config"]!.reply!) else { return XCTFail("config") }
         XCTAssertEqual(gen, 0)

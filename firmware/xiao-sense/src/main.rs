@@ -117,6 +117,7 @@ async fn led_task(mut led: Led, previous_crash: bool) {
             SensorState::Running => Sensor::Running,
             SensorState::Retry => Sensor::Retry,
             SensorState::Disabled => Sensor::Disabled,
+            SensorState::Absent => Sensor::Absent,
         };
         let inputs = Inputs {
             safe_mode: SAFE_MODE.load(Ordering::Relaxed),

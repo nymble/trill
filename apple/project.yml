@@ -28,6 +28,9 @@ targets:
     platform: macOS
     sources:
       - App/Shared
+      - path: Firmware
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: TrillKit
     settings:
@@ -42,6 +45,9 @@ targets:
     platform: iOS
     sources:
       - App/Shared
+      - path: Firmware
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: TrillKit
     settings:

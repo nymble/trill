@@ -17,7 +17,7 @@ FW_ELF  := $(FW_DIR)/target/thumbv7em-none-eabihf/release/xiao-sense-fw
 FW_UF2  := $(DIST)/xiao-sense-fw-$(VERSION).uf2
 
 .PHONY: all ci fmt fmt-check clippy test tools-test check-thumb fw fw-check fw-uf2 fw-uf2-pcm synth-demo build pi-zero pi-arm64 x86-musl dist clean \
-        protocol-vectors apple apple-project apple-test apple-test-ios-sim apple-test-ipad-sim apple-mac apple-ios-sim apple-ios-device apple-ipad-sim apple-ios-ipa apple-dist apple-dmg apple-icon test-kit
+        protocol-vectors apple apple-project apple-test apple-test-ios-sim apple-test-ipad-sim apple-mac apple-ios-sim apple-ios-device apple-ipad-sim apple-ios-ipa apple-dist apple-dmg apple-icon apple-firmware test-kit
 
 all: ci
 
@@ -120,6 +120,11 @@ apple-project:
 	cd $(APPLE) && $(XCODEGEN) generate --spec project.yml
 
 # Regenerate the app icon PNGs (committed) from the CoreGraphics drawing.
+# Put this version's firmware (FW_UF2, from `make fw-uf2` or a CI artifact)
+# into apple/Firmware, which the app bundles and can install.
+apple-firmware:
+	python3 $(APPLE)/scripts/bundle_firmware.py $(FW_UF2) $(VERSION)
+
 apple-icon:
 	swift $(APPLE)/scripts/make_app_icon.swift $(APPLE)/App/Shared/Assets.xcassets/AppIcon.appiconset
 
@@ -134,13 +139,13 @@ apple-test-ios-sim:
 apple-test-ipad-sim:
 	cd $(APPLE)/TrillKit && xcodebuild test -scheme TrillKit -destination "id=$$(python3 ../scripts/pick_simulator.py ipad)" CODE_SIGNING_ALLOWED=NO
 
-apple-mac: apple-project
+apple-mac: apple-project apple-firmware
 	$(XCB) -scheme TrilliumMac -configuration Release -destination 'generic/platform=macOS' build
 
-apple-ios-sim: apple-project
+apple-ios-sim: apple-project apple-firmware
 	$(XCB) -scheme TrilliumIOS -configuration Debug -destination 'generic/platform=iOS Simulator' build
 
-apple-ios-device: apple-project
+apple-ios-device: apple-project apple-firmware
 	$(XCB) -scheme TrilliumIOS -configuration Release -destination 'generic/platform=iOS' build
 
 # Boot an iPad Simulator, install the iOS app, launch it, and write
@@ -156,7 +161,7 @@ apple-ipad-sim: apple-ios-sim
 # Development IPA for a physical iPhone or iPad. Needs a Mac with Xcode
 # and apple/Config/Local.xcconfig (git-ignored) with DEVELOPMENT_TEAM.
 # Never run in the unsigned CI jobs; does not use CODE_SIGNING_ALLOWED=NO.
-apple-ios-ipa: apple-project
+apple-ios-ipa: apple-project apple-firmware
 	python3 $(APPLE)/scripts/export_ipa.py
 
 # Zip the built apps into dist/apple with SHA-256 sums.
