@@ -280,6 +280,10 @@ async fn config_request(msg: &[u8], truncated: bool) {
             trill_config::VARIANT_PCM_SYNTH
         } else {
             0
+        } | if imu_fitted() {
+            trill_config::VARIANT_IMU
+        } else {
+            0
         },
         uptime_s: Instant::now().as_secs() as u32,
         boot_id: BOOT_ID.load(Ordering::Relaxed),
@@ -313,6 +317,10 @@ async fn config_request(msg: &[u8], truncated: bool) {
         Some(trill_config::Action::RestoreDefaults) => {
             let _ = with_engine(|e| e.clear_zero());
         }
+        Some(trill_config::Action::EnterBootloader) => {
+            // Silence first; the reset follows once the ACK is out (below).
+            MIDI_REQUEST.fetch_or(MIDI_REQ_PANIC, Ordering::Relaxed);
+        }
         None => {}
     }
     if let Some(rate) = o.telemetry {
@@ -321,6 +329,11 @@ async fn config_request(msg: &[u8], truncated: bool) {
     bump(&STATS.config_requests);
     CONFIG_REPLIES.send(o.reply).await;
     MIDI_WAKE.signal(());
+    if o.action == Some(trill_config::Action::EnterBootloader) {
+        // Time for the MIDI writer to send All Notes Off and the ACK.
+        Timer::after_millis(250).await;
+        crate::crash::enter_uf2_bootloader();
+    }
 }
 
 /// Firmware version for the protocol (from Cargo.toml).
@@ -708,6 +721,39 @@ const HELP: &str = "commands: s=status now, m=MIDI map+counters, p=MIDI panic (C
      midi map: k=bend/steps, q=chromatic/pentatonic, t=tap percussion on/off, x=motion CCs on/off (RAM only, not persisted)\r\n\
      led: L=self-test, 0-7=manual colour (0 off 1 red 2 green 3 yellow 4 blue 5 magenta 6 cyan 7 white; 60 s), a=automatic\r\n";
 
+/// What the boot probe found on the internal I²C bus (P0.07/P0.27).
+fn imu_report(out: &mut String<OUT_LEN>) {
+    let p = &IMU_PROBE;
+    let addr = p.address.load(Ordering::Relaxed);
+    let id = p.who_am_i.load(Ordering::Relaxed);
+    match p.presence.load(Ordering::Relaxed) {
+        IMU_PRESENT => {
+            let _ = write!(out, "imu: LSM6DS3TR-C at 0x{addr:02x}");
+        }
+        IMU_ABSENT => {
+            let _ = out.push_str("imu: absent (motion modes need a Sense board)");
+            if id != 0 {
+                let _ = write!(out, ", unsupported WHO_AM_I 0x{id:02x}");
+            }
+            let _ = out.push_str(" | internal bus:");
+            let mut any = false;
+            for a in 0x08u8..=0x77 {
+                if p.bus[usize::from(a / 32)].load(Ordering::Relaxed) & (1 << (a % 32)) != 0 {
+                    let _ = write!(out, " 0x{a:02x}");
+                    any = true;
+                }
+            }
+            if !any {
+                let _ = out.push_str(" no devices");
+            }
+        }
+        _ => {
+            let _ = out.push_str("imu: probing");
+        }
+    }
+    let _ = out.push_str(" | mic: not supported yet\r\n");
+}
+
 fn banner(out: &mut String<OUT_LEN>, report: &BootReport) {
     let _ = write!(
         out,
@@ -724,6 +770,7 @@ fn banner(out: &mut String<OUT_LEN>, report: &BootReport) {
         TRILL_POLL_MS,
         u8::from(SAFE_MODE.load(Ordering::Relaxed)),
     );
+    imu_report(out);
     let _ = write!(
         out,
         "resetreas=0x{:08x} consecutive_crashes={}",

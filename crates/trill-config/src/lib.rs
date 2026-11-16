@@ -127,6 +127,11 @@ pub enum Action {
     /// Take the current pitch and roll as level (RAM only). Firmware 0.4+
     /// (`CAP_CONFIG_PAGES`); older firmware answers `UnknownAction`.
     ZeroOrientation = 5,
+    /// Restart into the UF2 bootloader so the host can install firmware
+    /// (`CAP_BOARD`, firmware 0.6+). The device acknowledges, sends All
+    /// Notes Off, and resets about 250 ms later; nothing is written to
+    /// flash. Older firmware answers `UnknownAction`.
+    EnterBootloader = 6,
 }
 
 impl Action {
@@ -138,6 +143,7 @@ impl Action {
             3 => Self::LedSelfTest,
             4 => Self::RestoreDefaults,
             5 => Self::ZeroOrientation,
+            6 => Self::EnterBootloader,
             _ => return None,
         })
     }
@@ -145,6 +151,12 @@ impl Action {
 
 /// Variant flag: firmware built with the `pcm-synth` debug feature.
 pub const VARIANT_PCM_SYNTH: u8 = 0x01;
+/// Variant flag (valid with [`CAP_BOARD`]): a motion sensor (IMU)
+/// was found on this board. Clear on a plain XIAO nRF52840.
+pub const VARIANT_IMU: u8 = 0x02;
+/// Variant flag (valid with [`CAP_BOARD`]): microphone input is
+/// available. Reserved: no firmware sets it yet.
+pub const VARIANT_MIC: u8 = 0x04;
 /// Capability bit: `SET_CONFIG` supported.
 pub const CAP_SET_CONFIG: u8 = 0x01;
 /// Capability bit: `ACTION` supported.
@@ -161,6 +173,12 @@ pub const CAP_CONFIG_PAGES: u8 = 0x10;
 /// Capability bit (firmware 0.5+): directional strikes. Page 2 (parameters
 /// 31..=37) exists. Hosts must not send page-2 parameters without it.
 pub const CAP_STRIKES: u8 = 0x20;
+/// Capability bit (firmware 0.6+): board report and maintenance. The variant
+/// byte reports the board's sensors ([`VARIANT_IMU`], [`VARIANT_MIC`]) and
+/// action 6 ([`Action::EnterBootloader`]) restarts into the UF2 bootloader.
+/// Without it hosts must assume an IMU is fitted (every earlier firmware ran
+/// only on the Sense board) and ask the user to double-press RESET.
+pub const CAP_BOARD: u8 = 0x40;
 
 /// Facts reported by `HELLO_REPLY`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -255,6 +273,7 @@ pub fn hello_reply(req: u8, info: &DeviceInfo) -> Reply {
         | CAP_TELEMETRY
         | CAP_CONFIG_PAGES
         | CAP_STRIKES
+        | CAP_BOARD
         | if PERSISTENT { CAP_PERSISTENT } else { 0 };
     let _ = r.extend_from_slice(&[
         PROTOCOL_VERSION,

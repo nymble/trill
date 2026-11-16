@@ -103,7 +103,8 @@ jobs:
 
   apple:
     name: Trillium for macOS and iOS Simulator (unsigned)
-    needs: check
+    # The app carries the exact UF2 published as a download.
+    needs: [check, firmware]
     runs-on: macos-15
     timeout-minutes: 45
     env:
@@ -119,6 +120,12 @@ jobs:
           echo "${XCODEGEN_SHA256}  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
           unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@v4
+        with:
+          name: rel-firmware
+          path: dist
+      - name: Firmware for the app bundle
+        run: make apple-firmware
       - name: TrillKit tests
         run: make apple-test
       - name: Build macOS app (Release, universal, unsigned)

@@ -38,7 +38,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var clock: TimeInterval = 0
 
     // Configuration
-    @Published private(set) var sessionRevision = 0
+    @Published var sessionRevision = 0
     @Published var draft = DeviceConfig.firmwareDefaults { didSet { if draft != oldValue { draftChangedAt = now } } }
     private var draftChangedAt: TimeInterval = 0
 
@@ -84,6 +84,17 @@ final class AppModel: ObservableObject {
     @Published private(set) var builtInEdits: [String: DeviceConfig] = [:]
     @Published var presetError: String?
 
+    // Firmware carried in the app, bootloader drives, installs (AppModel+Firmware.swift)
+    let bundledFirmware: BundledFirmware?
+    let bundledFirmwareError: String?
+    @Published var install: FirmwareInstallState = .idle
+    /// Mounted volumes that look like a UF2 bootloader drive.
+    @Published var bootloaderDrives: [URL] = []
+    /// USB devices that look like an nRF52840 board not running Trillium firmware (macOS).
+    @Published var otherBoards: [USBBoardInfo] = []
+    var lastBoardScan: TimeInterval = 0
+    var driveObservers: [NSObjectProtocol] = []
+
     let events = EventBuffer(capacity: 4096)
     let telemetryBuffer = TelemetryBuffer(capacity: 512)
     private(set) var client: MIDIClient?
@@ -95,6 +106,13 @@ final class AppModel: ObservableObject {
     init() {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
+        do {
+            bundledFirmware = try BundledFirmware.load()
+            bundledFirmwareError = nil
+        } catch {
+            bundledFirmware = nil
+            bundledFirmwareError = error.localizedDescription
+        }
         presetStore = PresetStore(fileURL: dir.appendingPathComponent("Trill/presets.json"))
         presets = presetStore.presets
         // Refined built-ins: one Preset per built-in, its name is the built-in id.
@@ -113,6 +131,7 @@ final class AppModel: ObservableObject {
             midiError = error.localizedDescription
         }
         refreshEndpoints()
+        startDriveWatch()
         // 30 Hz UI drain + 10 Hz-or-better timeout checks.
         timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
@@ -147,7 +166,7 @@ final class AppModel: ObservableObject {
         }
         applyMonitorSource()
         if let id = configSourceID { _ = c.setConfigSource(sources.contains { $0.id == id } ? id : nil) }
-        if autoConnect, trillDetected, session.phase == .disconnected { connectToDetected() }
+        if autoConnect || install.reconnects, trillDetected, session.phase == .disconnected { connectToDetected() }
     }
 
     private func applyMonitorSource() {
@@ -170,7 +189,8 @@ final class AppModel: ObservableObject {
 
     /// Connect automatically when a Trillium appears (Settings › Connection).
     var autoConnect: Bool {
-        get { UserDefaults.standard.bool(forKey: "autoConnect") }
+        // On by default: Trillium connects as soon as it's plugged in.
+        get { UserDefaults.standard.object(forKey: "autoConnect") as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: "autoConnect"); objectWillChange.send() }
     }
 
@@ -379,6 +399,7 @@ final class AppModel: ObservableObject {
         session.tick(now: now)
         session.maintainTelemetry(desiredRate: sensorsVisible && sensorsLive ? telemetryRateHz : nil, now: now)
         if pending != session.pending { sessionRevision += 1 }
+        firmwareTick()
         // Live editing: send edits once the user pauses for a moment and the
         // previous request has been answered.
         if liveApply, editing != .current || settingsPath.contains(.mapping), session.isReady, session.pending == nil,

@@ -33,6 +33,10 @@ public enum TrillProtocol {
     }
 
     public static let variantPCMSynth: UInt8 = 0x01
+    /// A motion sensor (IMU) was found (valid with `capBoard`).
+    public static let variantIMU: UInt8 = 0x02
+    /// Microphone input available (valid with `capBoard`; reserved, never set yet).
+    public static let variantMic: UInt8 = 0x04
     public static let capSetConfig: UInt8 = 0x01
     public static let capActions: UInt8 = 0x02
     public static let capPersistent: UInt8 = 0x04
@@ -48,6 +52,9 @@ public enum TrillProtocol {
     public static let capStrikes: UInt8 = 0x20
     /// Oldest firmware with directional strikes.
     public static let strikesMinimumFirmware = "0.5.0"
+    /// The variant byte reports the board's sensors (firmware 0.6.0+). Without
+    /// it an IMU is assumed: earlier firmware only ran on the Sense board.
+    public static let capBoard: UInt8 = 0x40
 }
 
 /// Device-side error codes.
@@ -73,6 +80,8 @@ public enum TrillAction: UInt8, CaseIterable, Sendable {
     case panic = 1, recalibrateGyro, ledSelfTest, restoreDefaults
     /// Take the current pitch and roll as level (firmware 0.4.0+, RAM only).
     case zeroOrientation
+    /// Restart into the UF2 bootloader to install firmware (firmware 0.6.0+).
+    case enterBootloader
 
     public var title: String {
         switch self {
@@ -81,11 +90,14 @@ public enum TrillAction: UInt8, CaseIterable, Sendable {
         case .ledSelfTest: return "LED self-test"
         case .restoreDefaults: return "Restore firmware defaults"
         case .zeroOrientation: return "Set current orientation as level"
+        case .enterBootloader: return "Restart for a firmware update"
         }
     }
 
     /// Needs `TrillProtocol.capConfigPages`.
     public var needsConfigPages: Bool { self == .zeroOrientation }
+    /// Needs `TrillProtocol.capBoard`.
+    public var needsBoard: Bool { self == .enterBootloader }
 }
 
 /// Values of `TrillParam.mode`.
@@ -315,6 +327,13 @@ public struct DeviceConfig: Equatable, Hashable, Sendable {
 
     public static let firmwareDefaults = DeviceConfig()
 
+    /// Touch-strip mode with taps, strikes and gestures off: the notes come
+    /// from the strip, so it plays on a board without a motion sensor (the
+    /// motion controllers then stay at rest).
+    public var playsWithoutMotion: Bool {
+        self[.mode] == SensorMode.touch.rawValue && self[.percussionEnabled] == 0 && self[.gestureAxis] == 0
+    }
+
     public subscript(p: TrillParam) -> Int {
         get { values[p] ?? p.defaultValue }
         set {
@@ -353,6 +372,15 @@ public enum TrillReply: Equatable, Sendable {
         public var supportsConfigPages: Bool { capabilities & TrillProtocol.capConfigPages != 0 }
         /// Parameters 31...37, directional strikes (firmware 0.5.0+).
         public var supportsStrikes: Bool { supportsConfigPages && capabilities & TrillProtocol.capStrikes != 0 }
+        /// False only when the firmware reports that this board has no IMU
+        /// (a plain XIAO nRF52840): motion modes, taps and strikes cannot play.
+        public var hasMotionSensor: Bool {
+            capabilities & TrillProtocol.capBoard == 0 || variant & TrillProtocol.variantIMU != 0
+        }
+        /// Microphone input (no firmware reports one yet).
+        public var hasMicrophone: Bool {
+            capabilities & TrillProtocol.capBoard != 0 && variant & TrillProtocol.variantMic != 0
+        }
         /// Configuration pages this firmware has.
         public var pages: Set<Int> { supportsStrikes ? [0, 1, 2] : supportsConfigPages ? [0, 1] : [0] }
         public static func == (a: Hello, b: Hello) -> Bool {

@@ -27,12 +27,13 @@ DOWNLOADS = """\
 
 **Opening the app.** Open the DMG and drag Trillium to Applications (or unzip the zip). The app is not notarized or signed with a Developer ID, so macOS blocks it the first time. On macOS 15 or newer, try to open it once, then go to System Settings > Privacy & Security > *Open Anyway*. On macOS 13 or 14, right-click Trillium.app and choose *Open*.
 
-**Updating the firmware.** Keep a backup of your current firmware first. Then double-press RESET on the XIAO so the `XIAO-SENSE` drive appears, and run:
+**Updating the firmware.** The Trillium app carries this firmware and installs it for you: connect Trillium and choose *Update firmware* on Home (or Settings > Firmware), or plug in a new Seeed Studio XIAO nRF52840 Sense and double-press RESET. The app backs up the board's firmware first. To do it by hand instead, double-press RESET so the `XIAO-SENSE` drive appears, keep a backup, and use the Board-ID that `info` prints:
 
 ```sh
 python3 xiao_uf2.py info /Volumes/XIAO-SENSE
-python3 xiao_uf2.py flash --drive /Volumes/XIAO-SENSE --board-id Seeed_XIAO_nRF52840_Sense xiao-sense-fw-{v}.uf2          # dry run
-python3 xiao_uf2.py flash --drive /Volumes/XIAO-SENSE --board-id Seeed_XIAO_nRF52840_Sense xiao-sense-fw-{v}.uf2 --write  # copy
+python3 xiao_uf2.py backup /Volumes/XIAO-SENSE -o backups/
+python3 xiao_uf2.py flash --drive /Volumes/XIAO-SENSE --board-id <Board-ID> xiao-sense-fw-{v}.uf2          # dry run
+python3 xiao_uf2.py flash --drive /Volumes/XIAO-SENSE --board-id <Board-ID> xiao-sense-fw-{v}.uf2 --write  # copy
 ```
 
 Development builds: the USB IDs (1209:0002) and SysEx ID (0x7D) are test identifiers. Licence: GPL-3.0-only; commercial terms in `COMMERCIAL-LICENSE.md`.

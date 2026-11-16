@@ -124,6 +124,8 @@ public final class ConfigSession {
     public var supportedPages: Set<Int> { hello?.pages ?? [0] }
     public var supportsConfigPages: Bool { hello?.supportsConfigPages ?? false }
     public var supportsStrikes: Bool { hello?.supportsStrikes ?? false }
+    /// True unless the connected board reports no motion sensor.
+    public var hasMotionSensor: Bool { hello?.hasMotionSensor ?? true }
 
     /// Parameters the connected device does not have (empty when not connected).
     public func unsupported(_ p: TrillParam) -> Bool { hello != nil && !supportedPages.contains(p.page) }
@@ -168,7 +170,8 @@ public final class ConfigSession {
 
     @discardableResult
     public func perform(_ action: TrillAction, now: TimeInterval) -> Bool {
-        guard isReady, !action.needsConfigPages || supportsConfigPages else { return false }
+        guard isReady, !action.needsConfigPages || supportsConfigPages,
+              !action.needsBoard || hello?.canEnterBootloader == true else { return false }
         enqueue(.action(action), now: now)
         return true
     }

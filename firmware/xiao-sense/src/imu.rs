@@ -3,14 +3,21 @@
 //! is read and processed), motion processing, hand-off to the event engine,
 //! with bounded fault recovery (power-cycle + exponential backoff). Touch
 //! does not depend on this task.
+//!
+//! At boot the IMU is probed at both LSM6DS3TR-C addresses. A board without
+//! one (plain XIAO nRF52840) is reported as `absent` after `PROBE_ATTEMPTS`,
+//! the internal bus is scanned once for diagnostics, the sensor supply is
+//! switched off and the task stops: no endless retries, no fault LED.
 
 use core::sync::atomic::Ordering;
 
 use embassy_nrf::gpio::{Input, Output};
 use embassy_nrf::twim::Twim;
 use embassy_time::{with_timeout, Delay, Duration, Instant, Timer};
+use embedded_hal::i2c::I2c as _;
 use lsm6ds3trc::{
-    AccelScale, Config, Error, GyroScale, Lsm6ds3trc, Odr, ADDRESS_SA0_LOW, TURN_ON_MS,
+    AccelScale, Config, Error, GyroScale, Lsm6ds3trc, Odr, ADDRESS_SA0_HIGH, ADDRESS_SA0_LOW,
+    TURN_ON_MS, WHO_AM_I_VALUE,
 };
 use motion_synth::motion::{MotionConfig, MotionProcessor, MotionSample};
 
@@ -50,6 +57,61 @@ const IMU_CONFIG: Config = Config {
     int1_drdy_accel: true,
 };
 
+/// LSM6DS3TR-C addresses: SA0 low (XIAO Sense) first, then SA0 high.
+const IMU_ADDRESSES: [u8; 2] = [ADDRESS_SA0_LOW, ADDRESS_SA0_HIGH];
+/// Power-cycled probe rounds before the IMU is declared absent (~0.2 s).
+const PROBE_ATTEMPTS: u32 = 3;
+
+/// Find a supported IMU. Records what answered in `IMU_PROBE`; returns
+/// its address, or `None` (supply left off) when nothing usable answered.
+async fn probe(twim: &mut Twim<'static>, power: &mut Output<'static>) -> Option<u8> {
+    let timeout = Duration::from_millis(I2C_TIMEOUT_MS);
+    for attempt in 0..PROBE_ATTEMPTS {
+        power.set_high();
+        Timer::after_millis(TURN_ON_MS as u64 + 5).await;
+        for &addr in &IMU_ADDRESSES {
+            let mut imu = Lsm6ds3trc::new(TimeoutI2c::new(twim, timeout), addr);
+            match imu.who_am_i() {
+                Ok(id) => {
+                    IMU_PROBE.who_am_i.store(id, Ordering::Relaxed);
+                    if id == WHO_AM_I_VALUE {
+                        IMU_PROBE.address.store(addr, Ordering::Relaxed);
+                        IMU_PROBE.presence.store(IMU_PRESENT, Ordering::Relaxed);
+                        return Some(addr);
+                    }
+                    // Something else answered (unsupported part): record the
+                    // WrongId code and keep looking.
+                    STATS.imu_last_error.store(2, Ordering::Relaxed);
+                }
+                Err(e) => STATS
+                    .imu_last_error
+                    .store(error_code(&e), Ordering::Relaxed),
+            }
+        }
+        power.set_low();
+        if attempt + 1 < PROBE_ATTEMPTS {
+            Timer::after_millis(50).await;
+        }
+    }
+    None
+}
+
+/// One-byte read at every 7-bit address on the (powered) internal bus;
+/// acknowledged addresses go into `IMU_PROBE.bus` for the diagnostics
+/// banner. A NACK costs ~25 µs at 400 kHz, so the scan takes a few ms.
+async fn scan_bus(twim: &mut Twim<'static>, power: &mut Output<'static>) {
+    power.set_high();
+    Timer::after_millis(TURN_ON_MS as u64 + 5).await;
+    let mut bus = TimeoutI2c::new(twim, Duration::from_millis(I2C_TIMEOUT_MS));
+    for addr in 0x08u8..=0x77 {
+        let mut b = [0u8; 1];
+        if bus.read(addr, &mut b).is_ok() {
+            IMU_PROBE.bus[usize::from(addr / 32)].fetch_or(1 << (addr % 32), Ordering::Relaxed);
+        }
+    }
+    power.set_low();
+}
+
 #[embassy_executor::task]
 pub async fn imu_task(
     mut twim: Twim<'static>,
@@ -64,12 +126,23 @@ pub async fn imu_task(
     let mut backoff_ms: u64 = 100;
     let timeout = Duration::from_millis(I2C_TIMEOUT_MS);
 
+    set_state(&STATS.imu_state, SensorState::Init);
+    let Some(address) = probe(&mut twim, &mut power).await else {
+        scan_bus(&mut twim, &mut power).await;
+        IMU_PROBE.presence.store(IMU_ABSENT, Ordering::Relaxed);
+        set_state(&STATS.imu_state, SensorState::Absent);
+        motion_lost();
+        // Nothing to do on this board; touch, USB and the LED run elsewhere.
+        core::future::pending::<()>().await;
+        return;
+    };
+
     loop {
         set_state(&STATS.imu_state, SensorState::Init);
         power.set_high();
         Timer::after_millis(TURN_ON_MS as u64 + 5).await;
 
-        let mut imu = Lsm6ds3trc::new(TimeoutI2c::new(&mut twim, timeout), ADDRESS_SA0_LOW);
+        let mut imu = Lsm6ds3trc::new(TimeoutI2c::new(&mut twim, timeout), address);
         if let Err(e) = imu.init(&mut Delay, IMU_CONFIG) {
             motion_lost();
             STATS

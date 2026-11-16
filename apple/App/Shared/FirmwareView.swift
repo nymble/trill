@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //
-// Guided, read-only firmware update assistant. The app validates a UF2 the
-// user picks and reads INFO_UF2.TXT from the bootloader drive the user
-// picks, then shows the exact tools/xiao_uf2.py commands. It never writes
-// to the drive: copying an image is a step the user runs explicitly.
+// Settings › Firmware: the firmware carried in the app, the connected
+// board, installs (FirmwareCard) and backups. The older read-only assistant
+// (validate any UF2, read a drive, show tools/xiao_uf2.py commands) stays
+// under Advanced for developers.
 
 import SwiftUI
 import TrillKit
@@ -13,22 +13,56 @@ import AppKit
 #endif
 
 struct FirmwareView: View {
+    @EnvironmentObject var model: AppModel
+
     var body: some View {
-        Group {
-            #if os(macOS)
-            FirmwareAssistant()
-                .navigationTitle("Firmware")
-            #else
-            Form {
-                Section("Firmware updates need a Mac or PC") {
-                    Text("Trillium's firmware is updated over USB from a computer, using the UF2 bootloader drive and tools/xiao_uf2.py. It cannot be updated from an iPhone or iPad.")
-                    Text("See docs/firmware-xiao-sense.md in the repository.")
-                        .foregroundStyle(.secondary)
+        Form {
+            Section {
+                FirmwareCard(alwaysShow: true)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+            }
+            Section("Firmware in this app") {
+                if let fw = model.bundledFirmware {
+                    LabeledContent("Version", value: fw.version.description)
+                    LabeledContent("Board", value: fw.manifest.board)
+                    Text("SHA-256 \(fw.summary.sha256)").font(.caption.monospaced()).textSelection(.enabled)
+                    Text("Every Trillium app carries the firmware of its own version, so updating the app brings firmware updates with it.")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else {
+                    Text(model.bundledFirmwareError ?? "None").foregroundStyle(.secondary)
                 }
             }
-            .navigationTitle("Firmware")
+            if let h = model.session.hello {
+                Section("Connected board") {
+                    LabeledContent("Board", value: model.connectedBoardName ?? "?")
+                    LabeledContent("Firmware", value: h.firmwareString)
+                    LabeledContent("Motion sensor", value: h.hasMotionSensor ? "yes" : "no")
+                    LabeledContent("Microphone", value: h.hasMicrophone ? "available" : "not used by this firmware")
+                    LabeledContent("Restart for updates", value: h.canEnterBootloader ? "from the app" : "double-press RESET (firmware before 0.6.0)")
+                }
+            }
+            Section {
+                #if os(macOS)
+                Button("Show firmware backups in Finder") { model.showBackupsInFinder() }
+                #endif
+                Text("Before each install Trillium saves the board's firmware (CURRENT.UF2 and an app-only restore image) in \(model.firmwareBackupFolder.path).")
+                    .font(.caption).foregroundStyle(.secondary).textSelection(.enabled)
+            } header: {
+                Text("Backups")
+            }
+            #if os(macOS)
+            Section {
+                NavigationLink("Check a UF2 file and drive with the command-line tools…") {
+                    FirmwareAssistant().navigationTitle("Command-line tools")
+                }
+            } header: {
+                Text("Advanced")
+            }
             #endif
         }
+        .formStyle(.grouped)
+        .navigationTitle("Firmware")
     }
 }
 

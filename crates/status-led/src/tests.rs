@@ -345,3 +345,44 @@ fn rgb_led_active_high() {
     g.done();
     b.done();
 }
+
+#[test]
+fn imu_absent_is_not_a_fault_and_skips_calibrating() {
+    let absent = Inputs {
+        imu: Sensor::Absent,
+        imu_calibrated: false,
+        ..Inputs::default()
+    };
+    assert_eq!(pick(&absent), Indication::Ready);
+    assert_eq!(
+        pick(&Inputs {
+            usb_streaming: true,
+            ..absent
+        }),
+        Indication::ReadyStreaming
+    );
+    assert_eq!(
+        pick(&Inputs {
+            touching: true,
+            ..absent
+        }),
+        Indication::Touch
+    );
+    // A Trill loss still shows on a board without an IMU.
+    let mut s = StatusLed::new();
+    s.update(
+        0,
+        &Inputs {
+            trill: Sensor::Running,
+            ..absent
+        },
+    );
+    let lost = s.update(
+        10,
+        &Inputs {
+            trill: Sensor::Retry,
+            ..absent
+        },
+    );
+    assert_eq!(lost.indication, Indication::TrillLost);
+}

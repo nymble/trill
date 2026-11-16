@@ -4,6 +4,24 @@ All notable changes to this project are documented here. Versions follow [Semant
 
 ## [Unreleased]
 
+Version 0.6.0 (workspace, firmware and app).
+
+### Added
+- **The app installs firmware** (macOS; iOS untested on a device): each Trillium build carries the firmware of its own version (`make apple-firmware`; CI and releases bundle the UF2 from the same commit). The app identifies the board and its firmware, offers an update when the board runs older firmware, says "update the app" when it runs newer, and spots a new XIAO with other firmware or a waiting bootloader drive. Installs back up `CURRENT.UF2` plus an app-only restore image first, use the `xiao_uf2.py` safety rules, then reconnect and check the version.
+- **Firmware action 6, enter bootloader** (capability bit 6): restarts into the UF2 bootloader so updates need no RESET double-press. Writes no flash.
+- **Board report** (capability bit 6, variant bit 1): the firmware probes the IMU at boot (0x6A/0x6B). A XIAO nRF52840 without the motion sensor reports `imu=absent`, scans the internal bus once for diagnostics, switches the sensor supply off and stops retrying; the LED shows no fault and the app says the board is not supported. Variant bit 2 is reserved for the microphone.
+
+### Changed
+- *Connect automatically* is on by default.
+- Release notes tell users to install firmware from the app, and to use the Board-ID that `xiao_uf2.py info` prints (bootloader 0.9.0 reports `nRF52840-SeeedXiaoSense-v1`, 0.6.1 `Seeed_XIAO_nRF52840_Sense`).
+
+### Tested on hardware
+- Firmware 0.6.0 (before action 6 was added) on a plain XIAO nRF52840 (bootloader 0.9.0): `imu=absent`, internal bus scan found no devices, USB MIDI up, no fault LED.
+- App install on the XIAO nRF52840 Sense (bootloader 0.6.1), macOS, unsigned build: 0.5.0 → 0.6.0 with one click after a RESET double-press (0.5.0 has no action 6), no file or drive picked; backup written to Application Support (its app-only image matches the `xiao_uf2.py` split); the board reconnected reporting 0.6.0, IMU running, calibrated.
+
+### Not yet tested on hardware
+- Reinstall without RESET through action 6; a factory-new Sense with Seeed firmware; iOS; a signed, sandboxed build.
+
 ## [0.5.1] - 2026-11-15
 
 ### Added

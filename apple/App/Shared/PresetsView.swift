@@ -129,6 +129,9 @@ struct PresetsView: View {
     }
 
     private func updateNote(_ p: BuiltInPreset) -> String? {
+        if !model.session.hasMotionSensor && !p.playsWithoutMotion {
+            return "Needs a motion sensor: this board has none (use a XIAO nRF52840 Sense)."
+        }
         guard model.session.hello != nil, let min = p.minimumFirmware else { return nil }
         let has = p.needsStrikes ? model.session.supportsStrikes : model.session.supportsConfigPages
         return has ? nil : "Needs a firmware update (\(min)) to play fully."

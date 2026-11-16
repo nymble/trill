@@ -155,3 +155,16 @@ unsafe fn HardFault(ef: &cortex_m_rt::ExceptionFrame) -> ! {
         let _ = write!(b, "HardFault pc=0x{:08x} lr=0x{:08x}", ef.pc(), ef.lr());
     })
 }
+
+/// Restart into the UF2 bootloader (the `XIAO-SENSE` drive) without a
+/// double-press of RESET. The Adafruit-derived nRF52 bootloader on the XIAO
+/// reads GPREGRET at reset; `0x57` (DFU_MAGIC_UF2_RESET) selects UF2 mode.
+/// Writes no flash: the bootloader only writes when a UF2 is copied, and
+/// a plain reset afterwards returns to this application.
+pub fn enter_uf2_bootloader() -> ! {
+    const DFU_MAGIC_UF2_RESET: u8 = 0x57;
+    embassy_nrf::pac::POWER
+        .gpregret()
+        .write(|w| w.set_gpregret(DFU_MAGIC_UF2_RESET));
+    cortex_m::peripheral::SCB::sys_reset()
+}

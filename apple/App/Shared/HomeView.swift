@@ -34,6 +34,7 @@ struct HomeView: View {
                         }
                     }
                     ConnectionCard()
+                    FirmwareCard()
                     if model.session.isReady { NowPlayingCard() }
                     Text("Trillium plays straight into your music app over USB. You don't need this app open while you play; use it to pick a sound, watch the sensors or fine-tune.")
                         .font(.footnote).foregroundStyle(.secondary)
@@ -84,6 +85,8 @@ struct ConnectionCard: View {
             Label("Connect your Trillium", systemImage: "cable.connector").font(.headline)
             Text("Plug the instrument into this \(PresetsView.deviceWord) with a USB cable. It appears here as soon as it's detected.")
                 .font(.callout).foregroundStyle(.secondary)
+            Text("Setting up a new Seeed Studio XIAO nRF52840 Sense? Plug it in, then double-press its RESET button to install the Trillium firmware.")
+                .font(.caption).foregroundStyle(.secondary)
             #if os(iOS)
             Text("On iPhone or iPad, use a USB-C cable or a Lightning-to-USB camera adapter.")
                 .font(.caption).foregroundStyle(.secondary)
@@ -114,7 +117,8 @@ struct ConnectionCard: View {
                 Button("Disconnect") { model.disconnectConfig() }.controlSize(.small)
             }
             if let h = model.session.hello {
-                Text("Firmware \(h.firmwareString)").font(.caption).foregroundStyle(.secondary)
+                Text("\(model.connectedBoardName ?? "Trillium") · firmware \(h.firmwareString)")
+                    .font(.caption).foregroundStyle(.secondary)
             }
             if model.session.deviceRestarted {
                 Text("Trillium restarted since you last connected, so it went back to its default sound.")
