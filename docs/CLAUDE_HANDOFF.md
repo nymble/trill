@@ -7,14 +7,14 @@ Checkpoint written 2026-11-15 (PST). Facts were checked against the repository, 
 | Item | Value |
 |---|---|
 | Repository | `github.com/nymble/trill`, default branch `main` |
-| Last release | [v0.5.0](https://github.com/nymble/trill/releases/tag/v0.5.0), **prerelease**, tag on merge `3387a11` (PR #13). Release run 43350659969 green, checksums verified. Release UF2 sha256 `4f1d5a7c…` (built on Linux; differs from a local build) |
-| Work in progress | Branch `board-install-main` (on `3387a11`): 0.6.0 board identification and firmware installs from the app. **Not pushed, no PR yet** (needs the user's approval) |
+| Last release | [v0.5.1](https://github.com/nymble/trill/releases/tag/v0.5.1) (Grok, PR #14, merge `57ba69f`): adds the macOS DMG. **Releases are now always published (Latest), with the DMG**, not left as drafts/prereleases. v0.5.0 (`3387a11`) stays a prerelease |
+| Work in progress | Branch `board-install-main` (rebased on `57ba69f`): 0.6.0 board identification and firmware installs from the app. Worktree `~/cb/scratch/trill-claude-board` |
 | Local checks on that branch | `make ci` parts (fmt, clippy excl. `trill-cli`, test, tools-test, check-thumb, fw-check), protocol vectors current, `make apple-test` 66 tests, macOS and iOS Simulator builds. CI not run yet |
 | Stale | Local branch `feature/board-firmware-install` (commit `122d5e4`, an earlier copy of the same work) in the main checkout; superseded by `board-install-main`, delete after the PR is open |
 | Other remote branches | `docs/trillium-zero`, `docs/xiao-mcu-comparison`, `feature/app-ux-fw-0.5`, `feature/ipad-testing`, `feature/motion-play` (merged or superseded) |
 | App Store / TestFlight | Nothing submitted. Apps are unsigned / ad-hoc development builds, not notarized |
 
-**Rollback points:** `3387a11` = 0.5.0 (released). `0670634` = 0.4.0. `f48b01c` = 0.3.0.
+**Rollback points:** `57ba69f` = 0.5.1 (released). `3387a11` = 0.5.0. `0670634` = 0.4.0. `f48b01c` = 0.3.0.
 
 Never force-push or rewrite pushed history. Revert with new commits.
 
@@ -192,7 +192,7 @@ Backups under `~/Downloads/Trill-hwtest-20261107/backup/` (plus the app's folder
 
 1. **Hardware, with the user:** reinstall 0.6.0 without RESET (Settings › Firmware › *Reinstall firmware 0.6.0*; leave the board alone and watch it return).
 2. With approval: push `board-install-main`, open the PR, get CI green, merge when the user asks. Then delete the stale `feature/board-firmware-install`.
-3. Release 0.6.0 (CHANGELOG date, tag, draft release) only with approval for each step.
+3. Release 0.6.0 (CHANGELOG date, tag, published release with DMG) only with approval for each step. `release.yml` still creates a draft prerelease; publish it as Latest (or change the workflow to publish directly).
 4. Test the *New board found* path with a factory-new Sense, and the iOS install on a device.
 5. Trill Flex: find out why it is not detected; test touch mode.
 6. Microphone support (variant bit 2), when wanted.
