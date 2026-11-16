@@ -5,6 +5,7 @@
 | Item | State |
 |---|---|
 | Raspberry Pi wiring ([design](design-raspberry-pi.md)) | Proposal. Pins checked against Bela, Raspberry Pi docs. **Not tested on hardware** |
+| Trillium hardware T1 / F1 ([hardware/](../hardware/README.md)) | Revision A prototype design: shared core board (power switch, charging via the XIAO, RGB status LED, buttons), T1 and F1 schematics, perfboard layout, BOMs; enclosures T1 (printed), F1p (printed), F1w (laser-cut wood). **Not built yet** |
 | XIAO nRF52840 wiring ([design](design-xiao-nrf52840.md)) | Proposal. Pins and pull-ups checked against Seeed schematics and Nordic PS; power/battery section transcribed from the Sense schematic Rev V1.1. **Not tested on hardware**; no battery fitted or measured |
 | `trill-driver` | Implemented. Host-tested against datasheet byte sequences with mock I²C. Compiles for `thumbv7em-none-eabihf`. **Not run against a sensor** |
 | `trill` CLI (Linux) | Implemented. Host build and argument tests. Cross-built for ARMv6 and aarch64 musl. **Not run on a Pi with a sensor** |

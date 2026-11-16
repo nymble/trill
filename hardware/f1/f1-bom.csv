@@ -1,0 +1,36 @@
+Ref,Qty,Value,Description,Example part
+U1,1,XIAO nRF52840 Sense,"Seeed Studio XIAO nRF52840 Sense (nRF52840, BLE 5, LSM6DS3TR-C IMU, PDM mic, BQ25101 Li-ion charger). Soldered on 2 x 7-pin 2.54 mm male headers",Seeed Studio XIAO nRF52840 Sense (not the non-Sense or Plus variants)
+BT1,1,LiPo 1S,"Rechargeable lithium-polymer cell, 3.7 V nominal, 4.2 V full, with built-in protection circuit (PCM) and 2-pin JST-PH lead",T1: 502030 (~250 mAh)  F1: 503035 (~500 mAh)
+J1,1,JST-PH 2,"Battery connector: JST-PH 2.0 mm 2-pin male plug on a wire pigtail, wires soldered into the board (PH pitch is 2.0 mm and does not fit 2.54 mm perfboard)",JST-PH 2-pin pigtail (mates with the cell's PHR-2 housing)
+SW1,1,SPDT slide,"Power switch, SPDT slide, through-hole right angle, 2.5 mm pitch, actuator over the board's right edge. Breaks the battery + lead",C&K OS102011MA1QN1
+D1,1,RGB 5 mm CA,"Status LED, 5 mm diffused RGB, common anode, through-hole. Lead order assumed R, A (longest), G, B: confirm with a meter's diode test",Adafruit 159 / SparkFun COM-10821
+R3,1,680 Ω,"LED red series resistor, carbon/metal film, 1/4 W mini (body ≤ 3.6 mm), 0.3"" span",generic
+R4,1,150 Ω,"LED green series resistor, 1/4 W mini, 0.3"" span (tune 82-220 Ω)",generic
+R5,1,150 Ω,"LED blue series resistor, 1/4 W mini, 0.3"" span (tune 82-220 Ω)",generic
+SW2,1,Button A,"Tactile switch 6 x 6 mm, through-hole, 4.3 mm height. Wired diagonally so orientation does not matter",Omron B3F-1000
+SW3,1,Button B,"Tactile switch 6 x 6 mm, through-hole, 4.3 mm height, wired diagonally",Omron B3F-1000
+J3,1 (opt.),AUX 3,"Optional external buttons C and D: 1 x 3 pin 2.54 mm header or wire pads (C = D6, D = D7, GND)",generic
+R1,1,4.7 kΩ,"I2C SDA pull-up to 3V3, 1/4 W mini, 0.3"" span. Required for Trill",generic
+R2,1,4.7 kΩ,"I2C SCL pull-up to 3V3, 1/4 W mini, 0.3"" span. Required for Trill",generic
+J2,1,TRILL 5,"Trill / I2C connection: 5 wire pads (GND, 3V3, SDA, SCL, EVT), Qwiic colour order. Solder a cut Qwiic cable, or fit a 1 x 5 right-angle header for bench use",generic
+JP1,1 (opt.),EVT link,Optional wire link: Trill EVT to D6. Fit only if the Trill EVT pad is wired; then J3 pin 1 (button C) must stay unused,generic
+U2,1,Bela Trill Flex,"Trill Flex base (36.3 x 22.4 mm) with 32-pin 0.5 mm FFC socket; I2C address 0x48; 1.71-5.5 V, ~4 mA",Bela 160706-FLEX
+S1,1,Flex sensor,"Trill Flex 1-axis flex-PCB sensor, plugs into U2's FFC socket",supplied with U2
+W1,1,Qwiic cable,"JST-SH 4-pin (Qwiic) cable, one end cut and soldered to J2 1-4","supplied with U2, or any Qwiic cable"
+PB1,1,Perfboard,"2.54 mm pitch, single-sided pads, FR-4 1.6 mm, cut to 11 x 18 holes (27.9 x 45.7 mm)",any
+H1,2,Male header 1x7,"2.54 mm, standard 2.5 mm plastic, for U1 (usually supplied with the XIAO)",any
+W,-,Hook-up wire,"28-30 AWG insulated solid (wire-wrap) wire, several colours",any
+SP1,1,LED standoff,"Plastic spacer for 5 mm LED, cut to length (see enclosure doc)",any
+KT1,-,Insulating tape,Polyimide (Kapton) tape over the board underside / cell,any
+F1p:M1,1,F1p shell (top + walls),"3D printed, f1p-body.scad part=""shell""",print
+F1p:M2,1,F1p bottom plate,"3D printed, f1p-body.scad part=""plate""",print
+F1p:M3,2,Button cap,"3D printed, f1p-body.scad part=""caps"" (same as T1)",print
+F1p:M4,4,Heat-set insert M3,M3 x 5.7 mm OD x 4 mm long brass insert,any
+F1p:M5,4,Screw M3 x 6,"Button-head or countersunk, through the bottom plate",any
+F1p:M6,1,Foam tape,Double-sided foam tape for BT1 and the Trill base,any
+F1w:M1,1,Plywood sheet 3 mm,"Birch plywood, laser grade, >= 430 x 220 mm (f1w-sheet-3mm.svg)",any
+F1w:M2,1,Plywood sheet 1.5 mm,"Birch plywood, >= 215 x 75 mm (f1w-sheet-1.5mm.svg)",any
+F1w:M3,8,Screw M3 x 20,"Button head (ISO 7380) or socket head, through the stack from the top",any
+F1w:M4,8,Hex nut M3,Captured in layer L1,any
+F1w:M5,-,Wood glue,Only for the laminated button plungers (stack stays screw-assembled),any
+F1w:M6,1,Foam tape,Double-sided foam tape for BT1 and the Trill base,any

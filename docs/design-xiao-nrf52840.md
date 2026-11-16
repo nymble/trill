@@ -1,5 +1,7 @@
 # Design: Trill Flex → Seeed Studio XIAO nRF52840
 
+> **Superseded for wiring (2026-11-11):** the consolidated Trillium hardware design (models T1 and F1: schematics, perfboard layout, BOMs, enclosures) is in [`hardware/`](../hardware/README.md). This page remains the reference for the XIAO's on-board charger, battery switch-over and 3.3 V rail.
+
 **Status:** design proposal, **not hardware-validated** as a complete build. Firmware 0.5.0 has been run on one XIAO nRF52840 Sense (IMU and USB MIDI); a Trill Flex was not attached, and battery operation has not been measured. See [firmware-xiao-sense.md](firmware-xiao-sense.md). The shareable build guide, including both the motion-only and Flex variants and the battery switch, is [Trillium Zero](hardware/trillium-zero.md).
 
 ![Trillium Zero schematic: XIAO nRF52840 Sense, Bela Trill Flex, LiPo, and battery switch](images/trillium-zero.svg)

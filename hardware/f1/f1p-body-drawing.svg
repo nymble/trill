@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="297mm" height="210mm" viewBox="0 0 297 210">
+<rect width="297" height="210" fill="white"/>
+<rect x="6.000" y="6.000" width="285.000" height="198.000" rx="0" stroke="#1a1a1a" stroke-width="0.4" fill="none"/>
+<text x="12.000" y="15.500" font-family="Helvetica, Arial, sans-serif" font-size="4.6" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Trillium F1p body (3D printed): shell, bottom plate, button caps</text>
+<text x="12.000" y="20.500" font-family="Helvetica, Arial, sans-serif" font-size="2.2" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Source: f1/f1p-body.scad (parametric). Outside 192.8 x 36.0 x 19.0 mm. Visible sensor length 128.5 mm (tail allowance 17.0 mm: measure).</text>
+<text x="22.000" y="30.000" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">TOP VIEW (internals dashed)  1:1</text>
+<rect x="22.000" y="50.000" width="192.800" height="36.000" rx="3.0" stroke="#1a1a1a" stroke-width="0.45" fill="none"/>
+<rect x="24.400" y="52.400" width="188.000" height="31.200" rx="0" stroke="#8a8a8a" stroke-width="0.2" fill="none" stroke-dasharray="1.2,0.8"/>
+<rect x="74.400" y="56.800" width="132.000" height="22.400" rx="0" stroke="#1a1a1a" stroke-width="0.25" fill="#f6ecd0"/>
+<rect x="74.400" y="56.500" width="2.500" height="23.000" rx="0" stroke="#1a1a1a" stroke-width="0.2" fill="#555555"/>
+<text x="140.400" y="68.800" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">sensor channel 132.0 x 22.4, 0.4 deep</text>
+<rect x="26.610" y="52.700" width="45.720" height="27.940" rx="0" stroke="#8a8a8a" stroke-width="0.2" fill="none" stroke-dasharray="1.2,0.8"/>
+<rect x="81.400" y="56.800" width="36.300" height="22.400" rx="0" stroke="#2a5d9f" stroke-width="0.2" fill="none" stroke-dasharray="1.2,0.8"/>
+<text x="99.400" y="82.200" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="middle" font-weight="normal" font-style="normal" fill="#2a5d9f" dominant-baseline="auto">Trill base</text>
+<rect x="128.400" y="53.000" width="35.000" height="30.000" rx="0" stroke="#2a5d9f" stroke-width="0.2" fill="none" stroke-dasharray="1.2,0.8"/>
+<text x="145.900" y="86.000" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="middle" font-weight="normal" font-style="normal" fill="#2a5d9f" dominant-baseline="auto">cell 503035</text>
+<circle cx="122.900" cy="82.100" r="3.500" stroke="#8a8a8a" stroke-width="0.2" fill="none" stroke-dasharray="1.2,0.8"/>
+<circle cx="122.900" cy="53.900" r="3.500" stroke="#8a8a8a" stroke-width="0.2" fill="none" stroke-dasharray="1.2,0.8"/>
+<circle cx="207.900" cy="82.100" r="3.500" stroke="#8a8a8a" stroke-width="0.2" fill="none" stroke-dasharray="1.2,0.8"/>
+<circle cx="207.900" cy="53.900" r="3.500" stroke="#8a8a8a" stroke-width="0.2" fill="none" stroke-dasharray="1.2,0.8"/>
+<circle cx="55.820" cy="67.940" r="2.650" stroke="#1a1a1a" stroke-width="0.35" fill="none"/>
+<circle cx="63.440" cy="75.560" r="2.600" stroke="#1a1a1a" stroke-width="0.35" fill="none"/>
+<text x="69.040" y="76.460" font-family="Helvetica, Arial, sans-serif" font-size="2.4" text-anchor="middle" font-weight="bold" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">A</text>
+<circle cx="63.440" cy="57.780" r="2.600" stroke="#1a1a1a" stroke-width="0.35" fill="none"/>
+<text x="69.040" y="58.680" font-family="Helvetica, Arial, sans-serif" font-size="2.4" text-anchor="middle" font-weight="bold" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">B</text>
+<text x="35.900" y="67.670" font-family="Helvetica, Arial, sans-serif" font-size="3.0" text-anchor="middle" font-weight="bold" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">TRILLIUM</text>
+<line x1="21.900" y1="60.420" x2="21.900" y2="72.920" stroke="#b0362b" stroke-width="0.8" stroke-linecap="round"/>
+<text x="20.800" y="67.370" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="end" font-weight="normal" font-style="normal" fill="#b0362b" dominant-baseline="auto">USB-C</text>
+<line x1="50.280" y1="49.900" x2="56.280" y2="49.900" stroke="#b0362b" stroke-width="0.8" stroke-linecap="round"/>
+<text x="53.280" y="48.600" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="middle" font-weight="normal" font-style="normal" fill="#b0362b" dominant-baseline="auto">SW1</text>
+<line x1="22.000" y1="86.600" x2="22.000" y2="91.800" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="214.800" y1="86.600" x2="214.800" y2="91.800" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="118.400" y1="91.000" x2="22.000" y2="91.000" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="22.000" y1="91.000" x2="22.921" y2="91.389" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="22.000" y1="91.000" x2="22.921" y2="90.611" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="118.400" y1="91.000" x2="214.800" y2="91.000" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="214.800" y1="91.000" x2="213.879" y2="90.611" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="214.800" y1="91.000" x2="213.879" y2="91.389" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<text x="118.400" y="91.900" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="middle">192.8</text>
+<line x1="215.400" y1="86.000" x2="220.600" y2="86.000" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="215.400" y1="50.000" x2="220.600" y2="50.000" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="219.800" y1="68.000" x2="219.800" y2="86.000" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="219.800" y1="86.000" x2="220.189" y2="85.079" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="219.800" y1="86.000" x2="219.411" y2="85.079" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="219.800" y1="68.000" x2="219.800" y2="50.000" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="219.800" y1="50.000" x2="219.411" y2="50.921" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="219.800" y1="50.000" x2="220.189" y2="50.921" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<text x="220.700" y="68.000" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="middle" transform="rotate(90.0 220.700 68.000)">36.0</text>
+<line x1="22.000" y1="49.400" x2="22.000" y2="44.700" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="55.820" y1="49.400" x2="55.820" y2="44.700" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="38.910" y1="45.500" x2="22.000" y2="45.500" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="22.000" y1="45.500" x2="22.921" y2="45.889" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="22.000" y1="45.500" x2="22.921" y2="45.111" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="38.910" y1="45.500" x2="55.820" y2="45.500" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="55.820" y1="45.500" x2="54.899" y2="45.111" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="55.820" y1="45.500" x2="54.899" y2="45.889" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<text x="38.910" y="44.600" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="middle">33.8 LED</text>
+<line x1="22.000" y1="49.400" x2="22.000" y2="40.700" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="63.440" y1="49.400" x2="63.440" y2="40.700" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="42.720" y1="41.500" x2="22.000" y2="41.500" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="22.000" y1="41.500" x2="22.921" y2="41.889" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="22.000" y1="41.500" x2="22.921" y2="41.111" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="42.720" y1="41.500" x2="63.440" y2="41.500" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="63.440" y1="41.500" x2="62.519" y2="41.111" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="63.440" y1="41.500" x2="62.519" y2="41.889" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<text x="42.720" y="40.600" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="middle">41.4 buttons</text>
+<line x1="22.000" y1="49.400" x2="22.000" y2="36.700" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="74.400" y1="49.400" x2="74.400" y2="36.700" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="48.200" y1="37.500" x2="22.000" y2="37.500" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="22.000" y1="37.500" x2="22.921" y2="37.889" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="22.000" y1="37.500" x2="22.921" y2="37.111" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="48.200" y1="37.500" x2="74.400" y2="37.500" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="74.400" y1="37.500" x2="73.479" y2="37.111" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="74.400" y1="37.500" x2="73.479" y2="37.889" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<text x="48.200" y="36.600" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="middle">52.4 tail slot</text>
+<text x="22.000" y="98.000" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">SECTION B-B (along the centre line)  1:1, heights 2.5:1</text>
+<rect x="22.000" y="104.000" width="192.800" height="5.000" rx="0" stroke="#1a1a1a" stroke-width="0.3" fill="#c9d6e8"/>
+<rect x="22.000" y="104.000" width="2.400" height="47.500" rx="0" stroke="#1a1a1a" stroke-width="0.3" fill="#c9d6e8"/>
+<rect x="212.400" y="104.000" width="2.400" height="47.500" rx="0" stroke="#1a1a1a" stroke-width="0.3" fill="#c9d6e8"/>
+<rect x="24.600" y="145.500" width="187.600" height="6.000" rx="0" stroke="#1a1a1a" stroke-width="0.3" fill="#dcdcdc"/>
+<rect x="74.400" y="104.000" width="2.500" height="5.000" rx="0" stroke="none" stroke-width="0.25" fill="white"/>
+<rect x="26.610" y="132.750" width="45.720" height="4.000" rx="0" stroke="#1a1a1a" stroke-width="0.25" fill="#9fc79f"/>
+<text x="49.470" y="131.750" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">core board</text>
+<rect x="81.400" y="139.000" width="36.300" height="4.000" rx="0" stroke="#1a1a1a" stroke-width="0.25" fill="#5d8f6a"/>
+<text x="99.400" y="134.250" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Trill base (foam tape)</text>
+<rect x="128.400" y="133.000" width="35.000" height="12.500" rx="0" stroke="#1a1a1a" stroke-width="0.25" fill="#f0e6c8"/>
+<text x="145.900" y="140.050" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">cell</text>
+<line x1="76.900" y1="104.500" x2="205.400" y2="104.500" stroke="#d4880f" stroke-width="0.9" stroke-linecap="round"/>
+<path d="M 75.65 104.00 L 75.65 130.75 Q 75.65 137.00 78.40 137.00 L 83.40 137.00" stroke="#d4880f" stroke-width="0.9" fill="none"/>
+<text x="83.400" y="102.800" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#a0640a" dominant-baseline="auto">sensor tail through slot to FFC</text>
+<line x1="215.800" y1="145.500" x2="218.800" y2="145.500" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<text x="219.800" y="146.200" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">2.4</text>
+<line x1="215.800" y1="132.750" x2="218.800" y2="132.750" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<text x="219.800" y="133.450" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">7.5</text>
+<line x1="215.800" y1="109.000" x2="218.800" y2="109.000" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<text x="219.800" y="109.700" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">17.0</text>
+<line x1="215.800" y1="104.000" x2="218.800" y2="104.000" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<text x="219.800" y="104.700" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">19.0</text>
+<text x="234.000" y="98.000" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">END (USB-C)  1.5:1</text>
+<rect x="234.000" y="104.000" width="54.000" height="28.500" rx="0.8" stroke="#1a1a1a" stroke-width="0.45" fill="none"/>
+<rect x="249.630" y="108.050" width="18.750" height="10.500" rx="1" stroke="#1a1a1a" stroke-width="0.35" fill="none"/>
+<line x1="234.000" y1="133.100" x2="234.000" y2="138.300" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="288.000" y1="133.100" x2="288.000" y2="138.300" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="261.000" y1="137.500" x2="234.000" y2="137.500" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="234.000" y1="137.500" x2="234.921" y2="137.889" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="234.000" y1="137.500" x2="234.921" y2="137.111" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="261.000" y1="137.500" x2="288.000" y2="137.500" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="288.000" y1="137.500" x2="287.079" y2="137.111" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="288.000" y1="137.500" x2="287.079" y2="137.889" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<text x="261.000" y="138.400" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="middle">36.0</text>
+<line x1="288.600" y1="132.500" x2="292.800" y2="132.500" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="288.600" y1="104.000" x2="292.800" y2="104.000" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="292.000" y1="118.250" x2="292.000" y2="132.500" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="292.000" y1="132.500" x2="292.389" y2="131.579" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="292.000" y1="132.500" x2="291.611" y2="131.579" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="292.000" y1="118.250" x2="292.000" y2="104.000" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="292.000" y1="104.000" x2="291.611" y2="104.921" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="292.000" y1="104.000" x2="292.389" y2="104.921" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<text x="292.900" y="118.250" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="middle" transform="rotate(90.0 292.900 118.250)">19.0</text>
+<line x1="233.400" y1="132.500" x2="229.200" y2="132.500" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="233.400" y1="113.300" x2="229.200" y2="113.300" stroke="#8a8a8a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="230.000" y1="122.900" x2="230.000" y2="132.500" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="230.000" y1="132.500" x2="230.389" y2="131.579" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="230.000" y1="132.500" x2="229.611" y2="131.579" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="230.000" y1="122.900" x2="230.000" y2="113.300" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="230.000" y1="113.300" x2="229.611" y2="114.221" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<line x1="230.000" y1="113.300" x2="230.389" y2="114.221" stroke="#8a8a8a" stroke-width="0.18" stroke-linecap="round"/>
+<text x="229.100" y="122.900" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="middle" transform="rotate(90.0 229.100 122.900)">12.8</text>
+<text x="14.000" y="160.000" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Shell prints top-surface down (no supports: the USB opening bridges 12.5 mm). Plate prints flat.</text>
+<text x="14.000" y="163.300" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">PLA or PETG, 0.2 mm layers, 3-4 perimeters, 20-25 % infill. Caps: as T1 (same part).</text>
+<text x="14.000" y="166.600" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Fit four M3 heat-set inserts in the bosses (pilot Ø4.0 x 5.5). Plate: tongue into the USB-end wall slot first,</text>
+<text x="14.000" y="169.900" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">then four M3 x 6 countersunk screws from below.</text>
+<text x="14.000" y="173.200" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Board: on four plate posts, located by lips; clamped by four shell posts. Same corner zones as T1.</text>
+<text x="14.000" y="176.500" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Sensor: dry-fit the tail through the slot into the Trill FFC, then set `tail_len` so the strip ends</text>
+<text x="14.000" y="179.800" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">6.0 mm short of the far wall. Stick the strip into the 0.4 mm channel with its own adhesive or thin tape.</text>
+<text x="14.000" y="183.100" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Trill base and cell: double-sided foam tape inside the printed locators.</text>
+<text x="14.000" y="186.400" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#b0362b" dominant-baseline="auto">! Cable W1 (Qwiic) runs along the -Y side, past the Trill base, to J2 at the board's inner edge.</text>
+<text x="14.000" y="189.700" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#b0362b" dominant-baseline="auto">! Capacitive sensing is affected by fingers near the tail and FFC: keep the slot end free of metal.</text>
+<rect x="200.000" y="160.000" width="85.000" height="42.000" rx="0" stroke="#1a1a1a" stroke-width="0.35" fill="none"/>
+<text x="202.000" y="165.200" font-family="Helvetica, Arial, sans-serif" font-size="3.6" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">F1p body</text>
+<line x1="200.000" y1="168.000" x2="285.000" y2="168.000" stroke="#1a1a1a" stroke-width="0.2" stroke-linecap="round"/>
+<text x="202.000" y="171.853" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Project</text>
+<text x="222.000" y="171.853" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Trillium hardware (nymble/trill)</text>
+<line x1="200.000" y1="173.667" x2="285.000" y2="173.667" stroke="#1a1a1a" stroke-width="0.2" stroke-linecap="round"/>
+<text x="202.000" y="177.520" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Part</text>
+<text x="222.000" y="177.520" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">F1p body</text>
+<line x1="200.000" y1="179.333" x2="285.000" y2="179.333" stroke="#1a1a1a" stroke-width="0.2" stroke-linecap="round"/>
+<text x="202.000" y="183.187" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Scale</text>
+<text x="222.000" y="183.187" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">1:1 (end view 1.5:1)</text>
+<line x1="200.000" y1="185.000" x2="285.000" y2="185.000" stroke="#1a1a1a" stroke-width="0.2" stroke-linecap="round"/>
+<text x="202.000" y="188.853" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Revision</text>
+<text x="222.000" y="188.853" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">A (prototype)</text>
+<line x1="200.000" y1="190.667" x2="285.000" y2="190.667" stroke="#1a1a1a" stroke-width="0.2" stroke-linecap="round"/>
+<text x="202.000" y="194.520" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Date</text>
+<text x="222.000" y="194.520" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">2026-11-11</text>
+<line x1="200.000" y1="196.333" x2="285.000" y2="196.333" stroke="#1a1a1a" stroke-width="0.2" stroke-linecap="round"/>
+<text x="202.000" y="200.187" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Units</text>
+<text x="222.000" y="200.187" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">mm; general tolerance ±0.2 (print), ±0.1 (laser)</text>
+</svg>
