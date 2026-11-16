@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Versions follow [Semant
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-11-15
+
+### Added
+- **macOS DMG**: tagged releases include `Trillium-macOS-X.Y.Z.dmg` (the unsigned universal app plus an Applications symlink), listed in `SHA256SUMS`. The app is not notarized or signed with a Developer ID; first launch needs *Open Anyway* or right-click › *Open* (see `docs/releasing.md`). `make apple-dmg` builds the image on a Mac. The zip remains available.
+
 ## [0.5.0] - 2026-11-12
 
 The first release published on GitHub, so it also lists the 0.4.0 work that was never released separately.
