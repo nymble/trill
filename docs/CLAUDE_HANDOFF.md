@@ -88,11 +88,11 @@ Versions move together: root `Cargo.toml`, `firmware/xiao-sense/Cargo.toml`, and
 | **0.6.0 app install on the Sense**: 0.5.0 → 0.6.0, one click after a RESET double-press, no file or drive picked; backup's `app-only.uf2` identical to the `xiao_uf2.py` split; reconnected with fw 0.6.0, `imu=run`, `cal=1` | Hardware, 2026-11-14, macOS, unsigned build from `board-install-main` |
 | 0.6.0 (early build, before action 6) on a plain XIAO nRF52840 (board 2, bootloader 0.9.0): `imu: absent`, internal bus scan found no devices, USB MIDI up, no fault LED | Hardware, 2026-11-14 |
 | **Reinstall without RESET** (action 6, Settings › Firmware › *Reinstall firmware 0.6.0*) | **Not tested.** Next hardware step |
-| New Sense with Seeed's factory firmware (*New board found* card, IOKit detection) | **Not tested** |
+| New Sense with Seeed's factory firmware: Install, one RESET double-press, Seeed firmware backed up, back as 0.6.0, IMU calibrated, **Trill sensor `trill=run`** | Hardware, 2026-11-15/16 (board 3, bootloader 0.6.1), macOS, unsigned build from PR #15 |
 | iOS/iPadOS install (folder picker), iPhone/iPad on a device | **Not tested** (iPad Simulator screenshots only) |
 | Signed, sandboxed build (CoreMIDI access, drive entitlement) | **Not tested** |
 | Motion modes (tilt notes, theremin, tilt + strike, directional strikes, gestures, CC mapping) | Simulation and unit tests; only light hands-on use |
-| Trill Flex sensor | **Not detected** (`trill=retry`); touch mode untested with a real strip |
+| Trill Flex sensor | Detected on board 3 (`trill=run`, reads without errors); board 1 still `trill=retry`. Touch-to-MIDI not yet exercised |
 
 ### Known issues
 - CI's iPad Simulator screenshot step once hung for 55 min (cancelled; the rerun passed). Consider a timeout on that step.
