@@ -4,7 +4,7 @@ All notable changes to this project are documented here. Versions follow [Semant
 
 ## [Unreleased]
 
-Version 0.6.0 (workspace, firmware and app).
+## [0.6.0] - 2026-11-15
 
 ### Added
 - **The app installs firmware** (macOS; iOS untested on a device): each Trillium build carries the firmware of its own version (`make apple-firmware`; CI and releases bundle the UF2 from the same commit). The app identifies the board and its firmware, offers an update when the board runs older firmware, says "update the app" when it runs newer, and spots a new XIAO with other firmware or a waiting bootloader drive. Installs back up `CURRENT.UF2` plus an app-only restore image first, use the `xiao_uf2.py` safety rules, then reconnect and check the version.
@@ -20,7 +20,8 @@ Version 0.6.0 (workspace, firmware and app).
 - App install on the XIAO nRF52840 Sense (bootloader 0.6.1), macOS, unsigned build: 0.5.0 → 0.6.0 with one click after a RESET double-press (0.5.0 has no action 6), no file or drive picked; backup written to Application Support (its app-only image matches the `xiao_uf2.py` split); the board reconnected reporting 0.6.0, IMU running, calibrated.
 
 ### Not yet tested on hardware
-- Reinstall without RESET through action 6; a factory-new Sense with Seeed firmware; iOS; a signed, sandboxed build.
+- **Reinstalling from the app without RESET** (action 6, Settings › Firmware › *Reinstall firmware 0.6.0*) is not yet fully tested on hardware; it will be tested with this release. If the board does not come back, double-press RESET and install again.
+- A factory-new Sense with Seeed firmware; iOS; a signed, sandboxed build.
 
 ## [0.5.1] - 2026-11-15
 
