@@ -5,6 +5,11 @@ These files come from the CI workflow of https://github.com/nymble/trill.
 They are development builds, not releases. Licence: GPL-3.0-only (see the
 repository; commercial terms in COMMERCIAL-LICENSE.md).
 
+Trillium-macOS-<version>.dmg (GitHub Releases)
+  The same universal macOS app in a disk image, with an Applications
+  shortcut. Open the DMG, drag Trillium to Applications, then follow the
+  first-launch steps below.
+
 Trillium-macOS-unsigned-dev-<version>.zip
   Universal (Apple Silicon + Intel) macOS 13+ app. NOT notarized and NOT
   signed with a Developer ID: it carries only the linker's ad-hoc
