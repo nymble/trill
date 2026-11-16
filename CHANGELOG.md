@@ -17,6 +17,10 @@ Version 0.6.0 (workspace, firmware and app).
 
 ### Tested on hardware
 - Firmware 0.6.0 (before action 6 was added) on a plain XIAO nRF52840 (bootloader 0.9.0): `imu=absent`, internal bus scan found no devices, USB MIDI up, no fault LED.
+- App install on the XIAO nRF52840 Sense (bootloader 0.6.1), macOS, unsigned build: 0.5.0 → 0.6.0 with one click after a RESET double-press (0.5.0 has no action 6), no file or drive picked; backup written to Application Support (its app-only image matches the `xiao_uf2.py` split); the board reconnected reporting 0.6.0, IMU running, calibrated.
+
+### Not yet tested on hardware
+- Reinstall without RESET through action 6; a factory-new Sense with Seeed firmware; iOS; a signed, sandboxed build.
 
 ## [0.5.1] - 2026-11-15
 
