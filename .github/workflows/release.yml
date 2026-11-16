@@ -128,16 +128,20 @@ jobs:
       - name: Package
         run: |
           make apple-dist
+          make apple-dmg
           app=build/apple/Build/Products/Release/Trillium.app
           lipo -info "$app/Contents/MacOS/Trillium"
           test -f "$app/Contents/Resources/AppIcon.icns"
           test -f dist/apple/Trillium-iOS-Simulator-${{ needs.check.outputs.version }}.zip
+          test -f dist/Trillium-macOS-${{ needs.check.outputs.version }}.dmg
           mkdir -p dist
           cp dist/apple/*.zip dist/
       - uses: actions/upload-artifact@v4
         with:
           name: rel-apple
-          path: dist/*.zip
+          path: |
+            dist/*.zip
+            dist/Trillium-macOS-*.dmg
           if-no-files-found: error
 
   package:
@@ -158,7 +162,7 @@ jobs:
           v=${{ needs.check.outputs.version }}
           make test-kit KIT_SHA="${GITHUB_SHA::7}" KIT_APP="in/Trillium-macOS-unsigned-dev-$v.zip" KIT_IOS="in/Trillium-iOS-Simulator-$v.zip" KIT_UF2="in/xiao-sense-fw-$v.uf2"
           mkdir -p out
-          cp in/*.zip in/*.uf2 in/*.tar.gz dist/Trillium-*.zip tools/xiao_uf2.py out/
+          cp in/*.zip in/*.uf2 in/*.tar.gz in/*.dmg dist/Trillium-*.zip tools/xiao_uf2.py out/
           (cd out && sha256sum * > SHA256SUMS && cat SHA256SUMS)
           if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
             python3 tools/release_notes.py "$v" > notes.md

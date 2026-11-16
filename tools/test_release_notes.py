@@ -42,6 +42,7 @@ class ReleaseNotesTests(unittest.TestCase):
         self.assertIn("xiao-sense-fw-1.2.3.uf2", notes)
         self.assertIn("Trillium-iOS-Simulator-1.2.3.zip", notes)
         self.assertIn("Trillium-macOS-unsigned-dev-1.2.3.zip", notes)
+        self.assertIn("Trillium-macOS-1.2.3.dmg", notes)
 
 
 if __name__ == "__main__":

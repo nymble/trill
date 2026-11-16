@@ -45,7 +45,7 @@ jobs:
       - name: Motion synth demo render
         run: cargo run --release --locked -p motion-synth --example render_wav -- /tmp/motion-synth-demo.wav
       - name: Makefile parses
-        run: make --dry-run ci pi-zero dist fw-uf2 synth-demo protocol-vectors apple apple-test-ipad-sim apple-ipad-sim apple-ios-ipa test-kit >/dev/null
+        run: make --dry-run ci pi-zero dist fw-uf2 synth-demo protocol-vectors apple apple-test-ipad-sim apple-ipad-sim apple-ios-ipa apple-dmg test-kit >/dev/null
 
   firmware:
     name: XIAO nRF52840 Sense firmware (link + UF2 check)
@@ -137,12 +137,13 @@ jobs:
       - name: Package and inspect
         run: |
           make apple-dist
+          make apple-dmg
           app=build/apple/Build/Products/Release/Trillium.app
           lipo -info "$app/Contents/MacOS/Trillium"
           plutil -p "$app/Contents/Info.plist"
           codesign -dv "$app" 2>&1 || true
           unzip -l dist/apple/Trillium-iOS-Simulator-*.zip | tail -n 3
-          ls -l dist/ipad-screenshots/
+          ls -l dist/Trillium-macOS-*.dmg dist/ipad-screenshots/
       - uses: actions/upload-artifact@v4
         with:
           name: trillium-apple-apps-unsigned-dev

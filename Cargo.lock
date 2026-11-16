@@ -395,7 +395,7 @@ dependencies = [
 
 [[package]]
 name = "instrument-events"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "heapless",
  "libm",
@@ -440,7 +440,7 @@ checksum = "4744e383959f0db86ede514b809b1c53251889093803c05267acc7d4e7030d70"
 
 [[package]]
 name = "lsm6ds3trc"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-mock",
@@ -448,7 +448,7 @@ dependencies = [
 
 [[package]]
 name = "motion-synth"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "libm",
 ]
@@ -538,7 +538,7 @@ checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 
 [[package]]
 name = "status-led"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-mock",
@@ -563,7 +563,7 @@ dependencies = [
 
 [[package]]
 name = "trill-cli"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "clap",
  "ctrlc",
@@ -573,7 +573,7 @@ dependencies = [
 
 [[package]]
 name = "trill-config"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "heapless",
  "instrument-events",
@@ -581,7 +581,7 @@ dependencies = [
 
 [[package]]
 name = "trill-driver"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "embedded-hal 1.0.0",
  "embedded-hal-mock",
@@ -589,7 +589,7 @@ dependencies = [
 
 [[package]]
 name = "trill-usb"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "critical-section",
  "embassy-usb",

@@ -86,6 +86,7 @@ make apple-ios-device     # iOS app for devices: compile check only, NOT an inst
 make apple-ipad-sim       # boot an iPad Simulator, install, launch, save screenshots
 make apple-ios-ipa        # development IPA (needs Local.xcconfig with your team)
 make apple-dist           # dist/apple/*.zip + SHA256SUMS
+make apple-dmg            # dist/Trillium-macOS-<version>.dmg (macOS only; needs apple-mac)
 make apple                # test + macOS + iOS Simulator + device compile + dist
 ```
 
@@ -94,6 +95,11 @@ On Linux, `make apple-test` runs the platform-independent TrillKit tests (protoc
 The app icon (`apple/App/Shared/Assets.xcassets/AppIcon.appiconset`) is drawn in code: after changing `apple/scripts/make_app_icon.swift`, run `make apple-icon` and commit the PNGs. Tagged versions are packaged as GitHub Releases ([releasing.md](releasing.md)).
 
 ## Run and install
+
+**Mac, from a release DMG:**
+1. Open `Trillium-macOS-<version>.dmg` and drag Trillium to Applications.
+2. The app is not notarized and carries only the linker's ad-hoc signature, so Gatekeeper blocks it the first time. Only if you trust the build and have checked `SHA256SUMS`: on macOS 15 or newer, try to open it once, then use *System Settings › Privacy & Security › Open Anyway*; on macOS 13 or 14, right-click Trillium.app and choose *Open*.
+3. CI and release builds use `CODE_SIGNING_ALLOWED=NO`, so entitlements (App Sandbox) are not applied.
 
 **Mac, from Xcode:**
 1. Select the **TrilliumMac** scheme and press Run.
@@ -123,6 +129,8 @@ The app icon (`apple/App/Shared/Assets.xcassets/AppIcon.appiconset`) is drawn in
 5. This path has not been tested on a physical iPad in this project's CI.
 
 No team, certificate or profile is committed. The regular CI and release jobs never sign. An optional, manual-dispatch workflow (`.github/workflows/ios-dev-ipa.yml`) can build a signed development IPA when the repository secrets `IOS_DEVELOPMENT_TEAM`, `IOS_CERTIFICATE_BASE64`, `IOS_CERTIFICATE_PASSWORD` and `IOS_PROVISIONING_PROFILE_BASE64` are present; that workflow is untested, because those secrets are not configured.
+
+**Release downloads** include `Trillium-macOS-<version>.dmg` (the macOS app plus an Applications symlink) as well as the zip below. First-launch steps are the same as for the zip.
 
 **CI artifacts:** the workflow artifact `trillium-apple-apps-unsigned-dev` holds:
 - `Trillium-macOS-unsigned-dev-<version>.zip`: the macOS app. It is not notarized and carries only the linker's ad-hoc signature, so entitlements (sandbox) are not applied. Gatekeeper blocks it after download. Only if you trust the build and its checksum: on macOS 15 try to open it once, then use *System Settings › Privacy & Security › Open Anyway*; on macOS 13/14 use *right-click › Open*; or run `xattr -dr com.apple.quarantine Trillium.app`.

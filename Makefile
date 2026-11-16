@@ -17,7 +17,7 @@ FW_ELF  := $(FW_DIR)/target/thumbv7em-none-eabihf/release/xiao-sense-fw
 FW_UF2  := $(DIST)/xiao-sense-fw-$(VERSION).uf2
 
 .PHONY: all ci fmt fmt-check clippy test tools-test check-thumb fw fw-check fw-uf2 fw-uf2-pcm synth-demo build pi-zero pi-arm64 x86-musl dist clean \
-        protocol-vectors apple apple-project apple-test apple-test-ios-sim apple-test-ipad-sim apple-mac apple-ios-sim apple-ios-device apple-ipad-sim apple-ios-ipa apple-dist apple-icon test-kit
+        protocol-vectors apple apple-project apple-test apple-test-ios-sim apple-test-ipad-sim apple-mac apple-ios-sim apple-ios-device apple-ipad-sim apple-ios-ipa apple-dist apple-dmg apple-icon test-kit
 
 all: ci
 
@@ -166,6 +166,32 @@ apple-dist:
 	ditto -c -k --keepParent $(APPLE_DD)/Build/Products/Debug-iphonesimulator/Trillium.app $(DIST)/apple/Trillium-iOS-Simulator-$(VERSION).zip
 	cp $(APPLE)/DIST-README.txt $(DIST)/apple/README.txt
 	cd $(DIST)/apple && shasum -a 256 *.zip > SHA256SUMS && cat SHA256SUMS
+
+# macOS disk image for the release download: Trillium.app plus an
+# /Applications symlink. Needs hdiutil (macOS only). The app is unsigned
+# (linker ad-hoc only). Run after `make apple-mac`.
+apple-dmg:
+	@test -d $(APPLE_DD)/Build/Products/Release/Trillium.app || { echo "missing Trillium.app (make apple-mac)"; exit 1; }
+	rm -rf $(DIST)/dmg-stage
+	mkdir -p $(DIST)/dmg-stage
+	ditto $(APPLE_DD)/Build/Products/Release/Trillium.app $(DIST)/dmg-stage/Trillium.app
+	ln -s /Applications $(DIST)/dmg-stage/Applications
+	rm -f $(DIST)/Trillium-macOS-$(VERSION).dmg
+	hdiutil create -volname "Trillium $(VERSION)" -srcfolder $(DIST)/dmg-stage \
+		-ov -format UDZO -fs HFS+ $(DIST)/Trillium-macOS-$(VERSION).dmg
+	rm -rf $(DIST)/dmg-stage
+	hdiutil imageinfo $(DIST)/Trillium-macOS-$(VERSION).dmg
+	mnt=$$(mktemp -d $(DIST)/dmg-mnt.XXXXXX); \
+	hdiutil attach -nobrowse -readonly -mountpoint "$$mnt" $(DIST)/Trillium-macOS-$(VERSION).dmg; \
+	ok=1; \
+	test -d "$$mnt/Trillium.app" || ok=0; \
+	test -L "$$mnt/Applications" || ok=0; \
+	test "$$(readlink "$$mnt/Applications")" = "/Applications" || ok=0; \
+	hdiutil detach "$$mnt"; \
+	rmdir "$$mnt"; \
+	test $$ok -eq 1
+	ls -l $(DIST)/Trillium-macOS-$(VERSION).dmg
+	shasum -a 256 $(DIST)/Trillium-macOS-$(VERSION).dmg
 
 # ---- Test kit: Mac app + iOS Simulator app + matching firmware -----------
 # Packages already-built inputs (no build, no device access):

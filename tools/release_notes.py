@@ -16,7 +16,8 @@ DOWNLOADS = """\
 
 | File | What it is |
 |---|---|
-| `Trillium-macOS-unsigned-dev-{v}.zip` | Trillium app for macOS 13+ (Apple Silicon and Intel) |
+| `Trillium-macOS-{v}.dmg` | Trillium app for macOS 13+ (Apple Silicon and Intel). Drag Trillium to Applications. |
+| `Trillium-macOS-unsigned-dev-{v}.zip` | The same macOS app as a zip (Apple Silicon and Intel) |
 | `Trillium-iOS-Simulator-{v}.zip` | Trillium app for the iPhone and iPad Simulator (iOS/iPadOS 16+). It cannot be installed on a physical device. The Simulator has no USB MIDI device, so Home shows the plug-in prompt. |
 | `xiao-sense-fw-{v}.uf2` | Instrument firmware for the Seeed XIAO nRF52840 Sense (application only; bootloader and SoftDevice untouched) |
 | `xiao_uf2.py` | Checks the firmware file and copies it to the board only when asked |
@@ -24,7 +25,7 @@ DOWNLOADS = """\
 | `trill-{v}-<target>.tar.gz` | `trill` command-line tool for Raspberry Pi and Linux |
 | `SHA256SUMS` | Checksums: `shasum -a 256 -c SHA256SUMS --ignore-missing` |
 
-**Opening the app.** It is not notarized or signed with a Developer ID, so macOS blocks it the first time. On macOS 15 or newer, try to open it once, then go to System Settings > Privacy & Security > *Open Anyway*. On macOS 13 or 14, right-click Trillium.app and choose *Open*.
+**Opening the app.** Open the DMG and drag Trillium to Applications (or unzip the zip). The app is not notarized or signed with a Developer ID, so macOS blocks it the first time. On macOS 15 or newer, try to open it once, then go to System Settings > Privacy & Security > *Open Anyway*. On macOS 13 or 14, right-click Trillium.app and choose *Open*.
 
 **Updating the firmware.** Keep a backup of your current firmware first. Then double-press RESET on the XIAO so the `XIAO-SENSE` drive appears, and run:
 
