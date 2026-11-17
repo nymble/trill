@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="420mm" height="297mm" viewBox="0 0 420 297">
+<rect width="420" height="297" fill="white"/>
+<rect x="8.000" y="8.000" width="404.000" height="281.000" rx="0" stroke="#1a1a1a" stroke-width="0.4" fill="none"/>
+<text x="16.000" y="20.000" font-family="Helvetica, Arial, sans-serif" font-size="5.4" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Trillium F1w body (laser-cut birch plywood, layered and bolted)</text>
+<text x="16.000" y="26.000" font-family="Helvetica, Arial, sans-serif" font-size="2.4" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Source: f1/f1w-sheet-3mm.svg + f1w-sheet-1.5mm.svg (generated, kerf 0.15 mm). Outside 203.0 x 49.2 x 22.5 mm. Visible sensor length 125.5 mm.</text>
+<g transform="translate(16,40) scale(0.8)"><polygon points="0.000,49.200 203.000,49.200 203.000,0.000 0.000,0.000" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<polygon points="59.000,36.100 59.000,13.100 61.500,13.100 61.500,36.100" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<circle cx="4.500" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="4.500" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="70.000" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="70.000" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="136.000" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="136.000" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="198.500" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="198.500" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="40.420" cy="24.540" r="2.650" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="48.040" cy="32.160" r="2.600" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="48.040" cy="14.380" r="2.600" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<rect x="61.500" y="13.400" width="126.500" height="22.400" rx="0" stroke="none" stroke-width="0.25" fill="#e8dcc0"/>
+<path d="M 12.675 18.830 L 15.094 18.830 L 15.094 19.342 L 14.223 19.342 L 14.223 21.455 L 13.547 21.455 L 13.547 19.342 L 12.675 19.342 L 12.675 18.830 Z M 16.405 19.994 Q 16.618 19.994 16.710 19.915 Q 16.802 19.836 16.802 19.655 Q 16.802 19.475 16.710 19.398 Q 16.618 19.320 16.405 19.320 L 16.120 19.320 L 16.120 19.994 L 16.405 19.994 Z M 16.120 20.461 L 16.120 21.455 L 15.444 21.455 L 15.444 18.830 L 16.477 18.830 Q 16.996 18.830 17.237 19.004 Q 17.479 19.178 17.479 19.554 Q 17.479 19.814 17.353 19.981 Q 17.227 20.148 16.974 20.228 Q 17.113 20.259 17.223 20.371 Q 17.333 20.483 17.446 20.709 L 17.813 21.455 L 17.092 21.455 L 16.772 20.803 Q 16.676 20.606 16.576 20.534 Q 16.477 20.461 16.312 20.461 L 16.120 20.461 Z M 18.216 18.830 L 18.893 18.830 L 18.893 21.455 L 18.216 21.455 L 18.216 18.830 Z M 19.555 18.830 L 20.232 18.830 L 20.232 20.943 L 21.420 20.943 L 21.420 21.455 L 19.555 21.455 L 19.555 18.830 Z M 21.849 18.830 L 22.526 18.830 L 22.526 20.943 L 23.714 20.943 L 23.714 21.455 L 21.849 21.455 L 21.849 18.830 Z M 24.143 18.830 L 24.820 18.830 L 24.820 21.455 L 24.143 21.455 L 24.143 18.830 Z M 25.483 18.830 L 26.159 18.830 L 26.159 20.403 Q 26.159 20.728 26.266 20.868 Q 26.372 21.008 26.613 21.008 Q 26.855 21.008 26.961 20.868 Q 27.068 20.728 27.068 20.403 L 27.068 18.830 L 27.744 18.830 L 27.744 20.403 Q 27.744 20.961 27.465 21.234 Q 27.186 21.506 26.613 21.506 Q 26.041 21.506 25.762 21.234 Q 25.483 20.961 25.483 20.403 L 25.483 18.830 Z M 28.406 18.830 L 29.267 18.830 L 29.864 20.235 L 30.466 18.830 L 31.325 18.830 L 31.325 21.455 L 30.686 21.455 L 30.686 19.535 L 30.081 20.950 L 29.652 20.950 L 29.047 19.535 L 29.047 21.455 L 28.406 21.455 L 28.406 18.830 Z" stroke="none" stroke-width="0.25" fill="#1a1a1a"/>
+<path d="M 18.736 25.837 L 20.257 25.837 L 20.257 26.263 L 19.300 26.263 L 19.300 26.670 L 20.200 26.670 L 20.200 27.097 L 19.300 27.097 L 19.300 28.024 L 18.736 28.024 L 18.736 25.837 Z M 20.861 27.634 L 21.359 27.634 L 21.359 26.221 L 20.848 26.326 L 20.848 25.942 L 21.356 25.837 L 21.892 25.837 L 21.892 27.634 L 22.390 27.634 L 22.390 28.024 L 20.861 28.024 L 20.861 27.634 Z M 22.702 26.383 L 23.212 26.383 L 23.487 27.514 L 23.764 26.383 L 24.202 26.383 L 24.478 27.502 L 24.754 26.383 L 25.264 26.383 L 24.832 28.024 L 24.259 28.024 L 23.982 26.896 L 23.707 28.024 L 23.134 28.024 L 22.702 26.383 Z" stroke="none" stroke-width="0.25" fill="#1a1a1a"/>
+<path d="M 54.252 32.865 L 53.429 32.865 L 53.299 33.237 L 52.770 33.237 L 53.526 31.196 L 54.154 31.196 L 54.910 33.237 L 54.381 33.237 L 54.252 32.865 Z M 53.561 32.486 L 54.120 32.486 L 53.841 31.674 L 53.561 32.486 Z" stroke="none" stroke-width="0.25" fill="#1a1a1a"/>
+<path d="M 53.817 14.206 Q 53.942 14.206 54.006 14.151 Q 54.070 14.097 54.070 13.990 Q 54.070 13.885 54.006 13.829 Q 53.942 13.774 53.817 13.774 L 53.526 13.774 L 53.526 14.206 L 53.817 14.206 Z M 53.835 15.099 Q 53.994 15.099 54.074 15.032 Q 54.154 14.965 54.154 14.830 Q 54.154 14.697 54.074 14.630 Q 53.995 14.564 53.835 14.564 L 53.526 14.564 L 53.526 15.099 L 53.835 15.099 Z M 54.325 14.364 Q 54.494 14.414 54.587 14.546 Q 54.680 14.679 54.680 14.872 Q 54.680 15.167 54.480 15.312 Q 54.281 15.457 53.873 15.457 L 53.000 15.457 L 53.000 13.416 L 53.790 13.416 Q 54.215 13.416 54.406 13.544 Q 54.597 13.673 54.597 13.956 Q 54.597 14.105 54.527 14.209 Q 54.457 14.314 54.325 14.364 Z" stroke="none" stroke-width="0.25" fill="#1a1a1a"/></g>
+<text x="16.000" y="37.500" font-family="Helvetica, Arial, sans-serif" font-size="2.6" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">TOP   z 19.5-22.5</text>
+<text x="54.000" y="37.500" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">3 mm. Engraved sensor pocket + labels; LED, button, tail-slot holes</text>
+<g transform="translate(16,87) scale(0.8)"><polygon points="0.000,49.200 203.000,49.200 203.000,0.000 0.000,0.000" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<polygon points="9.000,40.200 9.000,9.000 194.000,9.000 194.000,40.200" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<circle cx="4.500" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="4.500" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="70.000" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="70.000" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="136.000" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="136.000" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="198.500" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="198.500" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<path d="M 16.239 43.804 L 16.728 43.804 L 16.728 45.331 L 17.586 45.331 L 17.586 45.700 L 16.239 45.700 L 16.239 43.804 Z M 18.598 44.764 Q 18.469 44.764 18.405 44.848 Q 18.341 44.931 18.341 45.097 Q 18.341 45.263 18.405 45.347 Q 18.469 45.429 18.598 45.429 Q 18.727 45.429 18.791 45.347 Q 18.855 45.263 18.855 45.097 Q 18.855 44.931 18.791 44.848 Q 18.727 44.764 18.598 44.764 Z M 19.202 43.854 L 19.202 44.205 Q 19.081 44.147 18.974 44.120 Q 18.868 44.093 18.766 44.093 Q 18.548 44.093 18.426 44.214 Q 18.304 44.335 18.284 44.574 Q 18.368 44.512 18.465 44.481 Q 18.563 44.450 18.679 44.450 Q 18.969 44.450 19.148 44.620 Q 19.326 44.790 19.326 45.065 Q 19.326 45.370 19.127 45.553 Q 18.927 45.737 18.592 45.737 Q 18.223 45.737 18.020 45.488 Q 17.818 45.238 17.818 44.779 Q 17.818 44.310 18.055 44.041 Q 18.292 43.773 18.704 43.773 Q 18.835 43.773 18.958 43.793 Q 19.081 43.813 19.202 43.854 Z" stroke="none" stroke-width="0.25" fill="#8a8a8a"/></g>
+<text x="16.000" y="84.500" font-family="Helvetica, Arial, sans-serif" font-size="2.6" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">L6   z 16.5-19.5</text>
+<text x="54.000" y="84.500" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">3 mm frame</text>
+<g transform="translate(16,134) scale(0.8)"><polygon points="0.000,49.200 203.000,49.200 203.000,0.000 0.000,0.000 0.000,17.020 9.000,17.020 9.000,9.000 194.000,9.000 194.000,40.200 9.000,40.200 9.000,29.520 0.000,29.520" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<circle cx="4.500" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="4.500" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="70.000" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="70.000" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="136.000" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="136.000" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="198.500" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="198.500" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<path d="M 16.239 43.804 L 16.728 43.804 L 16.728 45.331 L 17.586 45.331 L 17.586 45.700 L 16.239 45.700 L 16.239 43.804 Z M 17.932 43.804 L 19.147 43.804 L 19.147 44.164 L 18.322 44.164 L 18.322 44.457 Q 18.378 44.442 18.434 44.434 Q 18.491 44.425 18.552 44.425 Q 18.898 44.425 19.091 44.599 Q 19.284 44.772 19.284 45.082 Q 19.284 45.389 19.074 45.563 Q 18.864 45.737 18.491 45.737 Q 18.329 45.737 18.171 45.706 Q 18.013 45.674 17.857 45.611 L 17.857 45.226 Q 18.012 45.315 18.151 45.360 Q 18.290 45.404 18.414 45.404 Q 18.591 45.404 18.693 45.317 Q 18.795 45.230 18.795 45.082 Q 18.795 44.932 18.693 44.846 Q 18.591 44.759 18.414 44.759 Q 18.308 44.759 18.189 44.787 Q 18.069 44.814 17.932 44.871 L 17.932 43.804 Z" stroke="none" stroke-width="0.25" fill="#8a8a8a"/></g>
+<text x="16.000" y="131.500" font-family="Helvetica, Arial, sans-serif" font-size="2.6" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">L5   z 13.5-16.5</text>
+<text x="54.000" y="131.500" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">3 mm frame, USB opening</text>
+<g transform="translate(16,181) scale(0.8)"><polygon points="0.000,49.200 203.000,49.200 203.000,0.000 0.000,0.000 0.000,17.020 9.000,17.020 9.000,9.000 194.000,9.000 194.000,40.200 9.000,40.200 9.000,29.520 0.000,29.520" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<circle cx="4.500" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="4.500" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="70.000" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="70.000" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="136.000" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="136.000" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="198.500" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="198.500" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<path d="M 16.239 43.804 L 16.728 43.804 L 16.728 45.331 L 17.586 45.331 L 17.586 45.700 L 16.239 45.700 L 16.239 43.804 Z M 18.614 44.207 L 18.078 45.000 L 18.614 45.000 L 18.614 44.207 Z M 18.533 43.804 L 19.076 43.804 L 19.076 45.000 L 19.346 45.000 L 19.346 45.355 L 19.076 45.355 L 19.076 45.700 L 18.614 45.700 L 18.614 45.355 L 17.774 45.355 L 17.774 44.936 L 18.533 43.804 Z" stroke="none" stroke-width="0.25" fill="#8a8a8a"/></g>
+<text x="16.000" y="178.500" font-family="Helvetica, Arial, sans-serif" font-size="2.6" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">L4   z 10.5-13.5</text>
+<text x="54.000" y="178.500" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">3 mm frame, USB opening</text>
+<g transform="translate(216,40) scale(0.8)"><polygon points="0.000,49.200 203.000,49.200 203.000,0.000 40.880,0.000 40.880,2.000 42.880,2.000 42.880,9.000 52.050,9.000 52.050,11.640 56.730,11.640 56.730,9.000 194.000,9.000 194.000,40.200 56.730,40.200 56.730,34.900 52.050,34.900 52.050,40.200 16.090,40.200 16.090,34.900 9.000,34.900 9.000,29.520 0.000,29.520" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<polygon points="0.000,17.020 9.000,17.020 9.000,11.640 16.090,11.640 16.090,9.000 32.880,9.000 32.880,2.000 34.880,2.000 34.880,0.000 0.000,0.000" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<circle cx="4.500" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="4.500" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="70.000" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="70.000" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="136.000" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="136.000" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="198.500" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="198.500" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<path d="M 16.239 43.804 L 16.728 43.804 L 16.728 45.331 L 17.586 45.331 L 17.586 45.700 L 16.239 45.700 L 16.239 43.804 Z M 18.868 44.678 Q 19.060 44.727 19.159 44.850 Q 19.259 44.972 19.259 45.162 Q 19.259 45.444 19.043 45.590 Q 18.827 45.737 18.414 45.737 Q 18.267 45.737 18.121 45.713 Q 17.974 45.690 17.831 45.643 L 17.831 45.266 Q 17.968 45.334 18.103 45.369 Q 18.238 45.404 18.369 45.404 Q 18.563 45.404 18.667 45.337 Q 18.770 45.270 18.770 45.144 Q 18.770 45.014 18.664 44.948 Q 18.558 44.881 18.351 44.881 L 18.156 44.881 L 18.156 44.566 L 18.361 44.566 Q 18.546 44.566 18.635 44.508 Q 18.726 44.451 18.726 44.333 Q 18.726 44.224 18.638 44.164 Q 18.550 44.104 18.390 44.104 Q 18.273 44.104 18.152 44.131 Q 18.031 44.157 17.912 44.209 L 17.912 43.852 Q 18.056 43.811 18.199 43.791 Q 18.341 43.770 18.478 43.770 Q 18.847 43.770 19.031 43.892 Q 19.214 44.013 19.214 44.257 Q 19.214 44.423 19.127 44.529 Q 19.039 44.635 18.868 44.678 Z" stroke="none" stroke-width="0.25" fill="#8a8a8a"/></g>
+<text x="216.000" y="37.500" font-family="Helvetica, Arial, sans-serif" font-size="2.6" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">L3   z 7.5-10.5</text>
+<text x="254.000" y="37.500" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">3 mm. Board retainer tabs, SW1 slot (wall thinned to 2 mm), USB opening</text>
+<g transform="translate(216,87) scale(0.8)"><polygon points="0.000,49.200 203.000,49.200 203.000,0.000 0.000,0.000" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<polygon points="11.060,37.390 11.060,9.150 57.070,9.150 57.070,9.000 194.000,9.000 194.000,40.200 57.070,40.200 57.070,37.390" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<circle cx="4.500" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="4.500" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="70.000" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="70.000" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="136.000" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="136.000" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="198.500" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="198.500" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<path d="M 16.239 43.804 L 16.728 43.804 L 16.728 45.331 L 17.586 45.331 L 17.586 45.700 L 16.239 45.700 L 16.239 43.804 Z M 18.406 45.341 L 19.240 45.341 L 19.240 45.700 L 17.862 45.700 L 17.862 45.341 L 18.554 44.730 Q 18.647 44.646 18.691 44.566 Q 18.736 44.486 18.736 44.400 Q 18.736 44.267 18.646 44.186 Q 18.557 44.104 18.408 44.104 Q 18.294 44.104 18.158 44.153 Q 18.022 44.202 17.868 44.298 L 17.868 43.882 Q 18.033 43.828 18.194 43.799 Q 18.355 43.770 18.510 43.770 Q 18.850 43.770 19.039 43.920 Q 19.227 44.070 19.227 44.338 Q 19.227 44.493 19.147 44.627 Q 19.067 44.760 18.811 44.985 L 18.406 45.341 Z" stroke="none" stroke-width="0.25" fill="#8a8a8a"/></g>
+<text x="216.000" y="84.500" font-family="Helvetica, Arial, sans-serif" font-size="2.6" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">L2   z 6.0-7.5</text>
+<text x="254.000" y="84.500" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">1.5 mm. Board pocket (locates the board)</text>
+<g transform="translate(216,134) scale(0.8)"><polygon points="0.000,49.200 203.000,49.200 203.000,0.000 0.000,0.000" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<polygon points="9.000,34.900 9.000,11.640 16.090,11.640 16.090,9.000 52.050,9.000 52.050,11.640 56.730,11.640 56.730,9.000 194.000,9.000 194.000,40.200 56.730,40.200 56.730,34.900 52.050,34.900 52.050,40.200 16.090,40.200 16.090,34.900" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<polygon points="7.300,46.317 4.500,47.933 1.700,46.317 1.700,43.083 4.500,41.467 7.300,43.083" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<polygon points="7.300,6.117 4.500,7.733 1.700,6.117 1.700,2.883 4.500,1.267 7.300,2.883" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<polygon points="72.800,46.317 70.000,47.933 67.200,46.317 67.200,43.083 70.000,41.467 72.800,43.083" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<polygon points="72.800,6.117 70.000,7.733 67.200,6.117 67.200,2.883 70.000,1.267 72.800,2.883" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<polygon points="138.800,46.317 136.000,47.933 133.200,46.317 133.200,43.083 136.000,41.467 138.800,43.083" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<polygon points="138.800,6.117 136.000,7.733 133.200,6.117 133.200,2.883 136.000,1.267 138.800,2.883" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<polygon points="201.300,46.317 198.500,47.933 195.700,46.317 195.700,43.083 198.500,41.467 201.300,43.083" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<polygon points="201.300,6.117 198.500,7.733 195.700,6.117 195.700,2.883 198.500,1.267 201.300,2.883" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<path d="M 16.239 43.804 L 16.728 43.804 L 16.728 45.331 L 17.586 45.331 L 17.586 45.700 L 16.239 45.700 L 16.239 43.804 Z M 17.961 45.362 L 18.393 45.362 L 18.393 44.137 L 17.950 44.229 L 17.950 43.896 L 18.390 43.804 L 18.855 43.804 L 18.855 45.362 L 19.287 45.362 L 19.287 45.700 L 17.961 45.700 L 17.961 45.362 Z" stroke="none" stroke-width="0.25" fill="#8a8a8a"/></g>
+<text x="216.000" y="131.500" font-family="Helvetica, Arial, sans-serif" font-size="2.6" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">L1   z 3.0-6.0</text>
+<text x="254.000" y="131.500" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">3 mm. Board support tabs, M3 nut traps</text>
+<g transform="translate(216,181) scale(0.8)"><polygon points="0.000,49.200 203.000,49.200 203.000,0.000 0.000,0.000" stroke="#1a1a1a" stroke-width="0.18" fill="none" stroke-linejoin="round"/>
+<circle cx="4.500" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="4.500" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="70.000" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="70.000" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="136.000" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="136.000" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="198.500" cy="44.700" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<circle cx="198.500" cy="4.500" r="1.700" stroke="#1a1a1a" stroke-width="0.18" fill="none"/>
+<path d="M 16.239 43.804 L 16.728 43.804 L 16.728 45.331 L 17.586 45.331 L 17.586 45.700 L 16.239 45.700 L 16.239 43.804 Z M 18.853 44.750 Q 18.853 44.395 18.786 44.250 Q 18.719 44.104 18.562 44.104 Q 18.405 44.104 18.337 44.250 Q 18.270 44.395 18.270 44.750 Q 18.270 45.110 18.337 45.257 Q 18.405 45.404 18.562 45.404 Q 18.718 45.404 18.785 45.257 Q 18.853 45.110 18.853 44.750 Z M 19.341 44.754 Q 19.341 45.225 19.138 45.481 Q 18.935 45.737 18.562 45.737 Q 18.187 45.737 17.984 45.481 Q 17.781 45.225 17.781 44.754 Q 17.781 44.282 17.984 44.026 Q 18.187 43.770 18.562 43.770 Q 18.935 43.770 19.138 44.026 Q 19.341 44.282 19.341 44.754 Z" stroke="none" stroke-width="0.25" fill="#8a8a8a"/></g>
+<text x="216.000" y="178.500" font-family="Helvetica, Arial, sans-serif" font-size="2.6" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">L0   z 0.0-3.0</text>
+<text x="254.000" y="178.500" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">3 mm bottom plate</text>
+<text x="16.000" y="229.000" font-family="Helvetica, Arial, sans-serif" font-size="2.6" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">SECTION C-C (centre line, Y = 0)  0.8:1, heights 2:1</text>
+<rect x="16.000" y="236.000" width="47.200" height="6.000" rx="0" stroke="#1a1a1a" stroke-width="0.15" fill="#e8d6ad"/>
+<rect x="65.400" y="236.000" width="113.000" height="6.000" rx="0" stroke="#1a1a1a" stroke-width="0.15" fill="#e8d6ad"/>
+<text x="181.400" y="239.800" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">TOP</text>
+<rect x="16.000" y="242.000" width="7.200" height="6.000" rx="0" stroke="#1a1a1a" stroke-width="0.15" fill="#e8d6ad"/>
+<rect x="171.400" y="242.000" width="7.000" height="6.000" rx="0" stroke="#1a1a1a" stroke-width="0.15" fill="#e8d6ad"/>
+<text x="181.400" y="245.800" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">L6</text>
+<rect x="171.400" y="248.000" width="7.000" height="6.000" rx="0" stroke="#1a1a1a" stroke-width="0.15" fill="#e8d6ad"/>
+<text x="181.400" y="251.800" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">L5</text>
+<rect x="171.400" y="254.000" width="7.000" height="6.000" rx="0" stroke="#1a1a1a" stroke-width="0.15" fill="#e8d6ad"/>
+<text x="181.400" y="257.800" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">L4</text>
+<rect x="171.400" y="260.000" width="7.000" height="6.000" rx="0" stroke="#1a1a1a" stroke-width="0.15" fill="#e8d6ad"/>
+<text x="181.400" y="263.800" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">L3</text>
+<rect x="16.000" y="266.000" width="9.000" height="3.000" rx="0" stroke="#1a1a1a" stroke-width="0.15" fill="#d9c493"/>
+<rect x="171.400" y="266.000" width="7.000" height="3.000" rx="0" stroke="#1a1a1a" stroke-width="0.15" fill="#d9c493"/>
+<text x="181.400" y="268.300" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">L2</text>
+<rect x="16.000" y="269.000" width="7.200" height="6.000" rx="0" stroke="#1a1a1a" stroke-width="0.15" fill="#e8d6ad"/>
+<rect x="171.400" y="269.000" width="7.000" height="6.000" rx="0" stroke="#1a1a1a" stroke-width="0.15" fill="#e8d6ad"/>
+<text x="181.400" y="272.800" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">L1</text>
+<rect x="16.000" y="275.000" width="162.400" height="6.000" rx="0" stroke="#1a1a1a" stroke-width="0.15" fill="#e8d6ad"/>
+<text x="181.400" y="278.800" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">L0</text>
+<rect x="24.968" y="265.800" width="36.576" height="3.200" rx="0" stroke="#1a1a1a" stroke-width="0.2" fill="#9fc79f"/>
+<rect x="106.400" y="265.000" width="28.000" height="10.000" rx="0" stroke="#1a1a1a" stroke-width="0.2" fill="#f0e6c8"/>
+<rect x="68.800" y="269.800" width="29.040" height="3.200" rx="0" stroke="#1a1a1a" stroke-width="0.2" fill="#5d8f6a"/>
+<line x1="65.200" y1="235.600" x2="165.600" y2="235.600" stroke="#d4880f" stroke-width="0.8" stroke-linecap="round"/>
+<text x="14.500" y="266.500" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="end" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">7.6</text>
+<text x="14.500" y="242.700" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="end" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">19.5</text>
+<text x="14.500" y="236.700" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="end" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">22.5</text>
+<text x="222.000" y="226.000" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Cut: red hairlines. Engrave: black fill (sensor pocket ~0.3-0.5 mm deep, labels, hidden layer IDs).</text>
+<text x="222.000" y="229.200" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Layer IDs are engraved on the -Y wall face near the USB end: stack all IDs on the same corner.</text>
+<text x="222.000" y="232.400" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Assembly (bottom up): L0, L1 + 8 M3 nuts, board onto L1 tabs, L2 around it, L3 ... L6, TOP.</text>
+<text x="222.000" y="235.600" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">8 x M3 x 20 button-head screws from the top into the nuts. No glue in the stack (serviceable).</text>
+<text x="222.000" y="238.800" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">LED flange 6.3 mm above the board. Buttons: laminated plungers (glue discs:</text>
+<text x="222.000" y="242.000" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">2 x Ø7 3 mm + 1 x Ø7 1.5 mm, then Ø4.6 3 mm + Ø4.6 1.5 mm), or the printed T1 cap.</text>
+<text x="222.000" y="245.200" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#b0362b" dominant-baseline="auto">! Seal or oil the wood away from the sensor pocket; moisture shifts capacitive baselines.</text>
+<text x="222.000" y="248.400" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#b0362b" dominant-baseline="auto">! Test-cut a nut trap and the board pocket first; adjust `kerf` in mech_params.py.</text>
+<rect x="222.000" y="254.000" width="110.000" height="32.000" rx="0" stroke="#1a1a1a" stroke-width="0.35" fill="none"/>
+<text x="224.000" y="259.200" font-family="Helvetica, Arial, sans-serif" font-size="3.6" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">F1w body</text>
+<line x1="222.000" y1="262.000" x2="332.000" y2="262.000" stroke="#1a1a1a" stroke-width="0.2" stroke-linecap="round"/>
+<text x="224.000" y="264.720" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Project</text>
+<text x="244.000" y="264.720" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Trillium hardware (nymble/trill)</text>
+<line x1="222.000" y1="266.000" x2="332.000" y2="266.000" stroke="#1a1a1a" stroke-width="0.2" stroke-linecap="round"/>
+<text x="224.000" y="268.720" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Part</text>
+<text x="244.000" y="268.720" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">F1w body</text>
+<line x1="222.000" y1="270.000" x2="332.000" y2="270.000" stroke="#1a1a1a" stroke-width="0.2" stroke-linecap="round"/>
+<text x="224.000" y="272.720" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Scale</text>
+<text x="244.000" y="272.720" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">0.8:1 (section heights 2:1)</text>
+<line x1="222.000" y1="274.000" x2="332.000" y2="274.000" stroke="#1a1a1a" stroke-width="0.2" stroke-linecap="round"/>
+<text x="224.000" y="276.720" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Revision</text>
+<text x="244.000" y="276.720" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">A (prototype)</text>
+<line x1="222.000" y1="278.000" x2="332.000" y2="278.000" stroke="#1a1a1a" stroke-width="0.2" stroke-linecap="round"/>
+<text x="224.000" y="280.720" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Date</text>
+<text x="244.000" y="280.720" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">2026-11-11</text>
+<line x1="222.000" y1="282.000" x2="332.000" y2="282.000" stroke="#1a1a1a" stroke-width="0.2" stroke-linecap="round"/>
+<text x="224.000" y="284.720" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Units</text>
+<text x="244.000" y="284.720" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">mm; general tolerance ±0.2 (print), ±0.1 (laser)</text>
+</svg>

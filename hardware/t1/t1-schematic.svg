@@ -1,0 +1,406 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="297mm" height="210mm" viewBox="0 0 297 210">
+<rect width="297" height="210" fill="white"/>
+<rect x="6.000" y="6.000" width="285.000" height="198.000" rx="0" stroke="#1a1a1a" stroke-width="0.4" fill="none"/>
+<text x="12.000" y="15.500" font-family="Helvetica, Arial, sans-serif" font-size="4.6" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Trillium T1: core board (XIAO nRF52840 Sense)</text>
+<text x="12.000" y="20.500" font-family="Helvetica, Arial, sans-serif" font-size="2.2" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Prototype schematic. All parts through-hole or modules on 2.54 mm headers; hand-built on 2.54 mm perfboard (see layout drawing).</text>
+<rect x="12.000" y="25.000" width="88.000" height="99.000" rx="1.2" stroke="#d9d9d9" stroke-width="0.3" fill="none"/>
+<text x="14.000" y="29.000" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start" font-weight="bold" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">POWER AND CHARGING</text>
+<line x1="22.000" y1="38.000" x2="22.000" y2="44.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="18.800" y1="44.000" x2="25.200" y2="44.000" stroke="#1a1a1a" stroke-width="0.35" stroke-linecap="round"/>
+<line x1="20.200" y1="45.400" x2="23.800" y2="45.400" stroke="#1a1a1a" stroke-width="0.6" stroke-linecap="round"/>
+<line x1="18.800" y1="47.000" x2="25.200" y2="47.000" stroke="#1a1a1a" stroke-width="0.35" stroke-linecap="round"/>
+<line x1="20.200" y1="48.400" x2="23.800" y2="48.400" stroke="#1a1a1a" stroke-width="0.6" stroke-linecap="round"/>
+<line x1="22.000" y1="48.400" x2="22.000" y2="58.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="18.000" y="44.600" font-family="Helvetica, Arial, sans-serif" font-size="2.6" text-anchor="end" font-weight="bold" font-style="normal" fill="#b0362b" dominant-baseline="auto">+</text>
+<text x="16.000" y="63.000" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">BT1  LiPo 1S 3.7 V, with PCM</text>
+<text x="16.000" y="65.800" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">502030 ~250 mAh (off-board)</text>
+<rect x="34.000" y="38.000" width="6.000" height="16.000" rx="0" stroke="#1a1a1a" stroke-width="0.3" fill="none"/>
+<text x="37.000" y="36.400" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="middle" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">J1</text>
+<text x="37.000" y="57.200" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">JST-PH 2</text>
+<line x1="31.000" y1="42.000" x2="34.000" y2="42.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="35.000" y="42.700" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">1</text>
+<line x1="31.000" y1="50.000" x2="34.000" y2="50.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="35.000" y="50.700" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">2</text>
+<line x1="22.000" y1="38.000" x2="22.000" y2="36.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="22.000" y1="36.000" x2="29.000" y2="36.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="29.000" y1="36.000" x2="29.000" y2="42.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="29.000" y1="42.000" x2="31.000" y2="42.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="22.000" y1="58.000" x2="29.000" y2="58.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="29.000" y1="58.000" x2="29.000" y2="50.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="29.000" y1="50.000" x2="31.000" y2="50.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="40.000" y1="50.000" x2="46.000" y2="50.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="46.000" y1="50.000" x2="46.000" y2="51.600" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="44.200" y1="51.600" x2="47.800" y2="51.600" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="44.800" y1="52.300" x2="47.200" y2="52.300" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="45.400" y1="53.000" x2="46.600" y2="53.000" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="40.000" y1="42.000" x2="62.000" y2="42.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="51.000" y="40.800" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="middle" font-weight="normal" font-style="normal" fill="#2a5d9f" dominant-baseline="auto">VBAT</text>
+<circle cx="62.000" cy="42.000" r="0.400" stroke="none" stroke-width="0.25" fill="#1a1a1a"/>
+<circle cx="62.000" cy="48.000" r="0.450" stroke="#1a1a1a" stroke-width="0.25" fill="none"/>
+<line x1="62.000" y1="48.000" x2="59.000" y2="48.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="58.400" y="48.700" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="end" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">NC</text>
+<circle cx="72.000" cy="45.000" r="0.450" stroke="none" stroke-width="0.25" fill="#1a1a1a"/>
+<line x1="72.000" y1="45.000" x2="62.600" y2="42.400" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<text x="62.000" y="40.400" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="middle" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">1 ON</text>
+<text x="62.000" y="51.400" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="middle" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">3 OFF</text>
+<text x="73.000" y="40.400" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="middle" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">SW1</text>
+<text x="73.000" y="51.600" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">SPDT slide</text>
+<text x="72.800" y="47.400" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">2</text>
+<line x1="72.000" y1="45.000" x2="82.000" y2="45.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<polygon points="82.000,45.000 83.400,43.500 94.050,43.500 94.050,46.500 83.400,46.500" stroke="#1a1a1a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="88.725" y="45.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">VBAT_SW</text>
+<text x="16.000" y="74.000" font-family="Helvetica, Arial, sans-serif" font-size="1.95" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">U1 contains the charger (TI BQ25101, 4.20 V) and the</text>
+<text x="16.000" y="77.600" font-family="Helvetica, Arial, sans-serif" font-size="1.95" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">USB/battery switch-over (P-MOSFET + Schottky). Nothing</text>
+<text x="16.000" y="81.200" font-family="Helvetica, Arial, sans-serif" font-size="1.95" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">else is needed on the board to charge the cell.</text>
+<text x="16.000" y="84.800" font-family="Helvetica, Arial, sans-serif" font-size="1.95" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto"></text>
+<text x="16.000" y="88.400" font-family="Helvetica, Arial, sans-serif" font-size="1.95" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">SW1 ON + USB: runs from USB, charges BT1 (~50 mA;</text>
+<text x="16.000" y="92.000" font-family="Helvetica, Arial, sans-serif" font-size="1.95" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">  ~100 mA if firmware drives P0.13 low).</text>
+<text x="16.000" y="95.600" font-family="Helvetica, Arial, sans-serif" font-size="1.95" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">SW1 ON, no USB: runs from BT1.</text>
+<text x="16.000" y="99.200" font-family="Helvetica, Arial, sans-serif" font-size="1.95" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">SW1 OFF: BT1 isolated (no drain, safe to ship). The</text>
+<text x="16.000" y="102.800" font-family="Helvetica, Arial, sans-serif" font-size="1.95" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">  instrument still runs from USB but does not charge.</text>
+<text x="16.000" y="106.400" font-family="Helvetica, Arial, sans-serif" font-size="1.95" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto"></text>
+<text x="16.000" y="110.000" font-family="Helvetica, Arial, sans-serif" font-size="1.95" text-anchor="start" font-weight="normal" font-style="normal" fill="#b0362b" dominant-baseline="auto">Cell must have its own protection circuit (PCM).</text>
+<text x="16.000" y="113.600" font-family="Helvetica, Arial, sans-serif" font-size="1.95" text-anchor="start" font-weight="normal" font-style="normal" fill="#b0362b" dominant-baseline="auto">Check JST-PH polarity of every cell before plugging in:</text>
+<text x="16.000" y="117.200" font-family="Helvetica, Arial, sans-serif" font-size="1.95" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">vendors differ. Red = +.</text>
+<rect x="104.000" y="25.000" width="92.000" height="99.000" rx="1.2" stroke="#d9d9d9" stroke-width="0.3" fill="none"/>
+<text x="106.000" y="29.000" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start" font-weight="bold" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">MCU MODULE</text>
+<rect x="132.000" y="34.000" width="36.000" height="76.000" rx="0" stroke="#1a1a1a" stroke-width="0.4" fill="#fafafa"/>
+<text x="150.000" y="39.000" font-family="Helvetica, Arial, sans-serif" font-size="2.4" text-anchor="middle" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">U1</text>
+<text x="150.000" y="42.200" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Seeed XIAO</text>
+<text x="150.000" y="44.800" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">nRF52840 Sense</text>
+<text x="150.000" y="32.000" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="middle" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">USB-C (top edge)</text>
+<rect x="145.500" y="32.600" width="9.000" height="1.400" rx="0" stroke="#8a8a8a" stroke-width="0.2" fill="none"/>
+<line x1="126.000" y1="52.000" x2="132.000" y2="52.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="131.200" y="51.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="end" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">1</text>
+<text x="133.200" y="52.700" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">D0</text>
+<text x="133.200" y="55.000" font-family="Helvetica, Arial, sans-serif" font-size="1.5" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">P0.02</text>
+<circle cx="125.300" cy="52.000" r="0.700" stroke="#1a1a1a" stroke-width="0.25" fill="none"/>
+<text x="123.800" y="52.700" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="end" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">reserved (debug)</text>
+<line x1="126.000" y1="60.000" x2="132.000" y2="60.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="131.200" y="59.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="end" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">2</text>
+<text x="133.200" y="60.700" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">D1</text>
+<text x="133.200" y="63.000" font-family="Helvetica, Arial, sans-serif" font-size="1.5" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">P0.03</text>
+<circle cx="125.300" cy="60.000" r="0.700" stroke="#1a1a1a" stroke-width="0.25" fill="none"/>
+<text x="123.800" y="60.700" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="end" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">reserved (debug)</text>
+<line x1="126.000" y1="68.000" x2="132.000" y2="68.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="131.200" y="67.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="end" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">3</text>
+<text x="133.200" y="68.700" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">D2</text>
+<text x="133.200" y="71.000" font-family="Helvetica, Arial, sans-serif" font-size="1.5" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">P0.28</text>
+<polygon points="126.000,68.000 124.600,66.500 116.650,66.500 116.650,69.500 124.600,69.500" stroke="#1a1a1a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="120.625" y="68.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">BTN_A</text>
+<line x1="126.000" y1="76.000" x2="132.000" y2="76.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="131.200" y="75.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="end" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">4</text>
+<text x="133.200" y="76.700" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">D3</text>
+<text x="133.200" y="79.000" font-family="Helvetica, Arial, sans-serif" font-size="1.5" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">P0.29</text>
+<polygon points="126.000,76.000 124.600,74.500 116.650,74.500 116.650,77.500 124.600,77.500" stroke="#1a1a1a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="120.625" y="76.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">BTN_B</text>
+<line x1="126.000" y1="84.000" x2="132.000" y2="84.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="131.200" y="83.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="end" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">5</text>
+<text x="133.200" y="84.700" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">D4</text>
+<text x="133.200" y="87.000" font-family="Helvetica, Arial, sans-serif" font-size="1.5" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">P0.04</text>
+<polygon points="126.000,84.000 124.600,82.500 119.350,82.500 119.350,85.500 124.600,85.500" stroke="#8a8a8a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="121.975" y="84.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">SDA</text>
+<line x1="126.000" y1="92.000" x2="132.000" y2="92.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="131.200" y="91.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="end" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">6</text>
+<text x="133.200" y="92.700" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">D5</text>
+<text x="133.200" y="95.000" font-family="Helvetica, Arial, sans-serif" font-size="1.5" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">P0.05</text>
+<polygon points="126.000,92.000 124.600,90.500 119.350,90.500 119.350,93.500 124.600,93.500" stroke="#8a8a8a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="121.975" y="92.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">SCL</text>
+<line x1="126.000" y1="100.000" x2="132.000" y2="100.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="131.200" y="99.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="end" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">7</text>
+<text x="133.200" y="100.700" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">D6</text>
+<text x="133.200" y="103.000" font-family="Helvetica, Arial, sans-serif" font-size="1.5" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">P1.11</text>
+<polygon points="126.000,100.000 124.600,98.500 116.650,98.500 116.650,101.500 124.600,101.500" stroke="#1a1a1a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="120.625" y="100.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">AUX_C</text>
+<line x1="168.000" y1="52.000" x2="174.000" y2="52.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="168.800" y="51.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">14</text>
+<text x="166.800" y="52.700" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="end" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">5V</text>
+<line x1="173.100" y1="51.100" x2="174.900" y2="52.900" stroke="#b0362b" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="173.100" y1="52.900" x2="174.900" y2="51.100" stroke="#b0362b" stroke-width="0.3" stroke-linecap="round"/>
+<text x="175.800" y="52.700" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">NC (VBUS)</text>
+<line x1="168.000" y1="60.000" x2="174.000" y2="60.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="168.800" y="59.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">13</text>
+<text x="166.800" y="60.700" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="end" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">GND</text>
+<line x1="174.000" y1="60.000" x2="178.000" y2="60.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="178.000" y1="60.000" x2="178.000" y2="61.600" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="176.200" y1="61.600" x2="179.800" y2="61.600" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="176.800" y1="62.300" x2="179.200" y2="62.300" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="177.400" y1="63.000" x2="178.600" y2="63.000" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="168.000" y1="68.000" x2="174.000" y2="68.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="168.800" y="67.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">12</text>
+<text x="166.800" y="68.700" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="end" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">3V3</text>
+<line x1="174.000" y1="68.000" x2="185.000" y2="68.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="185.000" y1="68.000" x2="185.000" y2="66.200" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="183.400" y1="66.200" x2="186.600" y2="66.200" stroke="#1a1a1a" stroke-width="0.35" stroke-linecap="round"/>
+<text x="185.000" y="65.400" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">+3V3</text>
+<line x1="168.000" y1="76.000" x2="174.000" y2="76.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="168.800" y="75.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">11</text>
+<text x="166.800" y="76.700" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="end" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">D10</text>
+<text x="166.800" y="79.000" font-family="Helvetica, Arial, sans-serif" font-size="1.5" text-anchor="end" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">P1.15</text>
+<polygon points="174.000,76.000 175.400,74.500 188.750,74.500 188.750,77.500 175.400,77.500" stroke="#1a1a1a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="182.075" y="76.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">LED_B_DRV</text>
+<line x1="168.000" y1="84.000" x2="174.000" y2="84.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="168.800" y="83.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">10</text>
+<text x="166.800" y="84.700" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="end" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">D9</text>
+<text x="166.800" y="87.000" font-family="Helvetica, Arial, sans-serif" font-size="1.5" text-anchor="end" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">P1.14</text>
+<polygon points="174.000,84.000 175.400,82.500 188.750,82.500 188.750,85.500 175.400,85.500" stroke="#1a1a1a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="182.075" y="84.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">LED_G_DRV</text>
+<line x1="168.000" y1="92.000" x2="174.000" y2="92.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="168.800" y="91.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">9</text>
+<text x="166.800" y="92.700" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="end" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">D8</text>
+<text x="166.800" y="95.000" font-family="Helvetica, Arial, sans-serif" font-size="1.5" text-anchor="end" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">P1.13</text>
+<polygon points="174.000,92.000 175.400,90.500 188.750,90.500 188.750,93.500 175.400,93.500" stroke="#1a1a1a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="182.075" y="92.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">LED_R_DRV</text>
+<line x1="168.000" y1="100.000" x2="174.000" y2="100.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="168.800" y="99.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">8</text>
+<text x="166.800" y="100.700" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="end" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">D7</text>
+<text x="166.800" y="103.000" font-family="Helvetica, Arial, sans-serif" font-size="1.5" text-anchor="end" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">P1.12</text>
+<polygon points="174.000,100.000 175.400,98.500 183.350,98.500 183.350,101.500 175.400,101.500" stroke="#1a1a1a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="179.375" y="100.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">BTN_D</text>
+<line x1="143.000" y1="110.000" x2="143.000" y2="116.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="143.000" y="108.600" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">BAT+</text>
+<line x1="143.000" y1="116.000" x2="139.000" y2="116.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<polygon points="139.000,116.000 137.600,114.500 126.950,114.500 126.950,117.500 137.600,117.500" stroke="#1a1a1a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="132.275" y="116.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">VBAT_SW</text>
+<line x1="157.000" y1="110.000" x2="157.000" y2="116.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="157.000" y="108.600" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">BAT-</text>
+<line x1="157.000" y1="116.000" x2="157.000" y2="117.600" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="155.200" y1="117.600" x2="158.800" y2="117.600" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="155.800" y1="118.300" x2="158.200" y2="118.300" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="156.400" y1="119.000" x2="157.600" y2="119.000" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<text x="160.000" y="119.600" font-family="Helvetica, Arial, sans-serif" font-size="1.5" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">internal</text>
+<text x="150.000" y="105.400" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="middle" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">underside pads</text>
+<rect x="200.000" y="25.000" width="90.000" height="57.000" rx="1.2" stroke="#d9d9d9" stroke-width="0.3" fill="none"/>
+<text x="202.000" y="29.000" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start" font-weight="bold" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">STATUS LED (external, visible through case)</text>
+<line x1="262.000" y1="34.000" x2="262.000" y2="32.200" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="260.400" y1="32.200" x2="263.600" y2="32.200" stroke="#1a1a1a" stroke-width="0.35" stroke-linecap="round"/>
+<text x="262.000" y="31.400" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">+3V3</text>
+<line x1="252.000" y1="34.000" x2="272.000" y2="34.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="252.000" y1="34.000" x2="252.000" y2="36.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<polygon points="250.500,36.000 253.500,36.000 252.000,38.400" stroke="#1a1a1a" stroke-width="0.25" fill="none" stroke-linejoin="round"/>
+<line x1="250.500" y1="38.400" x2="253.500" y2="38.400" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="252.000" y1="38.400" x2="252.000" y2="41.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="253.900" y1="36.300" x2="255.600" y2="35.300" stroke="#1a1a1a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="255.600" y1="35.300" x2="255.005" y2="35.379" stroke="#1a1a1a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="255.600" y1="35.300" x2="255.242" y2="35.782" stroke="#1a1a1a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="253.900" y1="37.500" x2="255.600" y2="36.500" stroke="#1a1a1a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="255.600" y1="36.500" x2="255.005" y2="36.579" stroke="#1a1a1a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="255.600" y1="36.500" x2="255.242" y2="36.982" stroke="#1a1a1a" stroke-width="0.15" stroke-linecap="round"/>
+<text x="250.000" y="44.500" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="end" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">R</text>
+<line x1="252.000" y1="41.000" x2="252.000" y2="54.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="252.000" y1="54.000" x2="238.000" y2="54.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="238.000" y1="54.000" x2="228.000" y2="54.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="234.000" y1="54.000" x2="224.000" y2="54.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<rect x="228.000" y="53.000" width="6.000" height="2.000" rx="0" stroke="#1a1a1a" stroke-width="0.25" fill="none"/>
+<text x="231.000" y="52.200" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="middle" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">R3</text>
+<text x="231.000" y="57.600" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">680 Ω</text>
+<line x1="224.000" y1="54.000" x2="222.000" y2="54.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<polygon points="222.000,54.000 220.600,52.500 207.250,52.500 207.250,55.500 220.600,55.500" stroke="#1a1a1a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="213.925" y="54.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">LED_R_DRV</text>
+<circle cx="262.000" cy="34.000" r="0.450" stroke="none" stroke-width="0.25" fill="#1a1a1a"/>
+<line x1="262.000" y1="34.000" x2="262.000" y2="36.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<polygon points="260.500,36.000 263.500,36.000 262.000,38.400" stroke="#1a1a1a" stroke-width="0.25" fill="none" stroke-linejoin="round"/>
+<line x1="260.500" y1="38.400" x2="263.500" y2="38.400" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="262.000" y1="38.400" x2="262.000" y2="41.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="263.900" y1="36.300" x2="265.600" y2="35.300" stroke="#1a1a1a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="265.600" y1="35.300" x2="265.005" y2="35.379" stroke="#1a1a1a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="265.600" y1="35.300" x2="265.242" y2="35.782" stroke="#1a1a1a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="263.900" y1="37.500" x2="265.600" y2="36.500" stroke="#1a1a1a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="265.600" y1="36.500" x2="265.005" y2="36.579" stroke="#1a1a1a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="265.600" y1="36.500" x2="265.242" y2="36.982" stroke="#1a1a1a" stroke-width="0.15" stroke-linecap="round"/>
+<text x="260.000" y="44.500" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="end" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">G</text>
+<line x1="262.000" y1="41.000" x2="262.000" y2="62.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="262.000" y1="62.000" x2="238.000" y2="62.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="238.000" y1="62.000" x2="228.000" y2="62.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="234.000" y1="62.000" x2="224.000" y2="62.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<rect x="228.000" y="61.000" width="6.000" height="2.000" rx="0" stroke="#1a1a1a" stroke-width="0.25" fill="none"/>
+<text x="231.000" y="60.200" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="middle" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">R4</text>
+<text x="231.000" y="65.600" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">150 Ω</text>
+<line x1="224.000" y1="62.000" x2="222.000" y2="62.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<polygon points="222.000,62.000 220.600,60.500 207.250,60.500 207.250,63.500 220.600,63.500" stroke="#1a1a1a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="213.925" y="62.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">LED_G_DRV</text>
+<line x1="272.000" y1="34.000" x2="272.000" y2="36.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<polygon points="270.500,36.000 273.500,36.000 272.000,38.400" stroke="#1a1a1a" stroke-width="0.25" fill="none" stroke-linejoin="round"/>
+<line x1="270.500" y1="38.400" x2="273.500" y2="38.400" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="272.000" y1="38.400" x2="272.000" y2="41.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="273.900" y1="36.300" x2="275.600" y2="35.300" stroke="#1a1a1a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="275.600" y1="35.300" x2="275.005" y2="35.379" stroke="#1a1a1a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="275.600" y1="35.300" x2="275.242" y2="35.782" stroke="#1a1a1a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="273.900" y1="37.500" x2="275.600" y2="36.500" stroke="#1a1a1a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="275.600" y1="36.500" x2="275.005" y2="36.579" stroke="#1a1a1a" stroke-width="0.15" stroke-linecap="round"/>
+<line x1="275.600" y1="36.500" x2="275.242" y2="36.982" stroke="#1a1a1a" stroke-width="0.15" stroke-linecap="round"/>
+<text x="270.000" y="44.500" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="end" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">B</text>
+<line x1="272.000" y1="41.000" x2="272.000" y2="70.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="272.000" y1="70.000" x2="238.000" y2="70.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="238.000" y1="70.000" x2="228.000" y2="70.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="234.000" y1="70.000" x2="224.000" y2="70.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<rect x="228.000" y="69.000" width="6.000" height="2.000" rx="0" stroke="#1a1a1a" stroke-width="0.25" fill="none"/>
+<text x="231.000" y="68.200" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="middle" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">R5</text>
+<text x="231.000" y="73.600" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">150 Ω</text>
+<line x1="224.000" y1="70.000" x2="222.000" y2="70.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<polygon points="222.000,70.000 220.600,68.500 207.250,68.500 207.250,71.500 220.600,71.500" stroke="#1a1a1a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="213.925" y="70.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">LED_B_DRV</text>
+<text x="276.000" y="38.000" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">D1</text>
+<text x="276.000" y="40.600" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">RGB 5 mm</text>
+<text x="276.000" y="43.000" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">common</text>
+<text x="276.000" y="45.400" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">anode</text>
+<text x="204.000" y="77.200" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Active low: pin low = on. Firmware should set P1.13-15 to high drive (H0H1).</text>
+<text x="204.000" y="79.600" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">G/B values assume Vf ≈ 2.8 V at 2-4 mA; tune 82-220 Ω for even brightness.</text>
+<rect x="200.000" y="85.000" width="90.000" height="69.000" rx="1.2" stroke="#d9d9d9" stroke-width="0.3" fill="none"/>
+<text x="202.000" y="89.000" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start" font-weight="bold" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">BUTTONS (at least 2)</text>
+<line x1="218.000" y1="100.000" x2="218.000" y2="104.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="218.000" y1="100.000" x2="216.000" y2="100.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<polygon points="216.000,100.000 214.600,98.500 206.650,98.500 206.650,101.500 214.600,101.500" stroke="#1a1a1a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="210.625" y="100.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">BTN_A</text>
+<line x1="218.000" y1="104.000" x2="218.000" y2="106.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<circle cx="218.000" cy="106.400" r="0.400" stroke="#1a1a1a" stroke-width="0.25" fill="none"/>
+<circle cx="218.000" cy="109.600" r="0.400" stroke="#1a1a1a" stroke-width="0.25" fill="none"/>
+<line x1="218.000" y1="110.000" x2="218.000" y2="112.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="215.800" y1="105.600" x2="215.800" y2="110.400" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="215.800" y1="108.000" x2="213.800" y2="108.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="213.800" y1="107.200" x2="213.800" y2="108.800" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="219.600" y="107.600" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">SW2</text>
+<text x="219.600" y="110.000" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">A</text>
+<line x1="218.000" y1="112.000" x2="218.000" y2="113.600" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="216.200" y1="113.600" x2="219.800" y2="113.600" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="216.800" y1="114.300" x2="219.200" y2="114.300" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="217.400" y1="115.000" x2="218.600" y2="115.000" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="240.000" y1="100.000" x2="240.000" y2="104.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="240.000" y1="100.000" x2="238.000" y2="100.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<polygon points="238.000,100.000 236.600,98.500 228.650,98.500 228.650,101.500 236.600,101.500" stroke="#1a1a1a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="232.625" y="100.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">BTN_B</text>
+<line x1="240.000" y1="104.000" x2="240.000" y2="106.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<circle cx="240.000" cy="106.400" r="0.400" stroke="#1a1a1a" stroke-width="0.25" fill="none"/>
+<circle cx="240.000" cy="109.600" r="0.400" stroke="#1a1a1a" stroke-width="0.25" fill="none"/>
+<line x1="240.000" y1="110.000" x2="240.000" y2="112.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="237.800" y1="105.600" x2="237.800" y2="110.400" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="237.800" y1="108.000" x2="235.800" y2="108.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="235.800" y1="107.200" x2="235.800" y2="108.800" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="241.600" y="107.600" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">SW3</text>
+<text x="241.600" y="110.000" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">B</text>
+<line x1="240.000" y1="112.000" x2="240.000" y2="113.600" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="238.200" y1="113.600" x2="241.800" y2="113.600" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="238.800" y1="114.300" x2="241.200" y2="114.300" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="239.400" y1="115.000" x2="240.600" y2="115.000" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<text x="206.000" y="121.500" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Tactile 6 x 6 mm (B3F-1000), to GND.</text>
+<text x="206.000" y="124.100" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Firmware: internal pull-up (~13 kΩ), debounce.</text>
+<rect x="270.000" y="96.000" width="6.000" height="18.000" rx="0" stroke="#1a1a1a" stroke-width="0.3" fill="none"/>
+<text x="273.000" y="94.400" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="middle" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">J3</text>
+<text x="273.000" y="117.200" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">AUX (opt.)</text>
+<line x1="267.000" y1="99.000" x2="270.000" y2="99.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="271.000" y="99.700" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">1</text>
+<line x1="267.000" y1="105.000" x2="270.000" y2="105.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="271.000" y="105.700" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">2</text>
+<line x1="267.000" y1="111.000" x2="270.000" y2="111.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="271.000" y="111.700" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">3</text>
+<polygon points="267.000,99.000 265.600,97.500 257.650,97.500 257.650,100.500 265.600,100.500" stroke="#1a1a1a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="261.625" y="99.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">AUX_C</text>
+<polygon points="267.000,105.000 265.600,103.500 257.650,103.500 257.650,106.500 265.600,106.500" stroke="#1a1a1a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="261.625" y="105.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">BTN_D</text>
+<line x1="267.000" y1="111.000" x2="264.000" y2="111.000" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="264.000" y1="111.000" x2="264.000" y2="112.600" stroke="#1a1a1a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="262.200" y1="112.600" x2="265.800" y2="112.600" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="262.800" y1="113.300" x2="265.200" y2="113.300" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="263.400" y1="114.000" x2="264.600" y2="114.000" stroke="#1a1a1a" stroke-width="0.3" stroke-linecap="round"/>
+<text x="206.000" y="131.000" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">J3: external buttons C (D6) and D (D7), each to GND,</text>
+<text x="206.000" y="133.600" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">e.g. panel-mount buttons on a case wall.</text>
+<text x="206.000" y="145.000" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">D6, D7 are P1.xx pins: Nordic recommends low-frequency</text>
+<text x="206.000" y="147.400" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">use only, which suits buttons and LEDs.</text>
+<rect x="12.000" y="127.000" width="184.000" height="41.000" rx="1.2" stroke="#d9d9d9" stroke-width="0.3" fill="none"/>
+<text x="14.000" y="131.000" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start" font-weight="bold" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">I2C EXPANSION (not fitted on T1)</text>
+<line x1="44.000" y1="136.000" x2="44.000" y2="134.200" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="42.400" y1="134.200" x2="45.600" y2="134.200" stroke="#8a8a8a" stroke-width="0.35" stroke-linecap="round"/>
+<text x="44.000" y="133.400" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">+3V3</text>
+<line x1="44.000" y1="136.000" x2="54.000" y2="136.000" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<circle cx="44.000" cy="136.000" r="0.400" stroke="none" stroke-width="0.25" fill="#8a8a8a"/>
+<line x1="44.000" y1="136.000" x2="44.000" y2="138.500" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="44.000" y1="144.500" x2="44.000" y2="147.000" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<rect x="43.000" y="138.500" width="2.000" height="6.000" rx="0" stroke="#8a8a8a" stroke-width="0.25" fill="none"/>
+<text x="42.200" y="141.200" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="end" font-weight="bold" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">R1</text>
+<text x="42.200" y="143.800" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="end" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">4.7 kΩ</text>
+<line x1="54.000" y1="136.000" x2="54.000" y2="141.000" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="54.000" y1="147.000" x2="54.000" y2="152.000" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<rect x="53.000" y="141.000" width="2.000" height="6.000" rx="0" stroke="#8a8a8a" stroke-width="0.25" fill="none"/>
+<text x="55.800" y="143.700" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="bold" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">R2</text>
+<text x="55.800" y="146.300" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">4.7 kΩ</text>
+<line x1="28.000" y1="147.000" x2="82.000" y2="147.000" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<circle cx="44.000" cy="147.000" r="0.400" stroke="none" stroke-width="0.25" fill="#8a8a8a"/>
+<line x1="28.000" y1="152.000" x2="82.000" y2="152.000" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<circle cx="54.000" cy="152.000" r="0.400" stroke="none" stroke-width="0.25" fill="#8a8a8a"/>
+<polygon points="28.000,147.000 26.600,145.500 21.350,145.500 21.350,148.500 26.600,148.500" stroke="#8a8a8a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="23.975" y="147.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">SDA</text>
+<polygon points="28.000,152.000 26.600,150.500 21.350,150.500 21.350,153.500 26.600,153.500" stroke="#8a8a8a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="23.975" y="152.750" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">SCL</text>
+<rect x="85.000" y="135.000" width="6.000" height="25.000" rx="0" stroke="#8a8a8a" stroke-width="0.3" fill="none"/>
+<text x="88.000" y="133.400" font-family="Helvetica, Arial, sans-serif" font-size="1.9" text-anchor="middle" font-weight="bold" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">J2</text>
+<text x="88.000" y="163.200" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="middle" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">TRILL 5</text>
+<line x1="82.000" y1="137.500" x2="85.000" y2="137.500" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="86.000" y="138.200" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">1</text>
+<line x1="82.000" y1="142.500" x2="85.000" y2="142.500" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="86.000" y="143.200" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">2</text>
+<line x1="82.000" y1="147.500" x2="85.000" y2="147.500" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="86.000" y="148.200" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">3</text>
+<line x1="82.000" y1="152.500" x2="85.000" y2="152.500" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="86.000" y="153.200" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">4</text>
+<line x1="82.000" y1="157.500" x2="85.000" y2="157.500" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<text x="86.000" y="158.200" font-family="Helvetica, Arial, sans-serif" font-size="1.7" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">5</text>
+<line x1="82.000" y1="137.500" x2="72.000" y2="137.500" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="72.000" y1="137.500" x2="72.000" y2="139.100" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="70.200" y1="139.100" x2="73.800" y2="139.100" stroke="#8a8a8a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="70.800" y1="139.800" x2="73.200" y2="139.800" stroke="#8a8a8a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="71.400" y1="140.500" x2="72.600" y2="140.500" stroke="#8a8a8a" stroke-width="0.3" stroke-linecap="round"/>
+<line x1="82.000" y1="142.500" x2="78.000" y2="142.500" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="78.000" y1="142.500" x2="78.000" y2="140.700" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="76.400" y1="140.700" x2="79.600" y2="140.700" stroke="#8a8a8a" stroke-width="0.35" stroke-linecap="round"/>
+<text x="78.000" y="139.900" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">+3V3</text>
+<line x1="82.000" y1="147.000" x2="82.000" y2="147.500" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="82.000" y1="147.500" x2="82.000" y2="147.500" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="82.000" y1="152.000" x2="82.000" y2="153.000" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="82.000" y1="152.000" x2="82.000" y2="152.500" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="82.000" y1="152.500" x2="82.000" y2="152.500" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<line x1="82.000" y1="157.500" x2="70.000" y2="157.500" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<circle cx="69.300" cy="157.500" r="0.700" stroke="#8a8a8a" stroke-width="0.25" fill="none"/>
+<circle cx="65.700" cy="157.500" r="0.700" stroke="#8a8a8a" stroke-width="0.25" fill="none"/>
+<path d="M 69.3 156.6 Q 67.5 154.9 65.7 156.6" stroke="#8a8a8a" stroke-width="0.2" fill="none"/>
+<text x="67.500" y="160.500" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="middle" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">JP1 (opt.)</text>
+<line x1="65.000" y1="157.500" x2="62.000" y2="157.500" stroke="#8a8a8a" stroke-width="0.25" stroke-linecap="round"/>
+<polygon points="62.000,157.500 60.600,156.000 52.650,156.000 52.650,159.000 60.600,159.000" stroke="#8a8a8a" stroke-width="0.2" fill="none" stroke-linejoin="round"/>
+<text x="56.625" y="158.250" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="middle" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">AUX_C</text>
+<text x="78.000" y="156.500" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="middle" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">EVT</text>
+<text x="92.600" y="138.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">GND</text>
+<text x="92.600" y="143.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">3V3</text>
+<text x="92.600" y="148.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">SDA</text>
+<text x="92.600" y="153.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">SCL</text>
+<text x="92.600" y="158.200" font-family="Helvetica, Arial, sans-serif" font-size="1.6" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">EVT</text>
+<text x="104.000" y="140.000" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">T1 leaves R1, R2, J2 and JP1 unfitted: holes stay free so a</text>
+<text x="104.000" y="143.400" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">T1 board can be upgraded to F1, or take any Qwiic/I2C module</text>
+<text x="104.000" y="146.800" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">(3.3 V only, address must not clash). D4/D5 are not 5 V tolerant.</text>
+<text x="12.000" y="174.000" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">1. Pin allocation is identical on T1 and F1 so that one firmware image serves both (see hardware/README.md).</text>
+<text x="12.000" y="178.600" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">2. D0/D1 are reserved for the firmware's timing-gpio feature (logic analyser). Leave unconnected.</text>
+<text x="12.000" y="183.200" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">3. U1 is soldered on male headers (2.5 mm spacer). Solder the BAT+ flying lead to the underside pad BEFORE fitting U1.</text>
+<text x="12.000" y="187.800" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">4. 3V3 comes from U1's SGM2040 LDO (250 mA). Budget: Trill ~4 mA, LED &lt;= 10 mA, buttons negligible.</text>
+<text x="12.000" y="192.400" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">5. Never connect the cell, VBAT or 5V to 3V3, to D-pins or to the Trill. All I/O is 3.3 V, not 5 V tolerant.</text>
+<text x="12.000" y="197.000" font-family="Helvetica, Arial, sans-serif" font-size="2.0" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">6. On-board RGB and charge LEDs of U1 remain; D1 shows status through the case. R1/R2/J2/JP1: F1 only.</text>
+<text x="12.000" y="203.000" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Values for parts marked 'tune' are starting points for bring-up, not measured results.</text>
+<rect x="200.000" y="157.000" width="85.000" height="45.000" rx="0" stroke="#1a1a1a" stroke-width="0.35" fill="none"/>
+<text x="202.000" y="162.200" font-family="Helvetica, Arial, sans-serif" font-size="3.6" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">T1 schematic</text>
+<line x1="200.000" y1="165.000" x2="285.000" y2="165.000" stroke="#1a1a1a" stroke-width="0.2" stroke-linecap="round"/>
+<text x="202.000" y="169.193" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Project</text>
+<text x="222.000" y="169.193" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Trillium hardware (nymble/trill)</text>
+<line x1="200.000" y1="171.167" x2="285.000" y2="171.167" stroke="#1a1a1a" stroke-width="0.2" stroke-linecap="round"/>
+<text x="202.000" y="175.360" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Model</text>
+<text x="222.000" y="175.360" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">T1  (Tiny, nRF52840)</text>
+<line x1="200.000" y1="177.333" x2="285.000" y2="177.333" stroke="#1a1a1a" stroke-width="0.2" stroke-linecap="round"/>
+<text x="202.000" y="181.527" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Board</text>
+<text x="222.000" y="181.527" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Core board 11 x 18 holes (27.9 x 45.7 mm)</text>
+<line x1="200.000" y1="183.500" x2="285.000" y2="183.500" stroke="#1a1a1a" stroke-width="0.2" stroke-linecap="round"/>
+<text x="202.000" y="187.693" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Revision</text>
+<text x="222.000" y="187.693" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">A (prototype)</text>
+<line x1="200.000" y1="189.667" x2="285.000" y2="189.667" stroke="#1a1a1a" stroke-width="0.2" stroke-linecap="round"/>
+<text x="202.000" y="193.860" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Date</text>
+<text x="222.000" y="193.860" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">2026-11-11</text>
+<line x1="200.000" y1="195.833" x2="285.000" y2="195.833" stroke="#1a1a1a" stroke-width="0.2" stroke-linecap="round"/>
+<text x="202.000" y="200.027" font-family="Helvetica, Arial, sans-serif" font-size="1.8" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Status</text>
+<text x="222.000" y="200.027" font-family="Helvetica, Arial, sans-serif" font-size="2.1" text-anchor="start" font-weight="normal" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Design, not yet built or measured</text>
+</svg>
