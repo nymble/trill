@@ -18,7 +18,7 @@ All notable changes to this project are documented here. Versions follow [Semant
 ### Tested on hardware
 - Firmware 0.6.0 (before action 6 was added) on a plain XIAO nRF52840 (bootloader 0.9.0): `imu=absent`, internal bus scan found no devices, USB MIDI up, no fault LED.
 - App install on the XIAO nRF52840 Sense (bootloader 0.6.1), macOS, unsigned build: 0.5.0 → 0.6.0 with one click after a RESET double-press (0.5.0 has no action 6), no file or drive picked; backup written to Application Support (its app-only image matches the `xiao_uf2.py` split); the board reconnected reporting 0.6.0, IMU running, calibrated.
-- Factory-new XIAO nRF52840 Sense (bootloader 0.6.1, Seeed's Arduino demo firmware), macOS, unsigned build: Install in the app, one RESET double-press; Seeed's firmware backed up (`app-only.uf2` holds the Arduino image), board came back as Trillium 0.6.0 with the IMU at 0x6a, calibrated, and the **Trill sensor detected (`trill=run`)** for the first time.
+- Factory-new XIAO nRF52840 Sense (bootloader 0.6.1, Seeed's Arduino demo firmware), macOS, unsigned build: Install in the app, one RESET double-press; Seeed's firmware backed up (`app-only.uf2` holds the Arduino image), board came back with Trill firmware 0.6.0 with the IMU at 0x6a, calibrated, and the **Trill sensor detected (`trill=run`)** for the first time.
 
 ### Not yet tested on hardware
 - **Reinstalling from the app without RESET** (action 6, Settings › Firmware › *Reinstall firmware 0.6.0*) is not yet fully tested on hardware; it will be tested with this release. If the board does not come back, double-press RESET and install again.
