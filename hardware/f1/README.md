@@ -1,8 +1,10 @@
 # Trillium F1 — build guide (F1p printed, F1w wood)
 
-**Model:** F1 (Flex, nRF52840) · **Revision:** A (prototype) · **Status:** design, not yet built
+**Model:** F1 (T2 plus a Bela Trill Flex linear touch sensor) · **Revision:** A (prototype) · **Status:** design, not yet built
 
-F1 adds touch to the T1 motion instrument. A Bela **Trill Flex** capacitive strip lies along the top of a 19–23 cm bar. Sliding, tapping and pressing along it are combined with tilt and strikes from the XIAO's motion sensor. The electronics are the T1 **core board** plus four parts. Two bodies are designed in parallel and share the same internal layout:
+> **Naming and testing.** F1 is the planned T2 motion board plus a Bela Trill Flex linear touch sensor. This revision A design matches that: the shared core board (cell, power switch, RGB LED, buttons — the planned T2 electronics, still filed under [`t1/`](../t1/README.md)) plus the Flex parts. It has not been built. The only Flex testing to date is a breadboard [Trillium Zero (T0)](../../docs/hardware/trillium-zero.md) plus a Trill Flex. See the [model lineup](../README.md#model-lineup).
+
+F1 adds a linear touch sensor to the planned T2 motion instrument. A Bela **Trill Flex** capacitive strip lies along the top of a 19–23 cm bar. Sliding, tapping and pressing along it are combined with tilt and strikes from the XIAO's motion sensor. The electronics are the shared **core board** plus four parts. Two bodies are designed in parallel and share the same internal layout:
 
 | Body | Construction | Outside (L x W x H) | Visible sensor |
 |---|---|---|---|
@@ -15,7 +17,7 @@ Both bodies place the core board at the USB end, the Trill base under the tail e
 
 ![F1 schematic](f1-schematic.svg)
 
-These are the additions to the core board ([T1 build guide](../t1/README.md)):
+These are the additions to the core board (the planned T2 electronics, [build guide in `t1/`](../t1/README.md)):
 
 - **R1, R2 (4.7 kΩ)** pull SDA (D4) and SCL (D5) up to 3V3. Neither the Trill nor the XIAO has pull-ups on these pins. The nRF52840's internal pull-ups (11–16 kΩ) are too weak for reliable I2C.
 - **J2** brings out GND, 3V3, SDA, SCL and EVT as solder pads, in Qwiic colour order (black, red, blue, yellow). The Trill's supplied Qwiic cable is cut and soldered here. A 1 x 5 right-angle header can be fitted instead for bench work.
@@ -47,7 +49,7 @@ The Trill runs from the XIAO's 3V3 rail (≈ 4 mA, address 0x48). Never connect 
 | PB1 | 1 | Perfboard | 2.54 mm, cut to 11 x 18 holes | any |
 | — | — | Sundries | 2 x 7-pin male headers, 28–30 AWG wire, 5 mm LED standoff, Kapton tape, foam tape | any |
 
-**F1p mechanical:** shell and plate (printed, `f1p-body.scad`), 2 button caps (printed, same as T1), 4 x M3 heat-set inserts (5.7 mm OD, 4 mm long), 4 x M3 x 6 countersunk screws.
+**F1p mechanical:** shell and plate (printed, `f1p-body.scad`), 2 button caps (printed, same as the planned T2 / `t1/` caps), 4 x M3 heat-set inserts (5.7 mm OD, 4 mm long), 4 x M3 x 6 countersunk screws.
 
 **F1w mechanical:** one 3 mm birch plywood sheet ≥ 430 x 220 mm, one 1.5 mm sheet ≥ 215 x 75 mm, 8 x M3 x 20 button-head screws, 8 x M3 hex nuts, wood glue for the button plungers only.
 
@@ -57,7 +59,7 @@ The full list with mechanical items is [`f1-bom.csv`](f1-bom.csv).
 
 ![F1 perfboard layout and wiring](f1-layout.svg)
 
-The placement is identical to T1. R1 (E10–H10), R2 (A11–D11), J2 (D18–H18) and JP1 (G17–H17) occupy holes that T1 leaves empty.
+The placement is identical to the planned T2 core board. R1 (E10–H10), R2 (A11–D11), J2 (D18–H18) and JP1 (G17–H17) occupy holes that the T2 drawings leave empty.
 
 | # | Net | From | To |
 |---|---|---|---|
@@ -91,18 +93,18 @@ The placement is identical to T1. R1 (E10–H10), R2 (A11–D11), J2 (D18–H18)
 
 Wires 7–9 and 17 go through J3: if J3 is not used, run wire 7 directly from U1.D6 to JP1.1 (only if JP1 is fitted) and wire 17 from U1.GND to SW2.2.
 
-**Building the core board:** follow the [T1 assembly procedure](../t1/README.md#4-assembly-procedure), and add R1 and R2 at step 3. Then:
+**Building the core board:** follow the [core-board assembly procedure](../t1/README.md#4-assembly-procedure) (planned T2, files still under `t1/`), and add R1 and R2 at step 3. Then:
 
 - **J2 / W1.** Cut the Qwiic cable to the length the body needs: about 80 mm for F1p and F1w, from the board's inner edge to the Trill base's Qwiic socket. Keep the JST-SH end. Strip and tin the four wires and solder black → D18 (GND), red → E18 (3V3), blue → F18 (SDA), yellow → G18 (SCL). Check the colours against the Trill datasheet's Qwiic pinout (1 GND black, 2 VCC red, 3 SDA blue, 4 SCL yellow): third-party cables sometimes differ. Add a dab of hot glue for strain relief.
 - **JP1 (optional).** Solder a fine wire from the EVT pad on the Trill base to J2.5 (H18) and fit the JP1 link (G17–H17). Leave J3.1 unconnected.
 
-**Checks** (in addition to T1 section 5): with power off, D4 (C5) → 3V3 (I3) and D5 (C6) → 3V3 read about 4.7 kΩ. With USB connected and the Trill plugged in, the existing firmware should report the Trill at 0x48 on the diagnostics port and show touch in the app's Sensors tab.
+**Checks** (in addition to the core-board checks in the `t1/` guide, section 5): with power off, D4 (C5) → 3V3 (I3) and D5 (C6) → 3V3 read about 4.7 kΩ. With USB connected and the Trill plugged in, the existing firmware should report the Trill at 0x48 on the diagnostics port and show touch in the app's Sensors tab.
 
 ## 4. F1p — 3D printed body
 
 ![F1p body drawing](f1p-body-drawing.svg)
 
-Source: [`f1p-body.scad`](f1p-body.scad). Parts: `shell` (top surface and walls, printed top-down), `plate` (bottom plate, printed flat) and `caps` (same as T1). `part = "assembly"` shows the contents in place.
+Source: [`f1p-body.scad`](f1p-body.scad). Parts: `shell` (top surface and walls, printed top-down), `plate` (bottom plate, printed flat) and `caps` (same as the planned T2). `part = "assembly"` shows the contents in place.
 
 **Before printing,** measure your sensor. Set `sensor_l` to its overall length (distributor listings give 145.5 mm for the stock strip, while Bela's revision table quotes 117 mm). Then dry-fit the tail into the Trill base's FFC socket and estimate `tail_len`: the strip length that goes through the slot, bends down and is inserted into the socket (17 mm by default). The top channel length and the body length follow from these two numbers.
 
@@ -141,11 +143,11 @@ Files: [`f1w-sheet-3mm.svg`](f1w-sheet-3mm.svg) (TOP, L0, L1, L3–L6 and six pl
 2. Stick the cell and the Trill base to L0 inside the cavity with foam tape, in the same positions as F1p (Trill FFC edge 57 mm from the inner USB wall).
 3. Lay the wired core board on L1's four corner tabs, then fit L2 around it.
 4. Stack L3 (its tabs land on the board's corners, SW1's actuator in the side slot), then L4, L5 and L6.
-5. Glue up the two button plungers: Ø7 3 mm + Ø7 3 mm + Ø7 1.5 mm as the shoulder, then Ø4.6 3 mm + Ø4.6 1.5 mm as the stem. Or use the printed T1 caps. Stand them on the tactile switches.
+5. Glue up the two button plungers: Ø7 3 mm + Ø7 3 mm + Ø7 1.5 mm as the shoulder, then Ø4.6 3 mm + Ø4.6 1.5 mm as the stem. Or use the printed caps from the `t1/` (planned T2) design. Stand them on the tactile switches.
 6. Feed the sensor tail through TOP's slot into the Trill FFC socket. Lower TOP over the plungers and LED, then fit eight M3 x 20 screws and tighten evenly.
 7. Lay the strip into the engraved pocket.
 
-The board's LED sits 6.3 mm above the board in F1w (2.9 mm in T1 and F1p) because the wooden top is 3 mm thick and higher. Fit a longer standoff, or bend the leads, on wood builds.
+The board's LED sits 6.3 mm above the board in F1w (2.9 mm in the planned T2 and F1p) because the wooden top is 3 mm thick and higher. Fit a longer standoff, or bend the leads, on wood builds.
 
 **Wood finish:** seal or oil all faces except the bottom of the sensor pocket before assembly. Moisture in bare wood shifts the Trill's capacitive baseline. After the first power-up, let the sensor recalibrate (firmware resets its baseline at start-up).
 

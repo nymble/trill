@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Versions follow [Semant
 
 ## [Unreleased]
 
+### Added
+- **Model lineup and Trillium Zero as the starting point** (docs only): T0 is one Seeed Studio XIAO nRF52840 Sense on a USB cable (USB-MIDI, free Trillium app). T1 is T0 plus a battery and BLE (built and tested on an early Omi DIY board). T2 is T1 plus a better LED and buttons (planned). F1 is T2 plus a Bela Trill Flex linear touch sensor (planned; only breadboard T0 plus Flex has been tested). Other combinations are possible; a board is described by model plus a capability list. The README and `docs/hardware/trillium-zero.md` now lead with T0. `hardware/README.md` records the lineup. The revision A drawings under `hardware/t1/` and `hardware/f1/` are unchanged and are mapped to the planned T2 and F1; those folders are not renamed.
+- **Roadmap plans** (docs only, no app or firmware changes): UI wording should say instrument/configuration rather than different "sounds"; the Sensors chart label "Bela" should become "Linear sensor". Firmware will self-report model and capabilities; the app will record each board by serial number. First-time setup stays on USB; BLE-MIDI discovery comes after that (still subject to the existing licence note).
+- **Microphone research** (`docs/research/microphone.md`): for the next release, a testing-only on/off switch (not part of any instrument) that brings 16 kHz 16-bit mono PCM from the Sense PDM microphone into Trillium over USB, with a live chart and Mac play-through. USB Audio Class and compressed BLE audio are deferred. Later work can record and reuse the audio in the app; MIDI from the microphone is not required initially.
+
+
 ## [0.6.0] - 2026-11-15
 
 ### Added

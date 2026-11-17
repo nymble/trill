@@ -1,16 +1,18 @@
-# Trillium T1 — build guide
+# Trillium T2 — build guide (files still labelled T1)
 
-**Model:** T1 (Tiny, nRF52840) · **Revision:** A (prototype) · **Status:** design, not yet built
+**Drawings labelled:** T1 · **Lineup model:** **T2** · **Revision:** A (prototype) · **Status:** design, not yet built
 
-T1 is the smallest Trillium instrument. It is the motion instrument that runs today (a XIAO nRF52840 Sense on a USB cable), made self-contained: it adds a rechargeable cell, a power switch, a status LED that shows through the case, and two buttons. It fits in a 32.5 x 52.2 x 22.1 mm printed enclosure. It works as a USB-MIDI device with or without the Trillium app.
+> **Naming.** The model lineup now uses **T0** for a bare XIAO nRF52840 Sense on a USB cable ([Trillium Zero](../../docs/hardware/trillium-zero.md)), **T1** for T0 plus a battery and BLE, and **T2** for T1 plus a better LED and buttons. This folder is still called `t1/` and the schematics, layout, BOM and enclosure files are still named `t1-*`, because they were filed that way in revision A. **The electronics and enclosure in this folder are the planned T2**, not the simpler T1. They have not been built. A T1 has been built and tested as an early Omi DIY board (battery and BLE, not this LED and button layout). A rename of this folder to `t2/` is proposed and is not done here. See the [model lineup](../README.md#model-lineup).
 
-The electronics are the shared **core board** (see [hardware/README.md](../README.md)). F1 uses the same board with four extra parts.
+This is the planned next motion instrument after T1: a Seeed Studio XIAO nRF52840 Sense made self-contained with a rechargeable cell, a power switch, a status LED that shows through the case, and two buttons. It fits in a 32.5 x 52.2 x 22.1 mm printed enclosure. It works as a USB-MIDI device with or without the Trillium app. BLE is planned on the same board.
+
+The electronics are the shared **core board** (see [hardware/README.md](../README.md)). F1 uses the same board with four extra parts. In the lineup, F1 is this T2 board plus a Bela Trill Flex linear touch sensor.
 
 ## 1. Schematic
 
 ![T1 schematic](t1-schematic.svg)
 
-The XIAO's own charger and USB/battery switch-over are used unchanged. SW1 breaks the cell's positive lead. **SW1 must be ON for the cell to charge.** With SW1 OFF the instrument still runs from USB but the cell is isolated. The I2C parts shown in grey (R1, R2, J2, JP1) are not fitted on T1. Their holes stay free.
+The XIAO's own charger and USB/battery switch-over are used unchanged. SW1 breaks the cell's positive lead. **SW1 must be ON for the cell to charge.** With SW1 OFF the instrument still runs from USB but the cell is isolated. The I2C parts shown in grey (R1, R2, J2, JP1) are not fitted on this board (planned T2). Their holes stay free for an F1 upgrade.
 
 ## 2. Bill of materials
 
