@@ -12,8 +12,12 @@
 //!    configuration replies never appear on the port a DAW records from.
 //!    Class compliant: macOS and iOS use their built-in driver and show each
 //!    cable as its own MIDI source/destination pair.
-//! 3. Optional CDC ACM "PCM" test stream (interfaces 4-5), only with the
-//!    `pcm-synth` firmware feature.
+//! 3. CDC ACM "PCM" test stream (interfaces 4-5) in the current firmware:
+//!    framed 16 kHz microphone capture when the test switch is on, or the
+//!    optional `pcm-synth` debug synth when that feature is built and the
+//!    microphone is off. The four-interface layout without this port
+//!    (PID `0x0002`) is still constructed in tests so older descriptors
+//!    stay checked.
 //!
 //! This is **not** a USB Audio (sound card) device: no audio streams.
 //!
@@ -35,9 +39,13 @@ use embassy_usb::{Builder, Config};
 
 /// pid.codes VID.
 pub const USB_VID: u16 = 0x1209;
-/// pid.codes test PID for the default layout (diagnostics + MIDI).
+/// pid.codes test PID for the four-interface layout (diagnostics + MIDI).
+/// Current firmware no longer ships this layout; it remains for tests and
+/// for talking to older images.
 pub const USB_PID_MIDI: u16 = 0x0002;
-/// pid.codes test PID for the layout with the optional PCM port.
+/// pid.codes test PID for the layout with the PCM port (diagnostics +
+/// MIDI + PCM). Current firmware uses this for the microphone test path
+/// and, when built, the optional debug synth.
 pub const USB_PID_MIDI_PCM: u16 = 0x0003;
 /// USB-MIDI virtual cables (embedded jack pairs).
 pub const MIDI_CABLES: u8 = 2;
@@ -94,7 +102,7 @@ pub struct Functions<'d, D: Driver<'d>> {
     pub diag: CdcAcmClass<'d, D>,
     /// USB-MIDI function.
     pub midi: MidiClass<'d, D>,
-    /// Optional PCM CDC ACM port.
+    /// PCM CDC ACM port, when this layout includes it.
     pub pcm: Option<CdcAcmClass<'d, D>>,
 }
 

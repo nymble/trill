@@ -135,6 +135,13 @@ pub enum Action {
     /// Notes Off, and resets about 250 ms later; nothing is written to
     /// flash. Older firmware answers `UnknownAction`.
     EnterBootloader = 6,
+    /// Start the onboard microphone test capture (`VARIANT_MIC`, 16 kHz
+    /// PCM on the USB PCM port). Not part of any instrument mapping.
+    /// Off at boot; older firmware answers `UnknownAction`.
+    StartMic = 7,
+    /// Stop microphone test capture and drive the microphone power pin
+    /// low. Older firmware answers `UnknownAction`.
+    StopMic = 8,
 }
 
 impl Action {
@@ -147,6 +154,8 @@ impl Action {
             4 => Self::RestoreDefaults,
             5 => Self::ZeroOrientation,
             6 => Self::EnterBootloader,
+            7 => Self::StartMic,
+            8 => Self::StopMic,
             _ => return None,
         })
     }
@@ -157,8 +166,9 @@ pub const VARIANT_PCM_SYNTH: u8 = 0x01;
 /// Variant flag (valid with [`CAP_BOARD`]): a motion sensor (IMU)
 /// was found on this board. Clear on a plain XIAO nRF52840.
 pub const VARIANT_IMU: u8 = 0x02;
-/// Variant flag (valid with [`CAP_BOARD`]): microphone input is
-/// available. Reserved: no firmware sets it yet.
+/// Variant flag (valid with [`CAP_BOARD`]): microphone test capture is
+/// available (actions 7 and 8). The microphone is off by default and is
+/// not part of any instrument mapping.
 pub const VARIANT_MIC: u8 = 0x04;
 /// Variant flag: a [`msg::TELEMETRY_TOUCHES`] companion is sent with each
 /// format-1 telemetry frame, carrying up to five touches. This lives in

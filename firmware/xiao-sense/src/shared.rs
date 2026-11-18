@@ -18,6 +18,7 @@ use motion_synth::motion::MotionFrame;
 
 #[cfg(feature = "pcm-synth")]
 use crate::board::{BLOCK, PCM_QUEUE};
+use crate::board::{MIC_BLOCK, MIC_QUEUE};
 
 /// One rendered audio block.
 #[cfg(feature = "pcm-synth")]
@@ -28,6 +29,16 @@ pub struct PcmBlock {
     pub flags: u8,
     /// Samples.
     pub samples: [i16; BLOCK],
+}
+
+/// One microphone capture block (16 kHz, 5 ms).
+pub struct MicBlock {
+    /// Block sequence number.
+    pub seq: u32,
+    /// stream::FLAG_* bits.
+    pub flags: u8,
+    /// Samples.
+    pub samples: [i16; MIC_BLOCK],
 }
 
 /// Sensor state machine, reported over diagnostics.
@@ -73,8 +84,8 @@ impl SensorState {
     }
 }
 
-/// Counters (wrap on overflow). Audio/PCM counters stay zero without
-/// the `pcm-synth` feature.
+/// Counters (wrap on overflow). Synth audio counters stay zero without
+/// the `pcm-synth` feature. Microphone counters are always present.
 #[cfg_attr(not(feature = "pcm-synth"), allow(dead_code))]
 pub struct Stats {
     pub imu_state: AtomicU8,
@@ -118,6 +129,12 @@ pub struct Stats {
     pub audio_triggers: AtomicU32,
     pub pcm_sent: AtomicU32,
     pub pcm_dropped: AtomicU32,
+    /// Microphone blocks captured while the test switch is on.
+    pub mic_blocks: AtomicU32,
+    /// Microphone blocks dropped because the USB queue was full.
+    pub mic_dropped: AtomicU32,
+    /// Microphone start/sampler errors.
+    pub mic_errors: AtomicU32,
     /// Control-to-block latency of the newest frame used (µs).
     pub control_age_us_last: AtomicU32,
     pub control_age_us_max: AtomicU32,
@@ -157,6 +174,9 @@ pub static STATS: Stats = Stats {
     audio_triggers: Z,
     pcm_sent: Z,
     pcm_dropped: Z,
+    mic_blocks: Z,
+    mic_dropped: Z,
+    mic_errors: Z,
     control_age_us_last: Z,
     control_age_us_max: Z,
 };
@@ -316,6 +336,20 @@ pub static PCM: Channel<CriticalSectionRawMutex, PcmBlock, PCM_QUEUE> = Channel:
 
 /// Host has the PCM port open (DTR asserted).
 pub static PCM_ENABLED: AtomicBool = AtomicBool::new(false);
+
+/// Microphone test switch (action 7/8). Off at boot; power pin low when off.
+pub static MIC_ENABLED: AtomicBool = AtomicBool::new(false);
+/// Wakes the microphone task when the switch changes.
+pub static MIC_WAKE: Signal<CriticalSectionRawMutex, ()> = Signal::new();
+/// Microphone → USB PCM queue.
+pub static MIC: Channel<CriticalSectionRawMutex, MicBlock, MIC_QUEUE> = Channel::new();
+
+/// Request the microphone test path on or off. The pin is driven by the
+/// microphone task, not here.
+pub fn set_mic_enabled(on: bool) {
+    MIC_ENABLED.store(on, Ordering::Relaxed);
+    MIC_WAKE.signal(());
+}
 /// Request gyro re-calibration (diagnostics command `c`).
 pub static RECALIBRATE: AtomicBool = AtomicBool::new(false);
 /// Safe mode: crash loop detected, sensors and audio disabled.

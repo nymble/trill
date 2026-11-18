@@ -244,6 +244,14 @@ pub fn vectors() -> Vec<(&'static str, Vec<u8>)> {
             "action_enter_bootloader",
             request::action(37, Action::EnterBootloader).to_vec(),
         ),
+        (
+            "action_start_mic",
+            request::action(38, Action::StartMic).to_vec(),
+        ),
+        (
+            "action_stop_mic",
+            request::action(39, Action::StopMic).to_vec(),
+        ),
     ]
 }
 

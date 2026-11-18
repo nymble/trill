@@ -1,6 +1,6 @@
 [package]
 name = "xiao-sense-fw"
-description = "Embassy firmware for the Seeed XIAO nRF52840 Sense: class-compliant USB-MIDI + CDC diagnostics from Trill touch and LSM6DS3TR-C motion; optional debug synth PCM stream"
+description = "Embassy firmware for the Seeed XIAO nRF52840 Sense: class-compliant USB-MIDI + CDC diagnostics from Trill touch and LSM6DS3TR-C motion; microphone test PCM stream; optional debug synth"
 version = "0.6.0"
 edition = "2021"
 license = "GPL-3.0-only"
@@ -38,8 +38,9 @@ heapless = "0.9"
 [features]
 default = []
 # Debug/test path: on-board synth rendered on the high-priority executor and
-# streamed as framed PCM over a second CDC ACM port (tools/pcm_capture.py).
-# Uses USB PID 1209:0003 instead of 1209:0002.
+# streamed as framed PCM over the same CDC ACM port as the microphone test
+# (tools/pcm_capture.py). Shares USB PID 1209:0003. Microphone samples
+# take the port while the test switch is on.
 pcm-synth = []
 # Logic-analyser timing outputs on D0/D1 (see src/timing.rs). Off by default.
 timing-gpio = []

@@ -57,5 +57,9 @@ hardware. Check `SHA256SUMS` first (`shasum -a 256 -c SHA256SUMS`).
 - Orientation zero, and that restore defaults clears it.
 - Instrument (port 1) timing unaffected while the Sensors tab streams.
 
-Microphone, battery level and heading (yaw) are not available with this
-firmware and board, and the app says so instead of showing values.
+Battery level and heading (yaw) are not available with this firmware and
+board, and the app says so instead of showing values. The Sensors charts
+page has a testing-only microphone switch (off by default, not part of any
+instrument). On a Mac, turning it on should show a live level and, if
+play-through is enabled, play the captured signal; it must not change the
+instrument mapping or start a MIDI voice.

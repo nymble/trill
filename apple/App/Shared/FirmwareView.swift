@@ -38,7 +38,7 @@ struct FirmwareView: View {
                     LabeledContent("Board", value: model.connectedBoardName ?? "?")
                     LabeledContent("Firmware", value: h.firmwareString)
                     LabeledContent("Motion sensor", value: h.hasMotionSensor ? "yes" : "no")
-                    LabeledContent("Microphone", value: h.hasMicrophone ? "available" : "not used by this firmware")
+                    LabeledContent("Microphone", value: h.hasMicrophone ? "test capture available" : "not used by this firmware")
                     LabeledContent("Restart for updates", value: h.canEnterBootloader ? "from the app" : "double-press RESET (firmware before 0.6.0)")
                 }
             }
@@ -84,7 +84,7 @@ struct FirmwareAssistant: View {
     var body: some View {
         Form {
             Section {
-                Label("Loading this firmware replaces the Omi (or any other) application on the board. Back up first. Bluetooth and the microphone are not available in this firmware.", systemImage: "exclamationmark.triangle")
+                Label("Loading this firmware replaces the Omi (or any other) application on the board. Back up first. Bluetooth is not available in this firmware. The onboard microphone is a testing-only capture path in Trillium, not part of any instrument.", systemImage: "exclamationmark.triangle")
                     .foregroundStyle(.orange)
                 Text("This assistant only reads files. It never writes to the board; you run the commands below yourself, dry run first.")
                     .foregroundStyle(.secondary)

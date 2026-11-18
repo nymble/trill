@@ -75,6 +75,53 @@ pub fn encode(
     Some(len)
 }
 
+/// A validated frame. `samples` are little-endian `i16` bytes (2N long).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Decoded<'a> {
+    /// Format version.
+    pub version: u8,
+    /// `FLAG_*` bits.
+    pub flags: u8,
+    /// Block sequence number.
+    pub seq: u32,
+    /// Sample rate (Hz).
+    pub sample_rate: u32,
+    /// Little-endian packed `i16` samples.
+    pub samples: &'a [u8],
+}
+
+/// Decode one frame at the start of `data`. Extra trailing bytes are
+/// ignored. Returns `None` on a short buffer, bad magic, unsupported
+/// version, length mismatch or CRC error.
+pub fn decode(data: &[u8]) -> Option<Decoded<'_>> {
+    if data.len() < HEADER_LEN + 2 {
+        return None;
+    }
+    if data[0..4] != MAGIC {
+        return None;
+    }
+    if data[4] != VERSION {
+        return None;
+    }
+    let flags = data[5];
+    let n = u16::from_le_bytes([data[6], data[7]]) as usize;
+    let len = frame_len(n);
+    if data.len() < len {
+        return None;
+    }
+    let expect = u16::from_le_bytes([data[len - 2], data[len - 1]]);
+    if crc16(&data[..len - 2]) != expect {
+        return None;
+    }
+    Some(Decoded {
+        version: data[4],
+        flags,
+        seq: u32::from_le_bytes([data[8], data[9], data[10], data[11]]),
+        sample_rate: u32::from_le_bytes([data[12], data[13], data[14], data[15]]),
+        samples: &data[HEADER_LEN..HEADER_LEN + 2 * n],
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -104,5 +151,32 @@ mod tests {
     fn rejects_small_buffer() {
         let mut buf = [0u8; 10];
         assert!(encode(&mut buf, 0, 16_000, 0, &[0; 4]).is_none());
+    }
+
+    #[test]
+    fn decode_golden_frame() {
+        let mut buf = [0u8; 64];
+        let n = encode(&mut buf, 0x0102_0304, 32_000, FLAG_DROPPED, &[1, -1]).unwrap();
+        let d = decode(&buf[..n]).expect("golden");
+        assert_eq!(d.version, 1);
+        assert_eq!(d.flags, FLAG_DROPPED);
+        assert_eq!(d.seq, 0x0102_0304);
+        assert_eq!(d.sample_rate, 32_000);
+        assert_eq!(d.samples, &[1, 0, 0xFF, 0xFF]);
+        // Trailing bytes after a valid frame are ignored.
+        buf[n] = 0xAA;
+        assert!(decode(&buf[..n + 1]).is_some());
+    }
+
+    #[test]
+    fn decode_rejects_bad_crc_and_magic() {
+        let mut buf = [0u8; 64];
+        let n = encode(&mut buf, 1, 16_000, 0, &[0; 4]).unwrap();
+        buf[n - 1] ^= 1;
+        assert!(decode(&buf[..n]).is_none());
+        buf[n - 1] ^= 1;
+        buf[0] = b'X';
+        assert!(decode(&buf[..n]).is_none());
+        assert!(decode(&buf[..10]).is_none());
     }
 }
