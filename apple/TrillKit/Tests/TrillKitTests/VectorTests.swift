@@ -77,6 +77,7 @@ final class VectorTests: XCTestCase {
         XCTAssertEqual(h.firmwareString, "0.4.0")
         XCTAssertTrue(h.supportsConfigPages)
         XCTAssertTrue(h.supportsTelemetry)
+        XCTAssertTrue(h.supportsMultiTouch)
         XCTAssertEqual(h.uptimeSeconds, 1234)
         XCTAssertEqual(h.bootID, 0x1555)
         XCTAssertEqual(h.paramCount, TrillParam.allCases.count)

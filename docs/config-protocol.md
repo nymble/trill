@@ -43,10 +43,10 @@ The device **never answers a reply-typed message** (`type & 0x40`), anything wit
 | `02` GET_CONFIG | none (page 0), or page number (1 byte, firmware 0.4.0+) | `42` CONFIG for that page; an unknown page gets ERROR OutOfRange (detail = page) |
 | `03` SET_CONFIG | 1–16 × `(param, hi, lo)` | `42` CONFIG (the page of the **first** parameter) with the values now in effect, or `7F` ERROR |
 | `04` ACTION | action code (1 byte) | `44` ACTION_ACK `<code>`. Restore-defaults answers with `42` CONFIG page 0 |
-| `05` TELEMETRY_START | rate in Hz, 1–100 (1 byte) | `45` TELEMETRY_ACK, then `50` TELEMETRY frames (firmware 0.3.0+, [below](#sensor-telemetry-firmware-030)) |
+| `05` TELEMETRY_START | rate in Hz, 1–100 (1 byte) | `45` TELEMETRY_ACK, then `50` TELEMETRY frames (firmware 0.3.0+, [below](#sensor-telemetry-firmware-030)); firmware that sets capability bit 7 also sends a `51` touches companion with each frame |
 | `06` TELEMETRY_STOP | none | `45` TELEMETRY_ACK with rate 0 |
 
-**HELLO_REPLY payload** (13 bytes): protocol version, firmware major, minor, patch, variant (bit 0 = `pcm-synth` build; with capability bit 6: bit 1 = IMU fitted, bit 2 = microphone available, reserved and never set yet), capabilities (bit 0 SET_CONFIG, bit 1 ACTION, bit 2 persistent settings: **never set by this firmware**, bit 3 sensor telemetry: firmware 0.3.0+, bit 4 paged configuration: firmware 0.4.0+, bit 5 directional strikes: firmware 0.5.0+, bit 6 board report and action 6: firmware 0.6.0+), max message length (64), parameter count (13 before 0.4.0, 30 in 0.4.0, 37 in 0.5.0), uptime in seconds (3 bytes, 21 bits, saturating), boot ID (2 bytes, 14 bits). The boot ID is drawn from the nRF52840 hardware RNG at reset. A changed boot ID means the device restarted and its settings went back to defaults.
+**HELLO_REPLY payload** (13 bytes): protocol version, firmware major, minor, patch, variant (bit 0 = `pcm-synth` build; with capability bit 6: bit 1 = IMU fitted, bit 2 = microphone available, reserved and never set yet), capabilities (bit 0 SET_CONFIG, bit 1 ACTION, bit 2 persistent settings: **never set by this firmware**, bit 3 sensor telemetry: firmware 0.3.0+, bit 4 paged configuration: firmware 0.4.0+, bit 5 directional strikes: firmware 0.5.0+, bit 6 board report and action 6: firmware 0.6.0+, bit 7 multi-touch companion `51`), max message length (64), parameter count (13 before 0.4.0, 30 in 0.4.0, 37 in 0.5.0), uptime in seconds (3 bytes, 21 bits, saturating), boot ID (2 bytes, 14 bits). The boot ID is drawn from the nRF52840 hardware RNG at reset. A changed boot ID means the device restarted and its settings went back to defaults.
 
 **CONFIG payload:** generation (2 bytes, 14 bits, wraps), persistent flag (`00`: RAM only), then `(param, hi, lo)` for every parameter of one page in ID order. The page is implied by the IDs.
 
@@ -150,7 +150,7 @@ Controller sources: 0 off, 1 rotation speed (full scale = param 9), 2 pitch forw
 
 A host can subscribe to a low-rate snapshot of the sensors on the same
 configuration port. It is for display and logging; it never changes the
-sound or the mapping. Firmware that does not set capability bit 3 answers
+instrument or the mapping. Firmware that does not set capability bit 3 answers
 TELEMETRY_START with ERROR UnknownType (2); hosts should check the bit and
 explain that a firmware update is needed.
 
@@ -159,7 +159,8 @@ explain that a firmware update is needed.
   stops by itself 5 s after the last START, on TELEMETRY_STOP, on USB
   disconnect and on reset. Hosts renew about every 2 s while they display it.
 - **TELEMETRY_ACK payload** (4 bytes): rate now in effect (0 = off), lease in
-  seconds (5), frame length (54), frame format (1).
+  seconds (5), frame length (54), frame format (1). The acknowledgement
+  describes the format-1 `50` frame only; it is unchanged.
 - **Lossy and lowest priority.** Frames go out on cable 1 only when no reply is
   waiting and instrument events have been sent first. A period that cannot be
   sent is counted as skipped, never queued, and values are sampled when the
@@ -189,6 +190,22 @@ not finite, flag 1 is clear and the IMU fields are 0; hosts must not plot
 them. Pitch = atan2(−ax, √(ay²+az²)) (±90°) and roll = atan2(ay, az) (±180°)
 in the IMU's own axes, smoothed with the gyro; there is no yaw (no
 magnetometer). Shared fixtures: `protocol/telemetry-v1-frames.txt`.
+
+- **Multi-touch companion** (`51`, request ID 0), sent immediately after each
+  format-1 frame when capability bit 7 (`0x80`) is set. Older hosts ignore
+  it. The instrument mapping is unchanged: MIDI still uses only the first
+  touch, which format 1 continues to report. The companion is paired to its
+  format-1 frame by the 14-bit sequence number. Payload:
+
+| Offset | Size | Field |
+|---|---|---|
+| 0 | 1 | format (1) |
+| 1 | 2 | sequence, 14 bits, same as the format-1 frame |
+| 3 | 1 | count `n`, 0–5 |
+| 4 | 4n | `n` pairs of position and size, each 14 bits, 0–16383 = 0–1 |
+
+Length is 12 + 4n bytes including `F0`/`F7` (12 when there is no touch, 32
+when there are five). Shared fixtures: `protocol/telemetry-touches-v1-frames.txt`.
 
 ## Safety properties
 

@@ -183,6 +183,7 @@ fn hello_reports_version_variant_caps_and_not_persistent() {
             | trill_config::CAP_CONFIG_PAGES
             | trill_config::CAP_STRIKES
             | trill_config::CAP_BOARD
+            | trill_config::CAP_MULTI_TOUCH
     );
     assert_eq!(r[12] & CAP_PERSISTENT, 0);
     assert_eq!(r[13] as usize, MAX_MESSAGE_LEN);

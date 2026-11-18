@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-only
 //! Telemetry subscription, scheduling and frame codec.
 use instrument_events::Config;
-use trill_config::telemetry::{self, Frame, Sample, Schedule};
-use trill_config::{handle, msg, request, DeviceInfo, ErrorCode, CAP_TELEMETRY, MAX_MESSAGE_LEN};
+use trill_config::telemetry::{self, Frame, Sample, Schedule, TouchPoint, TouchesFrame};
+use trill_config::{
+    handle, msg, request, DeviceInfo, ErrorCode, CAP_MULTI_TOUCH, CAP_TELEMETRY, MAX_MESSAGE_LEN,
+};
 
 const INFO: DeviceInfo = DeviceInfo {
     firmware: [0, 3, 0],
@@ -20,6 +22,7 @@ fn hello_advertises_telemetry() {
     let o = run(&request::hello(1)).unwrap();
     assert_eq!(o.reply[5], msg::HELLO_REPLY);
     assert_ne!(o.reply[HELLO_CAPS] & CAP_TELEMETRY, 0);
+    assert_ne!(o.reply[HELLO_CAPS] & CAP_MULTI_TOUCH, 0);
 }
 const HELLO_CAPS: usize = 7 + 5;
 
@@ -261,4 +264,81 @@ fn sequence_and_skip_counters_wrap_at_14_bits() {
     assert!(s.due(0));
     assert!(s.due(20_000)); // one missed period
     assert_eq!(s.skipped, 0);
+}
+
+#[test]
+fn companion_roundtrip_and_rejects_malformed() {
+    let empty = TouchesFrame::from_normalised(7, &[]);
+    assert_eq!(empty.count, 0);
+    let enc = telemetry::encode_touches(&empty);
+    assert_eq!(enc.len(), telemetry::touches_frame_len(0));
+    assert_eq!(enc[5], msg::TELEMETRY_TOUCHES);
+    assert_eq!(telemetry::decode_touches(&enc), Some(empty));
+
+    let five = TouchesFrame::from_normalised(
+        0x3FFF,
+        &[
+            (0.0, 0.0),
+            (0.5, 0.25),
+            (1.0, 1.0),
+            (0.1, 0.2),
+            (0.9, 0.8),
+            (0.3, 0.3), // sixth is dropped
+        ],
+    );
+    assert_eq!(five.count, 5);
+    assert_eq!(
+        five.as_slice()[1],
+        TouchPoint {
+            position: 8192,
+            size: 4096
+        }
+    );
+    assert_eq!(five.as_slice()[2].position, 0x3FFF);
+    let enc = telemetry::encode_touches(&five);
+    assert_eq!(enc.len(), telemetry::touches_frame_len(5));
+    assert!(enc.len() <= MAX_MESSAGE_LEN);
+    let got = telemetry::decode_touches(&enc).unwrap();
+    assert_eq!(got, five);
+
+    // Non-finite entries are skipped, later valid ones still count.
+    let mixed = TouchesFrame::from_normalised(1, &[(f32::NAN, 0.5), (0.25, 0.5)]);
+    assert_eq!(mixed.count, 1);
+    assert_eq!(mixed.as_slice()[0].position, telemetry::unit14(0.25));
+
+    let good = telemetry::encode_touches(&five);
+    assert!(telemetry::decode_touches(&good).is_some());
+    assert!(telemetry::decode_touches(&good[..good.len() - 1]).is_none());
+    let mut b = good.clone();
+    b[5] = msg::TELEMETRY;
+    assert!(
+        telemetry::decode_touches(&b).is_none(),
+        "format-1 frame is not a companion"
+    );
+    b = good.clone();
+    b[7] = 2; // unknown companion format
+    assert!(telemetry::decode_touches(&b).is_none());
+    b = good.clone();
+    b[10] = 6; // count > 5, length still 5-touch
+    assert!(telemetry::decode_touches(&b).is_none());
+    // Format 1 fixtures must not decode as companions.
+    let mut f1 = Frame {
+        seq: 2,
+        flags: telemetry::FLAG_TOUCH,
+        touch_pos: 8192,
+        touch_size: 4096,
+        ..Frame::default()
+    };
+    f1.set_sample(
+        &Sample {
+            touch: Some((0.5, 0.25)),
+            ..Sample::default()
+        },
+        true,
+    );
+    assert!(telemetry::decode_touches(&telemetry::encode(&f1)).is_none());
+    assert!(
+        telemetry::decode(&enc).is_none(),
+        "companion is not a format-1 frame"
+    );
 }

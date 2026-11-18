@@ -317,30 +317,35 @@ struct TouchPanel: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Trill touch").font(.headline)
+            Text("Linear sensor").font(.headline)
             if let f = frame {
                 if f.trillState != .running {
-                    Label("Trill sensor not detected (\(f.trillState.title))", systemImage: "questionmark.circle")
+                    Label("Linear sensor not detected (\(f.trillState.title))", systemImage: "questionmark.circle")
                         .foregroundStyle(.orange)
-                    Text("This is different from “no touch”: the firmware cannot talk to the Trill over I²C.").font(.caption).foregroundStyle(.secondary)
+                    Text("This is different from “no touch”: the firmware cannot talk to the sensor over I²C.").font(.caption).foregroundStyle(.secondary)
                 } else {
+                    let touches = f.displayTouches
                     GeometryReader { g in
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.15))
-                            if let p = f.touchPosition {
-                                let size = f.touchContact ?? 0
-                                Circle().fill(Color.accentColor)
-                                    .frame(width: 10 + 30 * size, height: 10 + 30 * size)
-                                    .position(x: CGFloat(p) * g.size.width, y: g.size.height / 2)
+                            ForEach(Array(touches.enumerated()), id: \.offset) { i, touch in
+                                Circle().fill(Color.accentColor.opacity(i == 0 ? 1 : 0.7))
+                                    .frame(width: 10 + 30 * touch.size, height: 10 + 30 * touch.size)
+                                    .position(x: CGFloat(touch.position) * g.size.width, y: g.size.height / 2)
                             }
                         }
                     }
                     .frame(height: 44)
                     .accessibilityHidden(true)
-                    if let p = f.touchPosition {
-                        Text(String(format: "Touch at %.3f, contact size %.3f", p, f.touchContact ?? 0)).font(.callout.monospacedDigit())
-                    } else {
+                    if touches.isEmpty {
                         Text("No touch").font(.callout).foregroundStyle(.secondary)
+                    } else if touches.count == 1 {
+                        Text(String(format: "Touch at %.3f, contact size %.3f", touches[0].position, touches[0].size)).font(.callout.monospacedDigit())
+                    } else {
+                        Text(touches.enumerated().map { i, t in
+                            String(format: "%d: %.3f (%.3f)", i + 1, t.position, t.size)
+                        }.joined(separator: "  ·  "))
+                        .font(.callout.monospacedDigit())
                     }
                 }
             } else {
@@ -348,6 +353,18 @@ struct TouchPanel: View {
             }
         }
         .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityText)
+    }
+
+    private var accessibilityText: String {
+        guard let f = frame else { return "Linear sensor, no data yet" }
+        if f.trillState != .running { return "Linear sensor not detected" }
+        let touches = f.displayTouches
+        if touches.isEmpty { return "Linear sensor, no touch" }
+        if touches.count == 1 {
+            return String(format: "Linear sensor, touch at %.3f, contact size %.3f", touches[0].position, touches[0].size)
+        }
+        return "Linear sensor, \(touches.count) touches"
     }
 }
 

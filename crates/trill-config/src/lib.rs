@@ -84,6 +84,9 @@ pub mod msg {
     pub const TELEMETRY_ACK: u8 = 0x45;
     /// Unsolicited sensor frame (request id 0), see [`crate::telemetry`].
     pub const TELEMETRY: u8 = 0x50;
+    /// Unsolicited companion to [`TELEMETRY`]: up to five 1-axis touches,
+    /// paired by sequence number. Format 1 of [`TELEMETRY`] is unchanged.
+    pub const TELEMETRY_TOUCHES: u8 = 0x51;
     /// Error reply: payload = error code, detail.
     pub const ERROR: u8 = 0x7F;
 }
@@ -179,6 +182,11 @@ pub const CAP_STRIKES: u8 = 0x20;
 /// Without it hosts must assume an IMU is fitted (every earlier firmware ran
 /// only on the Sense board) and ask the user to double-press RESET.
 pub const CAP_BOARD: u8 = 0x40;
+/// Capability bit: a [`msg::TELEMETRY_TOUCHES`] companion is sent with each
+/// format-1 telemetry frame, carrying up to five touches. Hosts that do not
+/// set this bit, and older hosts, ignore the companion; format 1 still
+/// reports the first touch only.
+pub const CAP_MULTI_TOUCH: u8 = 0x80;
 
 /// Facts reported by `HELLO_REPLY`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -274,6 +282,7 @@ pub fn hello_reply(req: u8, info: &DeviceInfo) -> Reply {
         | CAP_CONFIG_PAGES
         | CAP_STRIKES
         | CAP_BOARD
+        | CAP_MULTI_TOUCH
         | if PERSISTENT { CAP_PERSISTENT } else { 0 };
     let _ = r.extend_from_slice(&[
         PROTOCOL_VERSION,

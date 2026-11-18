@@ -51,6 +51,10 @@ public struct TelemetryFrame: Equatable, Sendable {
     public var calibrations: Int    // 7-bit counter
     public var skipped: Int         // 14-bit counter
     public var trillFrames: Int     // 14-bit counter
+    /// Touches from a TELEMETRY_TOUCHES companion with the same sequence, if received.
+    /// `nil` means no companion has been paired yet; the first touch still comes from
+    /// `touchPosition` / `touchContact`. An empty array means the companion reported none.
+    public var multiTouches: [TouchContact]? = nil
 
     public var imuValid: Bool { flags & Self.flagIMUValid != 0 }
     public var calibrated: Bool { flags & Self.flagCalibrated != 0 }
@@ -67,6 +71,13 @@ public struct TelemetryFrame: Equatable, Sendable {
     /// 0...1 along the strip, nil without a touch.
     public var touchPosition: Double? { touching ? Double(touchPos) / 16383 : nil }
     public var touchContact: Double? { touching ? Double(touchSize) / 16383 : nil }
+    /// Contacts to draw: the companion list when it has been paired, otherwise
+    /// the single format-1 touch (so older firmware still shows one contact).
+    public var displayTouches: [TouchContact] {
+        if let m = multiTouches { return m }
+        if let p = touchPosition { return [TouchContact(position: p, size: touchContact ?? 0)] }
+        return []
+    }
 
     public static func decode(_ m: [UInt8]) -> TelemetryFrame? {
         guard m.count == length, m.first == 0xF0, m.last == 0xF7, m[1] == TrillProtocol.manufacturerID,
@@ -90,19 +101,76 @@ public struct TelemetryFrame: Equatable, Sendable {
     }
 }
 
+/// One contact on the linear sensor, normalised 0...1.
+public struct TouchContact: Equatable, Sendable {
+    public var position: Double
+    public var size: Double
+    public init(position: Double, size: Double) {
+        self.position = position
+        self.size = size
+    }
+}
+
+/// Companion SysEx (`TELEMETRY_TOUCHES`, type 0x51) listing up to five touches.
+public struct TelemetryTouches: Equatable, Sendable {
+    public static let format = 1
+    public static let maxTouches = 5
+
+    public var seq: Int
+    public var touches: [TouchContact]
+
+    public static func isTouches(_ m: [UInt8]) -> Bool {
+        m.count > 5 && TrillCodec.isTrillSysEx(m) && m[5] == TrillProtocol.MessageType.telemetryTouches.rawValue
+    }
+
+    public static func decode(_ m: [UInt8]) -> TelemetryTouches? {
+        guard isTouches(m), m.first == 0xF0, m.last == 0xF7,
+              m[1..<(m.count - 1)].allSatisfy({ $0 < 0x80 }) else { return nil }
+        let p = Array(m[TrillProtocol.headerLength..<(m.count - 1)])
+        guard p.count >= 4, Int(p[0]) == format else { return nil }
+        let count = Int(p[3])
+        guard count <= maxTouches, p.count == 4 + 4 * count else { return nil }
+        func u14(_ i: Int) -> Int { Int(p[i]) << 7 | Int(p[i + 1]) }
+        var touches: [TouchContact] = []
+        touches.reserveCapacity(count)
+        for i in 0..<count {
+            let o = 4 + 4 * i
+            touches.append(TouchContact(position: Double(u14(o)) / 16383, size: Double(u14(o + 2)) / 16383))
+        }
+        return TelemetryTouches(seq: u14(1), touches: touches)
+    }
+}
+
 /// Bounded FIFO between the CoreMIDI thread and the UI (oldest dropped).
 public final class TelemetryBuffer: @unchecked Sendable {
     public let capacity: Int
     private var items: [(TelemetryFrame, Double)] = []
     private var dropped = 0
+    /// Companions that arrived before their format-1 frame, keyed by sequence.
+    private var pendingTouches: [Int: [TouchContact]] = [:]
     private let lock = NSLock()
 
     public init(capacity: Int = 512) { self.capacity = max(capacity, 1) }
 
     public func append(_ f: TelemetryFrame, hostTime: Double) {
         lock.lock(); defer { lock.unlock() }
+        var frame = f
+        if let t = pendingTouches.removeValue(forKey: f.seq) {
+            frame.multiTouches = t
+        }
         if items.count >= capacity { items.removeFirst(); dropped += 1 }
-        items.append((f, hostTime))
+        items.append((frame, hostTime))
+        if pendingTouches.count > capacity { pendingTouches.removeAll(keepingCapacity: true) }
+    }
+
+    /// Attach a companion list to the format-1 frame with the same sequence.
+    public func appendTouches(_ t: TelemetryTouches) {
+        lock.lock(); defer { lock.unlock() }
+        if let i = items.lastIndex(where: { $0.0.seq == t.seq }) {
+            items[i].0.multiTouches = t.touches
+        } else {
+            pendingTouches[t.seq] = t.touches
+        }
     }
 
     public func drain() -> (frames: [(TelemetryFrame, Double)], dropped: Int) {
@@ -253,7 +321,7 @@ public struct TelemetryModel: Sendable {
 
     /// CSV of the current window (physical units).
     public func csv() -> String {
-        var s = "device_time_s,host_time_s,seq,gap_before,imu_valid,calibrated,ax_g,ay_g,az_g,gx_dps,gy_dps,gz_dps,pitch_deg,roll_deg,touch,touch_pos,touch_size,imu_state,trill_state,imu_samples,taps,calibrations,device_skipped\n"
+        var s = "device_time_s,host_time_s,seq,gap_before,imu_valid,calibrated,ax_g,ay_g,az_g,gx_dps,gy_dps,gz_dps,pitch_deg,roll_deg,touch,touch_pos,touch_size,imu_state,trill_state,imu_samples,taps,calibrations,device_skipped,touch_count,t0_pos,t0_size,t1_pos,t1_size,t2_pos,t2_size,t3_pos,t3_size,t4_pos,t4_size\n"
         for p in points {
             let f = p.frame
             let a = f.accel, g = f.gyro
@@ -261,7 +329,17 @@ public struct TelemetryModel: Sendable {
                         p.deviceTime, p.hostTime, f.seq, p.gapBefore ? 1 : 0, f.imuValid ? 1 : 0, f.calibrated ? 1 : 0,
                         a[0], a[1], a[2], g[0], g[1], g[2], f.pitch, f.roll, f.touching ? 1 : 0)
             s += f.touching ? String(format: "%.4f,%.4f,", f.touchPosition ?? 0, f.touchContact ?? 0) : ",,"
-            s += "\(f.imuStateCode),\(f.trillStateCode),\(f.imuSamples),\(f.taps),\(f.calibrations),\(f.skipped)\n"
+            s += "\(f.imuStateCode),\(f.trillStateCode),\(f.imuSamples),\(f.taps),\(f.calibrations),\(f.skipped),"
+            let ts = f.displayTouches
+            s += "\(ts.count)"
+            for i in 0..<5 {
+                if i < ts.count {
+                    s += String(format: ",%.4f,%.4f", ts[i].position, ts[i].size)
+                } else {
+                    s += ",,"
+                }
+            }
+            s += "\n"
         }
         return s
     }

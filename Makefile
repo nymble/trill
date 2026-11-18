@@ -48,6 +48,7 @@ check-thumb:
 protocol-vectors:
 	$(CARGO) run -q -p trill-config --example vectors > protocol/config-v1-vectors.txt
 	$(CARGO) run -q -p trill-config --example vectors -- telemetry > protocol/telemetry-v1-frames.txt
+	$(CARGO) run -q -p trill-config --example vectors -- telemetry-touches > protocol/telemetry-touches-v1-frames.txt
 
 # XIAO nRF52840 Sense firmware: lint + linked release ELF + UF2 safety check.
 fw-check:

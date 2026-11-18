@@ -29,6 +29,7 @@ public enum TrillProtocol {
         case actionAck = 0x44
         case telemetryAck = 0x45
         case telemetry = 0x50
+        case telemetryTouches = 0x51
         case error = 0x7F
     }
 
@@ -55,6 +56,9 @@ public enum TrillProtocol {
     /// The variant byte reports the board's sensors (firmware 0.6.0+). Without
     /// it an IMU is assumed: earlier firmware only ran on the Sense board.
     public static let capBoard: UInt8 = 0x40
+    /// A TELEMETRY_TOUCHES companion is sent with each format-1 frame
+    /// (up to five 1-axis touches). Format 1 still reports the first touch only.
+    public static let capMultiTouch: UInt8 = 0x80
 }
 
 /// Device-side error codes.
@@ -368,6 +372,8 @@ public enum TrillReply: Equatable, Sendable {
         public var isPCMSynthBuild: Bool { variant & TrillProtocol.variantPCMSynth != 0 }
         public var persistent: Bool { capabilities & TrillProtocol.capPersistent != 0 }
         public var supportsTelemetry: Bool { capabilities & TrillProtocol.capTelemetry != 0 }
+        /// Up to five touches in a companion SysEx, firmware that sets capMultiTouch.
+        public var supportsMultiTouch: Bool { capabilities & TrillProtocol.capMultiTouch != 0 }
         /// Parameters 14...30 and action 5 (firmware 0.4.0+).
         public var supportsConfigPages: Bool { capabilities & TrillProtocol.capConfigPages != 0 }
         /// Parameters 31...37, directional strikes (firmware 0.5.0+).

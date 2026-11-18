@@ -144,7 +144,7 @@ pub async fn usb_task(usbd: Peri<'static, peripherals::USBD>, report: &'static B
 
 /// A configuration reply being sent on cable 1, a few events per packet.
 struct PendingReply {
-    packets: [[u8; 4]; trill_config::usb::MAX_PACKETS],
+    packets: [[u8; 4]; trill_config::usb::MAX_PACKETS * 2],
     len: usize,
     next: usize,
 }
@@ -152,7 +152,7 @@ struct PendingReply {
 impl PendingReply {
     const fn new() -> Self {
         Self {
-            packets: [[0; 4]; trill_config::usb::MAX_PACKETS],
+            packets: [[0; 4]; trill_config::usb::MAX_PACKETS * 2],
             len: 0,
             next: 0,
         }
@@ -172,14 +172,29 @@ impl PendingReply {
             self.next = 0;
         }
     }
-    /// Load a telemetry frame if idle and nothing else is queued.
-    fn load_telemetry(&mut self, frame: &trill_config::Reply) -> bool {
+    /// Load a format-1 telemetry frame and its touches companion if idle
+    /// and nothing else is queued. Both share one sequence number.
+    fn load_telemetry(
+        &mut self,
+        frame: &trill_config::Reply,
+        touches: &trill_config::Reply,
+    ) -> bool {
         if !self.is_empty() || !CONFIG_REPLIES.is_empty() {
             return false;
         }
-        self.len =
-            trill_config::usb::encode_sysex(trill_usb::CABLE_CONFIG, frame, &mut self.packets)
-                .unwrap_or(0);
+        let n1 = trill_config::usb::encode_sysex(trill_usb::CABLE_CONFIG, frame, &mut self.packets)
+            .unwrap_or(0);
+        let n2 = if n1 < self.packets.len() {
+            trill_config::usb::encode_sysex(
+                trill_usb::CABLE_CONFIG,
+                touches,
+                &mut self.packets[n1..],
+            )
+            .unwrap_or(0)
+        } else {
+            0
+        };
+        self.len = n1 + n2;
         self.next = 0;
         self.len > 0
     }
@@ -189,16 +204,17 @@ impl PendingReply {
     }
 }
 
-/// Build one telemetry frame from the latest published sensor values.
-/// Each source is read in one short critical section; nothing here blocks
-/// the sensor tasks or allocates.
-fn telemetry_frame(
+/// Build one format-1 telemetry frame and its touches companion from the
+/// latest published sensor values. Each source is read in one short
+/// critical section; nothing here blocks the sensor tasks or allocates.
+fn telemetry_messages(
     sched: &mut trill_config::telemetry::Schedule,
     last_imu: &mut u32,
-) -> trill_config::Reply {
-    use trill_config::telemetry::{self, Frame, Sample};
+) -> (trill_config::Reply, trill_config::Reply) {
+    use trill_config::telemetry::{self, Frame, Sample, TouchesFrame};
     let snap = SENSOR_SNAPSHOT.lock(|c| c.get());
     let touch = TOUCH.lock(|c| c.get());
+    let touches = TOUCHES.lock(|c| c.get());
     let imu_state = STATS.imu_state.load(Ordering::Relaxed);
     let trill_state = STATS.trill_state.load(Ordering::Relaxed);
     let imu_samples = STATS.imu_samples.load(Ordering::Relaxed);
@@ -240,7 +256,19 @@ fn telemetry_frame(
         imu_state == SensorState::Running as u8 && snap.t_us != 0,
     );
     bump(&STATS.telemetry_frames);
-    telemetry::encode(&f)
+    let mut pairs = [(0.0f32, 0.0f32); 5];
+    let mut n = 0usize;
+    if trill_running {
+        for (loc, size) in touches.iter() {
+            if n >= 5 {
+                break;
+            }
+            pairs[n] = (loc, size);
+            n += 1;
+        }
+    }
+    let companion = TouchesFrame::from_normalised(f.seq, &pairs[..n]);
+    (telemetry::encode(&f), telemetry::encode_touches(&companion))
 }
 
 /// Fill `buf` with up to `MIDI_EVENTS_PER_PACKET` USB-MIDI events: the
@@ -439,8 +467,8 @@ async fn midi_loop(class: MidiClass<'static, UsbDriver>) {
                     sched.subscribe(req, t64);
                 }
                 if reply.is_empty() && CONFIG_REPLIES.is_empty() && sched.due(t64) {
-                    let frame = telemetry_frame(&mut sched, &mut last_imu);
-                    reply.load_telemetry(&frame);
+                    let (frame, touches) = telemetry_messages(&mut sched, &mut last_imu);
+                    reply.load_telemetry(&frame, &touches);
                 }
                 TELEMETRY_RATE.store(sched.rate_hz(), Ordering::Relaxed);
                 let (n, note_on) = with_engine(|e| {

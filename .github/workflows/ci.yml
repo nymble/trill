@@ -40,6 +40,8 @@ jobs:
           diff -u protocol/config-v1-vectors.txt /tmp/vectors.txt
           cargo run -q --locked -p trill-config --example vectors -- telemetry > /tmp/telemetry.txt
           diff -u protocol/telemetry-v1-frames.txt /tmp/telemetry.txt
+          cargo run -q --locked -p trill-config --example vectors -- telemetry-touches > /tmp/telemetry-touches.txt
+          diff -u protocol/telemetry-touches-v1-frames.txt /tmp/telemetry-touches.txt
       - name: Tool tests (UF2 safety checks, PCM stream parser)
         run: python3 -m unittest discover -s tools -p 'test_*.py' -v
       - name: Motion synth demo render

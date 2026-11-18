@@ -32,6 +32,7 @@ fn scan_config(device: Device) -> Config {
 
 fn lost() {
     TOUCH.lock(|t| t.set(TouchInput::default()));
+    TOUCHES.lock(|t| t.set(TouchFrame::default()));
     with_engine(|e| e.touch_lost(now_us32()));
     MIDI_WAKE.signal(());
 }
@@ -87,12 +88,21 @@ pub async fn trill_task(mut twim: Twim<'static>) {
                         continue;
                     }
                     last_frame = Some(id);
-                    // Single voice: the first reported touch only.
+                    // Instrument MIDI stays a single voice: first touch only.
                     let first = touches.iter().next();
                     let sample = first.map(|c| TouchSample {
                         location: c.location as f32 / full,
                         size: c.size as f32 / size_full,
                     });
+                    let mut all = TouchFrame::default();
+                    for (i, c) in touches.iter().enumerate() {
+                        if i >= 5 {
+                            break;
+                        }
+                        all.location[i] = (c.location as f32 / full).min(1.0);
+                        all.size[i] = (c.size as f32 / size_full).min(1.0);
+                        all.count = (i + 1) as u8;
+                    }
                     TOUCH.lock(|c| {
                         c.set(match sample {
                             Some(s) => TouchInput {
@@ -102,6 +112,7 @@ pub async fn trill_task(mut twim: Twim<'static>) {
                             None => TouchInput::default(),
                         })
                     });
+                    TOUCHES.lock(|c| c.set(all));
                     with_engine(|e| e.touch(t, sample));
                     crate::timing::touch_frame(sample.is_some());
                     MIDI_WAKE.signal(());
