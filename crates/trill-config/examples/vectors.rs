@@ -5,10 +5,10 @@
 //! regenerates the file; `cargo test -p trill-config` checks it is current.
 
 fn main() {
-    if std::env::args().nth(1).as_deref() == Some("telemetry") {
-        print!("{}", trill_config_vectors::render_telemetry());
-    } else {
-        print!("{}", trill_config_vectors::render());
+    match std::env::args().nth(1).as_deref() {
+        Some("telemetry") => print!("{}", trill_config_vectors::render_telemetry()),
+        Some("telemetry-touches") => print!("{}", trill_config_vectors::render_telemetry_touches()),
+        _ => print!("{}", trill_config_vectors::render()),
     }
 }
 

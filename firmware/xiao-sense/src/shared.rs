@@ -236,11 +236,40 @@ pub fn record_max(last: &AtomicU32, max: &AtomicU32, v: u32) {
 pub static MAILBOX: Mutex<CriticalSectionRawMutex, RefCell<ControlMailbox>> =
     Mutex::new(RefCell::new(ControlMailbox::new()));
 
-/// Latest Trill touch.
+/// Latest Trill touch (first contact only). The instrument engine and the
+/// format-1 telemetry field still use this single voice.
 pub static TOUCH: Mutex<CriticalSectionRawMutex, Cell<TouchInput>> =
     Mutex::new(Cell::new(TouchInput {
         location: None,
         size: 0.0,
+    }));
+
+/// Up to five 1-axis touches, normalised 0..=1. Published for the
+/// `TELEMETRY_TOUCHES` companion; MIDI does not read this.
+#[derive(Clone, Copy, Default)]
+pub struct TouchFrame {
+    /// Number of valid slots in [`Self::location`] / [`Self::size`].
+    pub count: u8,
+    /// Position along the strip, 0..=1.
+    pub location: [f32; 5],
+    /// Contact size, 0..=1.
+    pub size: [f32; 5],
+}
+
+impl TouchFrame {
+    /// Valid (location, size) pairs.
+    pub fn iter(&self) -> impl Iterator<Item = (f32, f32)> + '_ {
+        let n = self.count.min(5) as usize;
+        (0..n).map(|i| (self.location[i], self.size[i]))
+    }
+}
+
+/// Latest set of Trill touches (telemetry companion).
+pub static TOUCHES: Mutex<CriticalSectionRawMutex, Cell<TouchFrame>> =
+    Mutex::new(Cell::new(TouchFrame {
+        count: 0,
+        location: [0.0; 5],
+        size: [0.0; 5],
     }));
 
 /// Latest motion frame (diagnostics only).

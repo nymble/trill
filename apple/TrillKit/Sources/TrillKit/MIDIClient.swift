@@ -240,6 +240,10 @@ public final class MIDIClient {
                         if let f = TelemetryFrame.decode(bytes) { telemetry.append(f, hostTime: t) }
                         continue
                     }
+                    if TelemetryTouches.isTouches(bytes) {
+                        if let touches = TelemetryTouches.decode(bytes) { telemetry.appendTouches(touches) }
+                        continue
+                    }
                     DispatchQueue.main.async { [weak self] in self?.onConfigMessage?(bytes, t) }
                 }
             } else if !messages.isEmpty {

@@ -84,6 +84,9 @@ pub mod msg {
     pub const TELEMETRY_ACK: u8 = 0x45;
     /// Unsolicited sensor frame (request id 0), see [`crate::telemetry`].
     pub const TELEMETRY: u8 = 0x50;
+    /// Unsolicited companion to [`TELEMETRY`]: up to five 1-axis touches,
+    /// paired by sequence number. Format 1 of [`TELEMETRY`] is unchanged.
+    pub const TELEMETRY_TOUCHES: u8 = 0x51;
     /// Error reply: payload = error code, detail.
     pub const ERROR: u8 = 0x7F;
 }
@@ -167,6 +170,13 @@ pub const VARIANT_IMU: u8 = 0x02;
 /// available (actions 7 and 8). The microphone is off by default and is
 /// not part of any instrument mapping.
 pub const VARIANT_MIC: u8 = 0x04;
+/// Variant flag: a [`msg::TELEMETRY_TOUCHES`] companion is sent with each
+/// format-1 telemetry frame, carrying up to five touches. This lives in
+/// the variant byte because the 7-bit capability byte is already fully
+/// assigned (MIDI SysEx data bytes cannot carry a bit-7 flag). Hosts that
+/// do not see this bit, and older hosts, ignore the companion; format 1
+/// still reports the first touch only.
+pub const VARIANT_MULTI_TOUCH: u8 = 0x08;
 /// Capability bit: `SET_CONFIG` supported.
 pub const CAP_SET_CONFIG: u8 = 0x01;
 /// Capability bit: `ACTION` supported.

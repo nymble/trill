@@ -3,7 +3,11 @@
 //!
 //! The host subscribes with `TELEMETRY_START` (rate in Hz) and the device
 //! then sends one [`msg::TELEMETRY`](crate::msg::TELEMETRY) frame per
-//! period on the configuration cable. A subscription is a **lease**: it ends
+//! period on the configuration cable, plus a
+//! [`msg::TELEMETRY_TOUCHES`](crate::msg::TELEMETRY_TOUCHES) companion
+//! that lists up to five 1-axis touches (paired by sequence number).
+//! Format 1 of the `TELEMETRY` frame is unchanged and still carries only
+//! the first touch. A subscription is a **lease**: it ends
 //! [`LEASE_S`] seconds after the last `TELEMETRY_START` unless renewed, and
 //! also on `TELEMETRY_STOP`, USB disconnect or device reset. Frames are
 //! lossy: the newest sensor values are sampled when a frame can be sent, a
@@ -277,6 +281,121 @@ pub fn decode(m: &[u8]) -> Option<Frame> {
         skipped: u14(42),
         trill_frames: u14(44),
     })
+}
+
+/// Maximum touches in a [`TouchesFrame`].
+pub const MAX_TOUCHES: usize = 5;
+/// Companion payload format implemented here.
+pub const TOUCHES_FORMAT: u8 = 1;
+
+/// One touch in a [`TouchesFrame`], in the same 14-bit units as format 1.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TouchPoint {
+    /// Position along the strip, 0..=16383 = 0..1.
+    pub position: u16,
+    /// Contact size, 0..=16383 = 0..1 of full scale.
+    pub size: u16,
+}
+
+/// Companion frame listing every active 1-axis touch.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TouchesFrame {
+    /// Sequence number, matching the format-1 [`Frame::seq`] sent with it.
+    pub seq: u16,
+    /// Number of valid entries in [`Self::touches`] (0..=[`MAX_TOUCHES`]).
+    pub count: u8,
+    /// Touch slots; only `0..count` are meaningful.
+    pub touches: [TouchPoint; MAX_TOUCHES],
+}
+
+impl TouchesFrame {
+    /// Build from normalised 0..=1 positions and sizes (at most five).
+    /// Non-finite values are dropped.
+    pub fn from_normalised(seq: u16, touches: &[(f32, f32)]) -> Self {
+        let mut f = Self {
+            seq: seq & 0x3FFF,
+            ..Self::default()
+        };
+        for &(pos, size) in touches.iter().take(MAX_TOUCHES) {
+            if !pos.is_finite() || !size.is_finite() {
+                continue;
+            }
+            let i = f.count as usize;
+            f.touches[i] = TouchPoint {
+                position: unit14(pos),
+                size: unit14(size),
+            };
+            f.count += 1;
+        }
+        f
+    }
+
+    /// The valid prefix of [`Self::touches`].
+    pub fn as_slice(&self) -> &[TouchPoint] {
+        &self.touches[..self.count.min(MAX_TOUCHES as u8) as usize]
+    }
+}
+
+/// Payload length of a companion with `count` touches.
+pub const fn touches_payload_len(count: u8) -> usize {
+    4 + 4 * count as usize
+}
+
+/// Complete companion length, `F0`..`F7`, with `count` touches.
+pub const fn touches_frame_len(count: u8) -> usize {
+    crate::HEADER_LEN + touches_payload_len(count) + 1
+}
+
+/// Encode a `TELEMETRY_TOUCHES` companion (request id field = 0).
+pub fn encode_touches(f: &TouchesFrame) -> Reply {
+    let n = f.count.min(MAX_TOUCHES as u8);
+    let mut r = header(msg::TELEMETRY_TOUCHES, 0);
+    let _ = r.push(TOUCHES_FORMAT);
+    u14(&mut r, f.seq);
+    let _ = r.push(n);
+    for t in f.touches.iter().take(n as usize) {
+        u14(&mut r, t.position);
+        u14(&mut r, t.size);
+    }
+    finish(r)
+}
+
+/// Decode a `TELEMETRY_TOUCHES` companion. `None` if malformed or of an
+/// unknown format.
+pub fn decode_touches(m: &[u8]) -> Option<TouchesFrame> {
+    if m.len() < touches_frame_len(0)
+        || m[0] != 0xF0
+        || m[m.len() - 1] != 0xF7
+        || m[1] != crate::MANUFACTURER_ID
+        || m[2..4] != crate::SIGNATURE
+        || m[4] != crate::PROTOCOL_VERSION
+        || m[5] != msg::TELEMETRY_TOUCHES
+        || m[1..m.len() - 1].iter().any(|&b| b > 0x7F)
+    {
+        return None;
+    }
+    let p = &m[crate::HEADER_LEN..m.len() - 1];
+    if p.len() < 4 || p[0] != TOUCHES_FORMAT {
+        return None;
+    }
+    let count = p[3];
+    if count as usize > MAX_TOUCHES || p.len() != touches_payload_len(count) {
+        return None;
+    }
+    let u14 = |i: usize| (u16::from(p[i]) << 7) | u16::from(p[i + 1]);
+    let mut f = TouchesFrame {
+        seq: u14(1),
+        count,
+        touches: [TouchPoint::default(); MAX_TOUCHES],
+    };
+    for (i, slot) in f.touches.iter_mut().enumerate().take(count as usize) {
+        let o = 4 + 4 * i;
+        *slot = TouchPoint {
+            position: u14(o),
+            size: u14(o + 2),
+        };
+    }
+    Some(f)
 }
 
 /// Encode a `TELEMETRY_ACK`: accepted rate (0 = stopped), lease, frame

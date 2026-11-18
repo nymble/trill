@@ -185,6 +185,7 @@ fn hello_reports_version_variant_caps_and_not_persistent() {
             | trill_config::CAP_BOARD
     );
     assert_eq!(r[12] & CAP_PERSISTENT, 0);
+    assert!(r[12] < 0x80, "capability byte is 7-bit MIDI data");
     assert_eq!(r[13] as usize, MAX_MESSAGE_LEN);
     assert_eq!(r[14] as usize, Param::ALL.len());
     assert_eq!(*r.last().unwrap(), 0xF7);

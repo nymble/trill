@@ -133,6 +133,64 @@ final class TelemetryTests: XCTestCase {
         XCTAssertEqual(d, 6)
         XCTAssertTrue(b.drain().frames.isEmpty)
     }
+
+    func testCompanionFixturesAndPairing() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent()
+        let text = try String(contentsOf: root.appendingPathComponent("protocol/telemetry-touches-v1-frames.txt"), encoding: .utf8)
+        var fx: [String: [UInt8]] = [:]
+        for line in text.split(separator: "\n") where !line.hasPrefix("#") {
+            let f = line.components(separatedBy: " | ")
+            guard f.count == 3 else { continue }
+            fx[f[0]] = f[2].split(separator: " ").map { UInt8($0, radix: 16)! }
+        }
+        XCTAssertEqual(fx.count, 3)
+        let none = TelemetryTouches.decode(fx["none"]!)!
+        XCTAssertEqual(none.seq, 0)
+        XCTAssertTrue(none.touches.isEmpty)
+        let one = TelemetryTouches.decode(fx["one_matches_format1"]!)!
+        XCTAssertEqual(one.seq, 2)
+        XCTAssertEqual(one.touches.count, 1)
+        XCTAssertEqual(one.touches[0].position, 8192.0 / 16383, accuracy: 1e-9)
+        XCTAssertEqual(one.touches[0].size, 4096.0 / 16383, accuracy: 1e-9)
+        let five = TelemetryTouches.decode(fx["five"]!)!
+        XCTAssertEqual(five.seq, 256)
+        XCTAssertEqual(five.touches.count, 5)
+        XCTAssertEqual(five.touches[4].position, 1, accuracy: 1e-9)
+        XCTAssertTrue(TelemetryTouches.isTouches(fx["five"]!))
+        XCTAssertFalse(TelemetryFrame.isTelemetry(fx["five"]!))
+        XCTAssertNil(TelemetryFrame.decode(fx["five"]!), "companion is not a format-1 frame")
+        XCTAssertNil(TrillCodec.decodeReply(fx["five"]!))
+
+        // Format-1 first, then companion.
+        let b = TelemetryBuffer()
+        var first = frame(seq: 2, t: 10)
+        first.flags = TelemetryFrame.flagTouch
+        first.touchPos = 8192
+        first.touchSize = 4096
+        b.append(first, hostTime: 1)
+        b.appendTouches(one)
+        let (paired, _) = b.drain()
+        XCTAssertEqual(paired[0].0.multiTouches?.count, 1)
+        XCTAssertEqual(paired[0].0.displayTouches.count, 1)
+
+        // Companion first, then format-1 with the same sequence.
+        let b2 = TelemetryBuffer()
+        b2.appendTouches(five)
+        b2.append(frame(seq: 256, t: 20), hostTime: 2)
+        let (late, _) = b2.drain()
+        XCTAssertEqual(late[0].0.multiTouches?.count, 5)
+        XCTAssertEqual(late[0].0.displayTouches.count, 5)
+
+        // Without a companion, format 1 still shows the single touch.
+        var solo = frame(seq: 3, t: 30)
+        solo.flags = TelemetryFrame.flagTouch
+        solo.touchPos = 8192
+        solo.touchSize = 4096
+        XCTAssertEqual(solo.displayTouches.count, 1)
+        XCTAssertEqual(solo.displayTouches[0].position, 8192.0 / 16383, accuracy: 1e-9)
+    }
 }
 
 final class TelemetrySessionTests: XCTestCase {
