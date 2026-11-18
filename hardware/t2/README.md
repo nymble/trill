@@ -1,16 +1,18 @@
-# Trillium T1 — build guide
+# Trillium T2 — build guide (files still labelled T1)
 
-**Model:** T1 (Tiny, nRF52840) · **Revision:** A (prototype) · **Status:** design, not yet built
+**Drawings labelled:** T1 · **Lineup model:** **T2** · **Revision:** A (prototype) · **Status:** design, not yet built
 
-T1 is the smallest Trillium instrument. It is the motion instrument that runs today (a XIAO nRF52840 Sense on a USB cable), made self-contained: it adds a rechargeable cell, a power switch, a status LED that shows through the case, and two buttons. It fits in a 32.5 x 52.2 x 22.1 mm printed enclosure. It works as a USB-MIDI device with or without the Trillium app.
+> **Naming.** The model lineup now uses **T0** for a bare XIAO nRF52840 Sense on a USB cable ([Trillium Zero](../../docs/hardware/trillium-zero.md)), **T1** for T0 plus a battery and BLE, and **T2** for T1 plus a better LED and buttons. This folder is still called `t1/` and the schematics, layout, BOM and enclosure files are still named `t1-*`, because they were filed that way in revision A. **The electronics and enclosure in this folder are the planned T2**, not the simpler T1. They have not been built. A T1 has been built and tested as an early Omi DIY board (battery and BLE, not this LED and button layout). A rename of this folder to `t2/` is proposed and is not done here. See the [model lineup](../README.md#model-lineup).
 
-The electronics are the shared **core board** (see [hardware/README.md](../README.md)). F1 uses the same board with four extra parts.
+This is the planned next motion instrument after T1: a Seeed Studio XIAO nRF52840 Sense made self-contained with a rechargeable cell, a power switch, a status LED that shows through the case, and two buttons. It fits in a 32.5 x 52.2 x 22.1 mm printed enclosure. It works as a USB-MIDI device with or without the Trillium app. BLE is planned on the same board.
+
+The electronics are the shared **core board** (see [hardware/README.md](../README.md)). F1 uses the same board with four extra parts. In the lineup, F1 is this T2 board plus a Bela Trill Flex linear touch sensor.
 
 ## 1. Schematic
 
-![T1 schematic](t1-schematic.svg)
+![T1 schematic](t2-schematic.svg)
 
-The XIAO's own charger and USB/battery switch-over are used unchanged. SW1 breaks the cell's positive lead. **SW1 must be ON for the cell to charge.** With SW1 OFF the instrument still runs from USB but the cell is isolated. The I2C parts shown in grey (R1, R2, J2, JP1) are not fitted on T1. Their holes stay free.
+The XIAO's own charger and USB/battery switch-over are used unchanged. SW1 breaks the cell's positive lead. **SW1 must be ON for the cell to charge.** With SW1 OFF the instrument still runs from USB but the cell is isolated. The I2C parts shown in grey (R1, R2, J2, JP1) are not fitted on this board (planned T2). Their holes stay free for an F1 upgrade.
 
 ## 2. Bill of materials
 
@@ -32,16 +34,16 @@ The XIAO's own charger and USB/battery switch-over are used unchanged. SW1 break
 | W | — | Hook-up wire | 28–30 AWG insulated solid (wire-wrap) wire, several colours | any |
 | SP1 | 1 | LED standoff | Plastic spacer for 5 mm LED, cut to 2.9 mm | any |
 | KT1 | — | Insulating tape | Polyimide (Kapton) tape for the board underside | any |
-| M1 | 1 | Enclosure base | 3D printed, `t1-enclosure.scad`, `part = "base"` | print |
+| M1 | 1 | Enclosure base | 3D printed, `t2-enclosure.scad`, `part = "base"` | print |
 | M2 | 1 | Enclosure lid | 3D printed, `part = "lid"` | print |
 | M3 | 2 | Button cap | 3D printed, `part = "caps"` | print |
 | M4 | — | Foam tape | Double-sided foam tape, 0.5–1 mm, for the cell | any |
 
-The machine-readable list is [`t1-bom.csv`](t1-bom.csv). Tools: fine-tip soldering iron, flush cutters, multimeter, and a 3D printer (PLA or PETG).
+The machine-readable list is [`t2-bom.csv`](t2-bom.csv). Tools: fine-tip soldering iron, flush cutters, multimeter, and a 3D printer (PLA or PETG).
 
 ## 3. Perfboard layout and wiring
 
-![T1 perfboard layout and wiring](t1-layout.svg)
+![T1 perfboard layout and wiring](t2-layout.svg)
 
 Holes are named by column letter and row number, with **A1** the top-left hole on the component side and the USB-C end at the top. View B is the underside, mirrored, as you see it while wiring.
 
@@ -101,9 +103,9 @@ Then the cell, with USB unplugged and SW1 OFF:
 
 ## 6. Enclosure
 
-![T1 enclosure drawing](t1-enclosure-drawing.svg)
+![T1 enclosure drawing](t2-enclosure-drawing.svg)
 
-Source: [`t1-enclosure.scad`](t1-enclosure.scad) (OpenSCAD 2021.01 or later). Set `part` to `base`, `lid` or `caps`, render (F6) and export STL. `part = "assembly"` shows everything in place for checking.
+Source: [`t2-enclosure.scad`](t2-enclosure.scad) (OpenSCAD 2021.01 or later). Set `part` to `base`, `lid` or `caps`, render (F6) and export STL. `part = "assembly"` shows everything in place for checking.
 
 | Part | Orientation | Notes |
 |---|---|---|

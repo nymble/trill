@@ -1,20 +1,27 @@
 # Using the Trill
 
-Open hardware designs and Rust software for using [Bela Trill](https://bela.io/trill) capacitive touch sensors, starting with **Trill Flex**, as a musical instrument controller.
+Open hardware designs and Rust software for musical instruments that start with one inexpensive microcontroller and a free app.
+
+**Trillium Zero (T0)** is the starting point: one [Seeed Studio XIAO nRF52840 Sense](https://www.seeedstudio.com/Seeed-XIAO-BLE-Sense-nRF52840-p-5253.html) on a USB-C cable. It sends class-compliant USB-MIDI from its onboard motion sensor. The free [Trillium](docs/apple-app.md) app (Mac, iPhone and iPad) configures and monitors it. The board is small and suits many DIY cases and packaging ideas.
+
+Later models add a battery and Bluetooth (T1), a better LED and buttons (T2), and a [Bela Trill Flex](https://bela.io/trill) linear touch sensor (F1). Other combinations are possible; a board is described by its model and a list of capabilities. See the [model lineup](hardware/README.md).
+
+Trillium is the Apple app. Trill is the name of the firmware, this repository, and Bela's touch-sensor product.
 
 > **Status (0.4.0, unreleased):** the wiring designs are proposals. The Rust driver, Linux CLI, IMU driver, MIDI event engine, configuration protocol, motion synth and XIAO Sense USB-MIDI firmware build and pass host tests. The Mac and iPhone companion app **Trillium** (TrillKit + SwiftUI) builds unsigned in CI and has a live **Sensors** tab (acceleration, rotation, orientation, touch, stream health) and a MIDI monitor/log; CI also produces a test kit with the Mac app and the matching firmware ([kit](docs/test-kit.md)). Firmware 0.2.0 has run on one XIAO nRF52840 Sense (IMU working, USB-MIDI and configuration protocol checked from a Mac; no Trill sensor attached). Firmware 0.3.0 (sensor telemetry, Sensors tab, tap percussion) has run on that board from a Mac. Firmware 0.4.0 adds sensor modes (tilt notes, theremin), configurable controllers, tap sensitivity and optional flick gestures ([mapping](docs/midi-mapping.md#sensor-modes-and-controllers-firmware-040)) and fixes taps stopping after 35.8 min; these are simulation-tested only and have not run on hardware. The iPhone app has not run on hardware. See [design status](docs/roadmap.md#design-status).
 
 ## Designs
 
-| Design | Host | Document |
+| Design | What it is | Document |
 |---|---|---|
+| **Trillium Zero (T0)** | One Seeed Studio XIAO nRF52840 Sense on a USB-C cable. USB-MIDI from the onboard IMU. The showcase starting point. | [docs/hardware/trillium-zero.md](docs/hardware/trillium-zero.md) |
+| Model lineup (T0, T1, T2, F1) | T0 plus battery and BLE (T1), a better LED and buttons (T2), and a Bela Trill Flex linear touch sensor (F1). Other combinations are possible. | [hardware/README.md](hardware/README.md) |
+| Trill Flex → Seeed Studio XIAO nRF52840 | Wiring notes for D4/D5, pull-ups, and the on-board charger. Used for breadboard Flex testing and in the planned F1. | [docs/design-xiao-nrf52840.md](docs/design-xiao-nrf52840.md) ([power and battery](docs/design-xiao-nrf52840.md#power-usb-and-battery)) |
 | Trill Flex → Raspberry Pi | Pi 40-pin header, I²C bus 1, Linux | [docs/design-raspberry-pi.md](docs/design-raspberry-pi.md) |
-| Trill Flex → Seeed Studio XIAO nRF52840 | XIAO D4/D5, Cortex-M4F, USB-MIDI; optional LiPo on the on-board charger | [docs/design-xiao-nrf52840.md](docs/design-xiao-nrf52840.md) ([power and battery](docs/design-xiao-nrf52840.md#power-usb-and-battery)) |
-| Trillium Zero | Shareable build of the XIAO Sense instruments: motion-only, or with Trill Flex, LiPo and a battery switch | [docs/hardware/trillium-zero.md](docs/hardware/trillium-zero.md) |
+
+[![Trillium Zero: the XIAO nRF52840 Sense, with optional battery, switch and Bela Trill Flex shown for later models](docs/images/trillium-zero.svg)](docs/hardware/trillium-zero.md)
 
 [![Trill Flex to Raspberry Pi wiring](docs/images/trill-flex-raspberry-pi.svg)](docs/design-raspberry-pi.md)
-
-[![Trillium Zero schematic: XIAO nRF52840 Sense, Bela Trill Flex, LiPo, and battery switch](docs/images/trillium-zero.svg)](docs/hardware/trillium-zero.md)
 
 ## Documentation
 
@@ -22,7 +29,8 @@ Open hardware designs and Rust software for using [Bela Trill](https://bela.io/t
 - [Apple app (Mac + iPhone)](docs/apple-app.md): **Trillium**, the companion app: device, monitor, mapping, presets, Mac firmware assistant; build, run, sign with your own team.
 - [Configuration protocol](docs/config-protocol.md): versioned SysEx protocol on the second USB-MIDI port, with shared test vectors.
 - [MIDI mapping](docs/midi-mapping.md): touch and motion events → MIDI messages, priorities, reconnect/panic, example trace.
-- [Trillium Zero](docs/hardware/trillium-zero.md): canonical schematic and hardware build guide (motion-only and Trill Flex variants). This page is hardware only.
+- [Trillium Zero](docs/hardware/trillium-zero.md): the T0 starting instrument — one XIAO nRF52840 Sense on a USB cable — and optional later-model additions. This page is hardware only.
+- [Hardware model lineup](hardware/README.md): T0, T1, T2 and F1, with the revision A T2/F1 designs.
 - [XIAO nRF52840 Sense firmware](docs/firmware-xiao-sense.md): build, safe UF2 loading with backup/restore, USB diagnostics, bring-up checklist, latency measurement.
 - [Motion-to-music engine](docs/motion-synth.md): motion processing, and the optional on-board debug synth.
 - [Current design and status](docs/current-design.md): block diagram, real rates, what is compiled, tested or untested, known limitations.
@@ -32,7 +40,8 @@ Open hardware designs and Rust software for using [Bela Trill](https://bela.io/t
 - [Protocol notes](docs/protocol.md): I²C memory map, commands, data formats, and scaling.
 - [Building](docs/build.md): host checks and cross-compiling (Pi Zero ARMv6, 64-bit Pi, Cortex-M4F).
 - [Releasing and deployment](docs/releasing.md): release workflow, artifacts, checksums, installing on a Pi or ZPOD.
-- [Roadmap and design status](docs/roadmap.md): instrument pipeline, synth/MIDI, BLE, Contrail, ZPOD.
+- [Roadmap and design status](docs/roadmap.md): instrument pipeline, model lineup, planned UI terms, device identification, BLE-MIDI, microphone.
+- [Microphone research](docs/research/microphone.md): next-release test path for the Sense PDM mic (chart and Mac play-through), with rates, transports and constraints.
 - [Changelog](CHANGELOG.md)
 
 ## Software

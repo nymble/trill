@@ -16,9 +16,9 @@ COMMON_EXTRA = [
 
 MECH = {
     "T1": [
-        ("M1", "1", "T1 enclosure base", "3D printed, PLA/PETG, t1-enclosure.scad part=\"base\"", "print"),
-        ("M2", "1", "T1 enclosure lid", "3D printed, t1-enclosure.scad part=\"lid\"", "print"),
-        ("M3", "2", "Button cap", "3D printed, t1-enclosure.scad part=\"caps\"", "print"),
+        ("M1", "1", "T1 enclosure base", "3D printed, PLA/PETG, t2-enclosure.scad part=\"base\"", "print"),
+        ("M2", "1", "T1 enclosure lid", "3D printed, t2-enclosure.scad part=\"lid\"", "print"),
+        ("M3", "2", "Button cap", "3D printed, t2-enclosure.scad part=\"caps\"", "print"),
         ("M4", "1", "Foam tape", "Double-sided foam tape ~0.5-1 mm, holds BT1 in the base", "any"),
     ],
     "F1p": [
