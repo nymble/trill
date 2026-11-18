@@ -162,7 +162,10 @@ struct SensorsView: View {
                     if model.session.isReady && model.session.supportsTelemetry {
                         if page == .overview { MotionOverview() } else { dashboard }
                     }
-                    if page == .charts { UnavailableNotes() }
+                    if page == .charts {
+                        MicTestPanel()
+                        UnavailableNotes()
+                    }
                 }
                 .padding()
             }
@@ -400,11 +403,86 @@ struct EventsPanel: View {
     }
 }
 
+struct MicTestPanel: View {
+    @EnvironmentObject var model: AppModel
+
+    var body: some View {
+        let mic = model.mic
+        let hasMic = model.session.hello?.hasMicrophone == true
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Microphone").font(.headline)
+            Text("Testing only. This switch is not part of any instrument or configuration, and it is off whenever the app starts.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if hasMic {
+                Toggle("Capture from the onboard microphone", isOn: Binding(
+                    get: { mic.wanted },
+                    set: { model.setMicTest($0) }
+                ))
+#if os(macOS)
+                Toggle("Play through this Mac", isOn: Binding(
+                    get: { mic.playthrough },
+                    set: { model.setMicPlaythrough($0) }
+                ))
+                .disabled(!mic.wanted || !mic.supportedOnThisPlatform)
+#else
+                Text("Live playback is available in the Mac app.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+#endif
+                MicWaveform(samples: mic.waveform, level: mic.level)
+                    .frame(minHeight: 80, idealHeight: 100)
+                    .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 6))
+                    .accessibilityLabel("Microphone level")
+                    .accessibilityValue(mic.wanted ? String(format: "%.0f percent", Double(mic.level) * 100) : "off")
+                HStack {
+                    Text(mic.wanted ? String(format: "Level %.0f%%", Double(mic.level) * 100) : "Off")
+                    if mic.sampleRate > 0 { Text("· \(mic.sampleRate) Hz") }
+                    if mic.frames > 0 { Text("· \(mic.frames) blocks") }
+                    if mic.dropped > 0 { Text("· \(mic.dropped) dropped") }
+                }
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                if !mic.status.isEmpty {
+                    Text(mic.status).font(.caption).foregroundStyle(.secondary)
+                }
+            } else {
+                Text("This firmware does not offer microphone test capture.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+struct MicWaveform: View {
+    let samples: [Float]
+    let level: Float
+    var body: some View {
+        Canvas { ctx, size in
+            let n = max(samples.count, 1)
+            var path = Path()
+            for (i, s) in samples.enumerated() {
+                let x = size.width * CGFloat(i) / CGFloat(n - 1 == 0 ? 1 : n - 1)
+                let y = size.height * CGFloat(1 - min(max(s * 4, 0), 1)) * 0.9 + size.height * 0.05
+                if i == 0 { path.move(to: CGPoint(x: x, y: y)) } else { path.addLine(to: CGPoint(x: x, y: y)) }
+            }
+            ctx.stroke(path, with: .color(.accentColor), lineWidth: 1.5)
+            let h = size.height * CGFloat(min(max(level, 0), 1))
+            ctx.fill(Path(CGRect(x: size.width - 8, y: size.height - h, width: 6, height: h)), with: .color(.accentColor.opacity(0.7)))
+        }
+    }
+}
+
 struct UnavailableNotes: View {
+    @EnvironmentObject var model: AppModel
+
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Not available").font(.headline)
-            Text("Microphone: not streamed – the firmware does not read the board's PDM microphone.")
+            if model.session.hello?.hasMicrophone != true {
+                Text("Microphone: this firmware does not offer the testing-only capture path.")
+            }
             Text("Battery: not measured – this firmware has no battery-voltage reading.")
             Text("Heading (yaw): no magnetometer on the XIAO nRF52840 Sense.")
         }

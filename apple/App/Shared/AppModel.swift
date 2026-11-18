@@ -37,6 +37,10 @@ final class AppModel: ObservableObject {
     private(set) var framesAtPause = 0
     @Published private(set) var clock: TimeInterval = 0
 
+    /// Testing-only microphone capture (not part of any instrument or configuration).
+    /// Off by default and not remembered across launches.
+    let mic = MicCapture()
+
     // Configuration
     @Published var sessionRevision = 0
     @Published var draft = DeviceConfig.firmwareDefaults { didSet { if draft != oldValue { draftChangedAt = now } } }
@@ -338,6 +342,7 @@ final class AppModel: ObservableObject {
     func disconnectConfig() {
         guard session.phase != .disconnected else { return }
         // Best effort; the device also drops the stream when its 5 s lease ends.
+        if mic.wanted { setMicTest(false) }
         session.maintainTelemetry(desiredRate: nil, now: now)
         session.disconnect(now: now)
         sessionRevision += 1
@@ -432,6 +437,15 @@ final class AppModel: ObservableObject {
         liveTelemetry.reset()
         telemetry = liveTelemetry
         framesAtPause = 0
+    }
+
+    func setMicTest(_ on: Bool) {
+        mic.setWanted(on, start: { session.perform(.startMic, now: now) }, stop: { _ = session.perform(.stopMic, now: now) })
+        sessionRevision += 1
+    }
+
+    func setMicPlaythrough(_ on: Bool) {
+        mic.setPlaythrough(on)
     }
 
     func retryTelemetry() {

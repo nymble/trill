@@ -9,10 +9,22 @@
 //! | IMU power | P1.08 | push-pull, high drive '1' (S0H1) |
 //! | IMU INT1 | P0.11 | data-ready, active high |
 //! | Trill SDA / SCL (D4 / D5) | P0.04 / P0.05 | external 4.7 k pull-ups to 3V3 |
-//! | Mic PDM CLK / DATA / power | P1.00 / P0.16 / P1.10 | not used yet |
+//! | Mic PDM CLK / DATA / power | P1.00 / P0.16 / P1.10 | test capture, off by default; power pin low when off |
 //! | LED red / green / blue | P0.26 / P0.30 / P0.06 | common-anode RGB to 3V3, active low; R7 2.2 k / R4 10 k / R3 2.2 k |
 //! | Charge LED (red, CHG0) | — | driven by the BQ25101 ~CHG output (net also on P0.17); not firmware-controlled |
 
+/// Microphone test capture (Hz). 16 kHz is the nRF52840 PDM rate with a
+/// 1.280 MHz clock and RATIO 80; it is also what this board's microphone
+/// research note recommends.
+pub const MIC_SAMPLE_RATE: u32 = 16_000;
+/// Samples per microphone block. 80 @ 16 kHz = 5 ms, short enough for
+/// play-through without using 100 ms recording buffers.
+pub const MIC_BLOCK: usize = 80;
+/// Microphone blocks buffered towards USB (8 × 5 ms = 40 ms).
+pub const MIC_QUEUE: usize = 8;
+/// Wait after asserting the microphone power pin before starting PDM
+/// (datasheet power-up max is 20 ms).
+pub const MIC_POWER_UP_MS: u64 = 20;
 /// Audio sample rate for the synth (Hz). 16 000, 32 000 or 48 000.
 #[cfg(feature = "pcm-synth")]
 pub const SAMPLE_RATE: u32 = 32_000;

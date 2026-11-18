@@ -1,6 +1,6 @@
 # USB MIDI (XIAO nRF52840 Sense)
 
-The default firmware build is a **class-compliant USB-MIDI 1.0** device plus a CDC ACM diagnostics port. macOS and iOS use their built-in drivers, so no driver install is needed. The instrument sends MIDI only; sound comes from a synth on the host. Event mapping: [MIDI mapping](midi-mapping.md). Firmware details: [firmware-xiao-sense.md](firmware-xiao-sense.md).
+The default firmware build is a **class-compliant USB-MIDI 1.0** device plus a CDC ACM diagnostics port and a second CDC ACM port for the microphone test stream. macOS and iOS use their built-in drivers, so no driver install is needed. The instrument sends MIDI only; sound comes from a synth on the host. Event mapping: [MIDI mapping](midi-mapping.md). Firmware details: [firmware-xiao-sense.md](firmware-xiao-sense.md).
 
 > **Status:** descriptors are checked by host tests, and both builds link and pass the UF2 checks in CI. **Enumeration on macOS, iOS or any host has not been tested**. No DAW or app has been tested. All timings below are targets or estimates.
 
@@ -8,10 +8,10 @@ The default firmware build is a **class-compliant USB-MIDI 1.0** device plus a C
 
 | Item | Value |
 |---|---|
-| VID:PID | `1209:0002` (pid.codes **test** PID: development only; a product needs its own PID). `pcm-synth` build: `1209:0003` |
-| Product / manufacturer | `Trill XIAO MIDI (dev)` / `nymble/trill` |
+| VID:PID | `1209:0003` (pid.codes **test** PID: development only; a product needs its own PID). Older default images used `1209:0002` (no PCM port) |
+| Product / manufacturer | `Trill XIAO MIDI+PCM (dev)` / `nymble/trill` |
 | Device class | `EF/02/01` composite with IADs |
-| Functions | CDC ACM diagnostics (interfaces 0–1); Audio Control (2) + MIDI Streaming (3), two virtual cables (embedded IN + OUT jacks each): cable 0 = instrument, cable 1 = configuration ([protocol](config-protocol.md)); bulk endpoints of 64 bytes |
+| Functions | CDC ACM diagnostics (interfaces 0–1); Audio Control (2) + MIDI Streaming (3), two virtual cables (embedded IN + OUT jacks each): cable 0 = instrument, cable 1 = configuration ([protocol](config-protocol.md)); CDC ACM PCM (4–5, microphone test stream, not USB Audio); bulk endpoints of 64 bytes |
 | Device release (`bcdDevice`) | `0x0200` (firmware 0.2.0) |
 | Power request | 100 mA |
 | Not present | USB Audio streaming (no sound card), MIDI 2.0 / UMP, MPE, BLE |
@@ -31,9 +31,9 @@ Load **only** after the target is confirmed: read `INFO_UF2.TXT` from the bootlo
 Record results (host model, OS version, adapter, pass/fail, counters) in the bring-up issue. None of these steps have been done yet.
 
 **A. macOS (Audio MIDI Setup / CoreMIDI)**
-1. Plug in the board (direct USB-C, then through a hub). *System Information → USB* should show `Trill XIAO MIDI (dev)`, `1209:0002`.
+1. Plug in the board (direct USB-C, then through a hub). *System Information → USB* should show `Trill XIAO MIDI+PCM (dev)`, `1209:0003`.
 2. *Audio MIDI Setup → Window → Show MIDI Studio*: a device `Trill XIAO MIDI (dev)` with two ports appears and is not greyed out. The first port carries the instrument and the second the configuration replies. Earlier 0.1 builds showed one port; if macOS still shows one, remove the stale device in MIDI Studio and replug.
-3. Open the diagnostics port (`screen /dev/cu.usbmodem… 115200`; the baud rate is ignored). The banner shows `usb 1209:0002`. Status shows `midi=up` and the LED shows the blue heartbeat when idle.
+3. Open the diagnostics port (the first `cu.usbmodem…`; `screen /dev/cu.usbmodem… 115200`; the baud rate is ignored). The banner shows `usb 1209:0003`. Status shows `midi=up` and the LED shows the blue heartbeat when idle.
 4. Watch the port with a CoreMIDI monitor app (for example *MIDI Monitor*). Touch the strip: one pitch bend, then Note On; slide: bend; lift: Note Off and pressure 0. The connect sequence (CC123, CC120, bend 8192, pressure 0, RPN 0 = 24) appears on (re)plug. Compare with the [example trace](midi-mapping.md#example-trace).
 5. Press `p`: the reset sequence appears. Unplug while holding a note, replug: no note starts until the finger is lifted and touched again.
 6. Quit the monitor and leave the device plugged in for 1 minute with touches. Then check `stall=` and `defer=` in `s`/`m`. This records how macOS behaves when no app reads the port.
@@ -70,4 +70,4 @@ Record results (host model, OS version, adapter, pass/fail, counters) in the bri
 
 ## Deferred
 
-Bluetooth LE MIDI (licensing decision pending), MPE, multi-touch voices, PDM microphone input, USB Audio output.
+Bluetooth LE MIDI (licensing decision pending), MPE, multi-touch voices, USB Audio Class, BLE audio.

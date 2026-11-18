@@ -24,7 +24,7 @@ final class VectorTests: XCTestCase {
 
     func testRequestsMatchRustEncoder() throws {
         let v = try Self.loadVectors()
-        XCTAssertEqual(v.count, 40)
+        XCTAssertEqual(v.count, 42)
         XCTAssertEqual(TrillCodec.hello(1), v["hello"]!.request)
         XCTAssertEqual(TrillCodec.getConfig(2), v["get_config"]!.request)
         XCTAssertEqual(TrillCodec.setConfig(3, [(.channel, 2), (.pitchMode, 1)]), v["set_channel_steps"]!.request)
@@ -45,6 +45,8 @@ final class VectorTests: XCTestCase {
         XCTAssertEqual(TrillCodec.setConfig(35, [(.mode, 3)]), v["set_mode_tilt_strike"]!.request)
         XCTAssertEqual(TrillCodec.setConfig(36, [(.scale, 3)]), v["set_scale_minor"]!.request)
         XCTAssertEqual(TrillCodec.action(37, .enterBootloader), v["action_enter_bootloader"]!.request)
+        XCTAssertEqual(TrillCodec.action(38, .startMic), v["action_start_mic"]!.request)
+        XCTAssertEqual(TrillCodec.action(39, .stopMic), v["action_stop_mic"]!.request)
         // The app refuses to encode requests the device would reject.
         XCTAssertNil(TrillCodec.setConfig(5, [(.channel, 2), (.bendRange, 30)]))
         XCTAssertNil(TrillCodec.setConfig(7, [(.baseNote, 60), (.baseNote, 61)]))
@@ -63,6 +65,8 @@ final class VectorTests: XCTestCase {
         XCTAssertFalse(hello(variant: 0, caps: all | TrillProtocol.capBoard).hasMotionSensor)
         XCTAssertTrue(hello(variant: TrillProtocol.variantIMU, caps: all | TrillProtocol.capBoard).hasMotionSensor)
         XCTAssertFalse(hello(variant: TrillProtocol.variantMic, caps: all).hasMicrophone, "mic bit needs the capability")
+        XCTAssertTrue(hello(variant: TrillProtocol.variantIMU | TrillProtocol.variantMic,
+                            caps: all | TrillProtocol.capBoard).hasMicrophone)
         XCTAssertEqual(SensorState(rawValue: 5), .absent)
         // Only strip-played presets work without a motion sensor.
         let touchOnly = BuiltInPreset.all.filter(\.playsWithoutMotion).map(\.id)

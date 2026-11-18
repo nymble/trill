@@ -35,7 +35,7 @@ public enum TrillProtocol {
     public static let variantPCMSynth: UInt8 = 0x01
     /// A motion sensor (IMU) was found (valid with `capBoard`).
     public static let variantIMU: UInt8 = 0x02
-    /// Microphone input available (valid with `capBoard`; reserved, never set yet).
+    /// Microphone test capture available (valid with `capBoard`).
     public static let variantMic: UInt8 = 0x04
     public static let capSetConfig: UInt8 = 0x01
     public static let capActions: UInt8 = 0x02
@@ -82,6 +82,10 @@ public enum TrillAction: UInt8, CaseIterable, Sendable {
     case zeroOrientation
     /// Restart into the UF2 bootloader to install firmware (firmware 0.6.0+).
     case enterBootloader
+    /// Start the onboard microphone test capture (16 kHz PCM). Not part of any instrument.
+    case startMic
+    /// Stop microphone test capture and power the microphone down.
+    case stopMic
 
     public var title: String {
         switch self {
@@ -91,6 +95,8 @@ public enum TrillAction: UInt8, CaseIterable, Sendable {
         case .restoreDefaults: return "Restore firmware defaults"
         case .zeroOrientation: return "Set current orientation as level"
         case .enterBootloader: return "Restart for a firmware update"
+        case .startMic: return "Start microphone test"
+        case .stopMic: return "Stop microphone test"
         }
     }
 
@@ -98,6 +104,8 @@ public enum TrillAction: UInt8, CaseIterable, Sendable {
     public var needsConfigPages: Bool { self == .zeroOrientation }
     /// Needs `TrillProtocol.capBoard`.
     public var needsBoard: Bool { self == .enterBootloader }
+    /// Needs a HELLO that reports `hasMicrophone`.
+    public var needsMicrophone: Bool { self == .startMic || self == .stopMic }
 }
 
 /// Values of `TrillParam.mode`.
@@ -377,7 +385,7 @@ public enum TrillReply: Equatable, Sendable {
         public var hasMotionSensor: Bool {
             capabilities & TrillProtocol.capBoard == 0 || variant & TrillProtocol.variantIMU != 0
         }
-        /// Microphone input (no firmware reports one yet).
+        /// Onboard microphone test capture (actions 7 and 8).
         public var hasMicrophone: Bool {
             capabilities & TrillProtocol.capBoard != 0 && variant & TrillProtocol.variantMic != 0
         }

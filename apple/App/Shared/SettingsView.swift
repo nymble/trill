@@ -131,7 +131,7 @@ struct StatusRow: View {
             if let h = s.hello {
                 Text("Firmware \(h.firmwareString)\(h.isPCMSynthBuild ? " (debug synth build)" : "") · protocol v\(h.protocolVersion) · boot ID \(h.bootID)")
                     .font(.caption).foregroundStyle(.secondary)
-                Text("Board: \(h.hasMotionSensor ? "motion sensor fitted" : "no motion sensor (touch strip only)") · microphone: \(h.hasMicrophone ? "available" : "not used")")
+                Text("Board: \(h.hasMotionSensor ? "motion sensor fitted" : "no motion sensor (touch strip only)") · microphone: \(h.hasMicrophone ? "test capture available" : "not used")")
                     .font(.caption).foregroundStyle(.secondary)
                 if !h.persistent {
                     Text("Trillium keeps settings until it's unplugged or reset; save sounds as presets to keep them.")

@@ -204,12 +204,14 @@ fn hello_reports_board_sensors_in_the_variant_byte() {
         let o = handle(&request::hello(1), false, &Config::default(), 0, &info).unwrap();
         assert_eq!(o.reply[11], variant);
         assert_ne!(o.reply[12] & CAP_BOARD, 0);
-        assert_eq!(
-            o.reply[11] & VARIANT_MIC,
-            0,
-            "no firmware reports a microphone yet"
-        );
+        assert_eq!(o.reply[11] & VARIANT_MIC, 0);
     }
+    let info = DeviceInfo {
+        variant: VARIANT_IMU | VARIANT_MIC,
+        ..INFO
+    };
+    let o = handle(&request::hello(1), false, &Config::default(), 0, &info).unwrap();
+    assert_eq!(o.reply[11], VARIANT_IMU | VARIANT_MIC);
 }
 
 #[test]
@@ -220,6 +222,8 @@ fn actions_map_to_side_effects() {
         (Action::RecalibrateGyro, 2),
         (Action::LedSelfTest, 3),
         (Action::EnterBootloader, 6),
+        (Action::StartMic, 7),
+        (Action::StopMic, 8),
     ] {
         let o = handle(&request::action(1, a), false, &cfg, 0, &INFO).unwrap();
         assert_eq!(o.action, Some(a));

@@ -171,7 +171,8 @@ public final class ConfigSession {
     @discardableResult
     public func perform(_ action: TrillAction, now: TimeInterval) -> Bool {
         guard isReady, !action.needsConfigPages || supportsConfigPages,
-              !action.needsBoard || hello?.canEnterBootloader == true else { return false }
+              !action.needsBoard || hello?.canEnterBootloader == true,
+              !action.needsMicrophone || hello?.hasMicrophone == true else { return false }
         enqueue(.action(action), now: now)
         return true
     }
