@@ -22,7 +22,7 @@ The figure is the canonical wiring diagram for this family. **T0 is the XIAO nRF
 |---|---|---|
 | **T0 — Trillium Zero** | The Sense board and a USB-C cable. USB-MIDI from the onboard IMU. | Primary development configuration. This is the starting point. |
 | **T1** | T0 plus a protected LiPo cell, a battery switch, and BLE. | Built and tested on an early Omi DIY board. Not a new design in this folder. |
-| **T2** | T1 plus a better LED and buttons. | Planned. The revision A drawings under [`hardware/t1/`](../../hardware/t1/README.md) are this electronics set. Not built. |
+| **T2** | T1 plus a better LED and buttons. | Planned. The revision A drawings under [`hardware/t2/`](../../hardware/t2/README.md) are this electronics set. Not built. |
 | **F1** | T2 plus a Bela Trill Flex linear touch sensor. | Planned. Only testing to date is a breadboard T0 plus a Trill Flex. Drawings: [`hardware/f1/`](../../hardware/f1/README.md). |
 
 The family, pin maps and revision A files are in the [hardware README](../../hardware/README.md).

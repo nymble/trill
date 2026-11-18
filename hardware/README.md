@@ -26,7 +26,7 @@ The revision A designs were drawn when "T1" meant the motion instrument with a c
 | [`t1/`](t1/) (schematic, layout, BOM, printed enclosure) | Shared core board: XIAO nRF52840 Sense, cell, power switch, RGB status LED, two buttons (plus two optional). Enclosure 32.5 x 52.2 x 22.1 mm. **Not built.** | **T2** (planned) |
 | [`f1/`](f1/) (schematic, layout, BOM, F1p printed and F1w wood bodies) | The same core board plus Bela Trill Flex (R1, R2, J2, optional JP1). **Not built.** | **F1** (planned), which is T2 plus the Flex |
 
-Those folders and filenames are unchanged. A rename of `hardware/t1/` (and the `t1-*` files) to `t2/` is proposed and is not done here.
+Those folders and filenames are unchanged. A rename of `hardware/t2/` (and the `t1-*` files) to `t2/` is proposed and is not done here.
 
 The revision A design still rests on one decision: **the planned T2 and F1 use the same core board.** It has the same perfboard layout, the same pin allocation and the same part positions. F1 fits four extra parts (R1, R2, J2, optional JP1) into holes that T2 leaves empty. One firmware image can serve both models, one build procedure can cover both, and a T2 can be upgraded to an F1 with a soldering iron.
 
@@ -88,10 +88,10 @@ D1 is a 5 mm diffused common-anode RGB LED powered from 3V3 and driven active lo
 |---|---|
 | [`t1/README.md`](t1/README.md) | Planned **T2** build guide (folder still named `t1/`): schematic, BOM, layout, wiring, enclosure, bring-up |
 | [`f1/README.md`](f1/README.md) | Planned **F1** build guide: Trill Flex additions, F1p and F1w bodies |
-| `t1/t1-schematic.svg`, `f1/f1-schematic.svg` | Schematics |
-| `t1/t1-layout.svg`, `f1/f1-layout.svg` | Perfboard placement, underside wiring view, wiring list |
-| `t1/t1-bom.csv`, `f1/f1-bom.csv` | Bills of materials |
-| `t1/t1-enclosure.scad` | Planned T2 enclosure (OpenSCAD; file still named `t1-enclosure`) and `t1-enclosure-drawing.svg` |
+| `t1/t2-schematic.svg`, `f1/f1-schematic.svg` | Schematics |
+| `t1/t2-layout.svg`, `f1/f1-layout.svg` | Perfboard placement, underside wiring view, wiring list |
+| `t1/t2-bom.csv`, `f1/f1-bom.csv` | Bills of materials |
+| `t1/t2-enclosure.scad` | Planned T2 enclosure (OpenSCAD; file still named `t2-enclosure`) and `t2-enclosure-drawing.svg` |
 | `f1/f1p-body.scad` | F1p printed body (OpenSCAD) and `f1p-body-drawing.svg` |
 | `f1/f1w-sheet-3mm.svg`, `f1/f1w-sheet-1.5mm.svg` | F1w laser-cut files and `f1w-body-drawing.svg` |
 | `tools/` | Generator (`gen_hw.py`) and the hardware model |

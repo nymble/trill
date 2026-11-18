@@ -320,7 +320,7 @@ def t1_drawing(path):
     s = Svg(297, 210)
     s.frame()
     s.text(12, 15.5, "Trillium T1 enclosure (3D printed): base, lid, button caps", 4.6, weight="bold")
-    s.text(12, 20.5, "Source: t1/t1-enclosure.scad (parametric). Outside "
+    s.text(12, 20.5, "Source: t1/t2-enclosure.scad (parametric). Outside "
            f"{t.out_x:.1f} x {t.out_y:.1f} x {t.out_z:.1f} mm.", 2.2, fill=GREY)
     k = 2.0
     # ---- top view (lid on, internals hidden) ----
@@ -664,7 +664,7 @@ def f1w_drawing(path):
 if __name__ == "__main__":
     import sys
     out = sys.argv[1] if len(sys.argv) > 1 else "."
-    t1_drawing(f"{out}/t1-enclosure-drawing.svg")
+    t1_drawing(f"{out}/t2-enclosure-drawing.svg")
     f1p_drawing(f"{out}/f1p-body-drawing.svg")
     f1w_drawing(f"{out}/f1w-body-drawing.svg")
     print(f1w_sheets(out))

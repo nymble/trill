@@ -10,7 +10,7 @@ The electronics are the shared **core board** (see [hardware/README.md](../READM
 
 ## 1. Schematic
 
-![T1 schematic](t1-schematic.svg)
+![T1 schematic](t2-schematic.svg)
 
 The XIAO's own charger and USB/battery switch-over are used unchanged. SW1 breaks the cell's positive lead. **SW1 must be ON for the cell to charge.** With SW1 OFF the instrument still runs from USB but the cell is isolated. The I2C parts shown in grey (R1, R2, J2, JP1) are not fitted on this board (planned T2). Their holes stay free for an F1 upgrade.
 
@@ -34,16 +34,16 @@ The XIAO's own charger and USB/battery switch-over are used unchanged. SW1 break
 | W | — | Hook-up wire | 28–30 AWG insulated solid (wire-wrap) wire, several colours | any |
 | SP1 | 1 | LED standoff | Plastic spacer for 5 mm LED, cut to 2.9 mm | any |
 | KT1 | — | Insulating tape | Polyimide (Kapton) tape for the board underside | any |
-| M1 | 1 | Enclosure base | 3D printed, `t1-enclosure.scad`, `part = "base"` | print |
+| M1 | 1 | Enclosure base | 3D printed, `t2-enclosure.scad`, `part = "base"` | print |
 | M2 | 1 | Enclosure lid | 3D printed, `part = "lid"` | print |
 | M3 | 2 | Button cap | 3D printed, `part = "caps"` | print |
 | M4 | — | Foam tape | Double-sided foam tape, 0.5–1 mm, for the cell | any |
 
-The machine-readable list is [`t1-bom.csv`](t1-bom.csv). Tools: fine-tip soldering iron, flush cutters, multimeter, and a 3D printer (PLA or PETG).
+The machine-readable list is [`t2-bom.csv`](t2-bom.csv). Tools: fine-tip soldering iron, flush cutters, multimeter, and a 3D printer (PLA or PETG).
 
 ## 3. Perfboard layout and wiring
 
-![T1 perfboard layout and wiring](t1-layout.svg)
+![T1 perfboard layout and wiring](t2-layout.svg)
 
 Holes are named by column letter and row number, with **A1** the top-left hole on the component side and the USB-C end at the top. View B is the underside, mirrored, as you see it while wiring.
 
@@ -103,9 +103,9 @@ Then the cell, with USB unplugged and SW1 OFF:
 
 ## 6. Enclosure
 
-![T1 enclosure drawing](t1-enclosure-drawing.svg)
+![T1 enclosure drawing](t2-enclosure-drawing.svg)
 
-Source: [`t1-enclosure.scad`](t1-enclosure.scad) (OpenSCAD 2021.01 or later). Set `part` to `base`, `lid` or `caps`, render (F6) and export STL. `part = "assembly"` shows everything in place for checking.
+Source: [`t2-enclosure.scad`](t2-enclosure.scad) (OpenSCAD 2021.01 or later). Set `part` to `base`, `lid` or `caps`, render (F6) and export STL. `part = "assembly"` shows everything in place for checking.
 
 | Part | Orientation | Notes |
 |---|---|---|

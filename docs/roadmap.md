@@ -6,7 +6,7 @@
 |---|---|
 | Trillium Zero (T0) ([guide](hardware/trillium-zero.md)) | One Seeed Studio XIAO nRF52840 Sense on a USB cable, USB-MIDI from the onboard IMU. Showcase starting point, and the primary development configuration to date. Firmware through 0.6.0 has run on Sense boards |
 | Model T1 | T0 plus a battery and BLE. Built and tested on an early Omi DIY board. A clean T1 drawing (no extra LED or buttons) is not yet in `hardware/` |
-| Model T2 (planned) | T1 plus a better LED and buttons. Not built. Revision A electronics and enclosure are filed under [`hardware/t1/`](../hardware/t1/README.md) (historical folder name) |
+| Model T2 (planned) | T1 plus a better LED and buttons. Not built. Revision A electronics and enclosure are filed under [`hardware/t2/`](../hardware/t2/README.md) (historical folder name) |
 | Model F1 (planned) | T2 plus a Bela Trill Flex linear touch sensor. Not built. The only Flex testing to date is a breadboard T0 plus a Trill Flex. Drawings: [`hardware/f1/`](../hardware/f1/README.md) |
 | Raspberry Pi wiring ([design](design-raspberry-pi.md)) | Proposal. Pins checked against Bela, Raspberry Pi docs. **Not tested on hardware** |
 | XIAO nRF52840 wiring ([design](design-xiao-nrf52840.md)) | Proposal. Pins and pull-ups checked against Seeed schematics and Nordic PS; power/battery section transcribed from the Sense schematic Rev V1.1. Used as the reference for T0 optional battery notes and for breadboard Flex wiring |

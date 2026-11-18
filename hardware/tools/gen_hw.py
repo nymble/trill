@@ -4,7 +4,7 @@
     python3 hardware/tools/gen_hw.py          # from the repository root
 
 Outputs (overwritten):
-  hardware/t1/  t1-schematic.svg  t1-layout.svg  t1-bom.csv  t1-enclosure-drawing.svg
+  hardware/t2/  t2-schematic.svg  t2-layout.svg  t2-bom.csv  t2-enclosure-drawing.svg
   hardware/f1/  f1-schematic.svg  f1-layout.svg  f1-bom.csv  f1p-body-drawing.svg
                 f1w-body-drawing.svg  f1w-sheet-3mm.svg  f1w-sheet-1.5mm.svg
 The .scad sources are hand-maintained; this script lints them and checks
@@ -29,7 +29,8 @@ import mech_params as mp  # noqa: E402
 import schematic  # noqa: E402
 
 ROOT = os.path.dirname(HERE)
-T1 = os.path.join(ROOT, "t1")
+T1 = os.path.join(ROOT, "t2")  # revision-A "T1" design is the planned T2 model
+FILE = {"T1": "t2", "F1": "f1"}
 F1 = os.path.join(ROOT, "f1")
 
 
@@ -73,7 +74,7 @@ def scad_number(path: str, name: str) -> float | None:
 
 def check_constants() -> list[str]:
     p = []
-    t1s = os.path.join(T1, "t1-enclosure.scad")
+    t1s = os.path.join(T1, "t2-enclosure.scad")
     f1s = os.path.join(F1, "f1p-body.scad")
     t, f = mp.T1(), mp.F1p()
     for path, name, val in [
@@ -100,15 +101,15 @@ def check_constants() -> list[str]:
 def main() -> int:
     problems = hw.check_layout()
     for m, d in (("T1", T1), ("F1", F1)):
-        schematic.draw(m).save(os.path.join(d, f"{m.lower()}-schematic.svg"))
-        layout.draw(m).save(os.path.join(d, f"{m.lower()}-layout.svg"))
-    bom.write_csv(os.path.join(T1, "t1-bom.csv"), "T1", ("T1",))
+        schematic.draw(m).save(os.path.join(d, f"{FILE[m]}-schematic.svg"))
+        layout.draw(m).save(os.path.join(d, f"{FILE[m]}-layout.svg"))
+    bom.write_csv(os.path.join(T1, "t2-bom.csv"), "T1", ("T1",))
     bom.write_csv(os.path.join(F1, "f1-bom.csv"), "F1", ("F1p", "F1w"))
-    mech.t1_drawing(os.path.join(T1, "t1-enclosure-drawing.svg"))
+    mech.t1_drawing(os.path.join(T1, "t2-enclosure-drawing.svg"))
     mech.f1p_drawing(os.path.join(F1, "f1p-body-drawing.svg"))
     mech.f1w_drawing(os.path.join(F1, "f1w-body-drawing.svg"))
     s3, s15 = mech.f1w_sheets(F1)
-    problems += lint_scad(os.path.join(T1, "t1-enclosure.scad"))
+    problems += lint_scad(os.path.join(T1, "t2-enclosure.scad"))
     problems += lint_scad(os.path.join(F1, "f1p-body.scad"))
     problems += check_constants()
     t, f, w = mp.T1(), mp.F1p(), mp.F1w()

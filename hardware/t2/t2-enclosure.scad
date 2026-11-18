@@ -3,7 +3,7 @@
 // Parametric OpenSCAD source. Open in OpenSCAD 2021.01 or later, choose
 // `part` in the Customizer, render (F6) and export STL.
 // Geometry follows hardware/tools/mech_params.py (class T1); the drawing
-// t1-enclosure-drawing.svg is generated from the same numbers.
+// t2-enclosure-drawing.svg is generated from the same numbers.
 //
 // Coordinates: origin at the outer -X/-Y/bottom corner of the base.
 // +X = right side (SW1 power switch), +Y = USB-C end, +Z = up.

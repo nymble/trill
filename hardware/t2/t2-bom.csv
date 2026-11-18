@@ -15,7 +15,7 @@ H1,2,Male header 1x7,"2.54 mm, standard 2.5 mm plastic, for U1 (usually supplied
 W,-,Hook-up wire,"28-30 AWG insulated solid (wire-wrap) wire, several colours",any
 SP1,1,LED standoff,"Plastic spacer for 5 mm LED, cut to length (see enclosure doc)",any
 KT1,-,Insulating tape,Polyimide (Kapton) tape over the board underside / cell,any
-T1:M1,1,T1 enclosure base,"3D printed, PLA/PETG, t1-enclosure.scad part=""base""",print
-T1:M2,1,T1 enclosure lid,"3D printed, t1-enclosure.scad part=""lid""",print
-T1:M3,2,Button cap,"3D printed, t1-enclosure.scad part=""caps""",print
+T1:M1,1,T1 enclosure base,"3D printed, PLA/PETG, t2-enclosure.scad part=""base""",print
+T1:M2,1,T1 enclosure lid,"3D printed, t2-enclosure.scad part=""lid""",print
+T1:M3,2,Button cap,"3D printed, t2-enclosure.scad part=""caps""",print
 T1:M4,1,Foam tape,"Double-sided foam tape ~0.5-1 mm, holds BT1 in the base",any

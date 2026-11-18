@@ -3,7 +3,7 @@
 <rect width="297" height="210" fill="white"/>
 <rect x="6.000" y="6.000" width="285.000" height="198.000" rx="0" stroke="#1a1a1a" stroke-width="0.4" fill="none"/>
 <text x="12.000" y="15.500" font-family="Helvetica, Arial, sans-serif" font-size="4.6" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">Trillium T1 enclosure (3D printed): base, lid, button caps</text>
-<text x="12.000" y="20.500" font-family="Helvetica, Arial, sans-serif" font-size="2.2" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Source: t1/t1-enclosure.scad (parametric). Outside 32.5 x 52.2 x 22.1 mm.</text>
+<text x="12.000" y="20.500" font-family="Helvetica, Arial, sans-serif" font-size="2.2" text-anchor="start" font-weight="normal" font-style="normal" fill="#8a8a8a" dominant-baseline="auto">Source: t1/t2-enclosure.scad (parametric). Outside 32.5 x 52.2 x 22.1 mm.</text>
 <text x="22.000" y="32.000" font-family="Helvetica, Arial, sans-serif" font-size="2.3" text-anchor="start" font-weight="bold" font-style="normal" fill="#1a1a1a" dominant-baseline="auto">TOP VIEW (lid fitted, internals dashed)  2:1</text>
 <rect x="22.000" y="36.000" width="65.080" height="104.460" rx="4.0" stroke="#1a1a1a" stroke-width="0.45" fill="none"/>
 <rect x="26.000" y="40.000" width="57.080" height="96.460" rx="0" stroke="#8a8a8a" stroke-width="0.2" fill="none" stroke-dasharray="1.2,0.8"/>
