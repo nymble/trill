@@ -63,6 +63,8 @@ final class VectorTests: XCTestCase {
         XCTAssertFalse(hello(variant: 0, caps: all | TrillProtocol.capBoard).hasMotionSensor)
         XCTAssertTrue(hello(variant: TrillProtocol.variantIMU, caps: all | TrillProtocol.capBoard).hasMotionSensor)
         XCTAssertFalse(hello(variant: TrillProtocol.variantMic, caps: all).hasMicrophone, "mic bit needs the capability")
+        XCTAssertFalse(hello(variant: 0, caps: all).supportsMultiTouch)
+        XCTAssertTrue(hello(variant: TrillProtocol.variantMultiTouch, caps: all).supportsMultiTouch)
         XCTAssertEqual(SensorState(rawValue: 5), .absent)
         // Only strip-played presets work without a motion sensor.
         let touchOnly = BuiltInPreset.all.filter(\.playsWithoutMotion).map(\.id)
@@ -77,7 +79,7 @@ final class VectorTests: XCTestCase {
         XCTAssertEqual(h.firmwareString, "0.4.0")
         XCTAssertTrue(h.supportsConfigPages)
         XCTAssertTrue(h.supportsTelemetry)
-        XCTAssertTrue(h.supportsMultiTouch)
+        XCTAssertFalse(h.supportsMultiTouch, "fixture device is firmware 0.4-style, no multi-touch variant bit")
         XCTAssertEqual(h.uptimeSeconds, 1234)
         XCTAssertEqual(h.bootID, 0x1555)
         XCTAssertEqual(h.paramCount, TrillParam.allCases.count)

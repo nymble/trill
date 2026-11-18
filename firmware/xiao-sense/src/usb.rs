@@ -312,7 +312,7 @@ async fn config_request(msg: &[u8], truncated: bool) {
             trill_config::VARIANT_IMU
         } else {
             0
-        },
+        } | trill_config::VARIANT_MULTI_TOUCH,
         uptime_s: Instant::now().as_secs() as u32,
         boot_id: BOOT_ID.load(Ordering::Relaxed),
     };

@@ -38,6 +38,8 @@ public enum TrillProtocol {
     public static let variantIMU: UInt8 = 0x02
     /// Microphone input available (valid with `capBoard`; reserved, never set yet).
     public static let variantMic: UInt8 = 0x04
+    /// Companion `0x51` multi-touch telemetry is sent with each format-1 frame.
+    public static let variantMultiTouch: UInt8 = 0x08
     public static let capSetConfig: UInt8 = 0x01
     public static let capActions: UInt8 = 0x02
     public static let capPersistent: UInt8 = 0x04
@@ -58,7 +60,6 @@ public enum TrillProtocol {
     public static let capBoard: UInt8 = 0x40
     /// A TELEMETRY_TOUCHES companion is sent with each format-1 frame
     /// (up to five 1-axis touches). Format 1 still reports the first touch only.
-    public static let capMultiTouch: UInt8 = 0x80
 }
 
 /// Device-side error codes.
@@ -372,8 +373,8 @@ public enum TrillReply: Equatable, Sendable {
         public var isPCMSynthBuild: Bool { variant & TrillProtocol.variantPCMSynth != 0 }
         public var persistent: Bool { capabilities & TrillProtocol.capPersistent != 0 }
         public var supportsTelemetry: Bool { capabilities & TrillProtocol.capTelemetry != 0 }
-        /// Up to five touches in a companion SysEx, firmware that sets capMultiTouch.
-        public var supportsMultiTouch: Bool { capabilities & TrillProtocol.capMultiTouch != 0 }
+        /// Up to five touches in a companion SysEx (variant bit 3).
+        public var supportsMultiTouch: Bool { variant & TrillProtocol.variantMultiTouch != 0 }
         /// Parameters 14...30 and action 5 (firmware 0.4.0+).
         public var supportsConfigPages: Bool { capabilities & TrillProtocol.capConfigPages != 0 }
         /// Parameters 31...37, directional strikes (firmware 0.5.0+).

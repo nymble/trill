@@ -3,7 +3,8 @@
 use instrument_events::Config;
 use trill_config::telemetry::{self, Frame, Sample, Schedule, TouchPoint, TouchesFrame};
 use trill_config::{
-    handle, msg, request, DeviceInfo, ErrorCode, CAP_MULTI_TOUCH, CAP_TELEMETRY, MAX_MESSAGE_LEN,
+    handle, msg, request, DeviceInfo, ErrorCode, CAP_TELEMETRY, MAX_MESSAGE_LEN,
+    VARIANT_MULTI_TOUCH,
 };
 
 const INFO: DeviceInfo = DeviceInfo {
@@ -22,7 +23,22 @@ fn hello_advertises_telemetry() {
     let o = run(&request::hello(1)).unwrap();
     assert_eq!(o.reply[5], msg::HELLO_REPLY);
     assert_ne!(o.reply[HELLO_CAPS] & CAP_TELEMETRY, 0);
-    assert_ne!(o.reply[HELLO_CAPS] & CAP_MULTI_TOUCH, 0);
+    assert_eq!(
+        o.reply[HELLO_CAPS] & 0x80,
+        0,
+        "capability byte is 7-bit MIDI data"
+    );
+}
+
+#[test]
+fn hello_echoes_the_multi_touch_variant() {
+    let info = DeviceInfo {
+        variant: VARIANT_MULTI_TOUCH,
+        ..INFO
+    };
+    let o = handle(&request::hello(1), false, &Config::default(), 0, &info).unwrap();
+    assert_ne!(o.reply[11] & VARIANT_MULTI_TOUCH, 0);
+    assert!(o.reply[1..o.reply.len() - 1].iter().all(|&b| b < 0x80));
 }
 const HELLO_CAPS: usize = 7 + 5;
 

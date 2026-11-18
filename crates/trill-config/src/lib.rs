@@ -160,6 +160,13 @@ pub const VARIANT_IMU: u8 = 0x02;
 /// Variant flag (valid with [`CAP_BOARD`]): microphone input is
 /// available. Reserved: no firmware sets it yet.
 pub const VARIANT_MIC: u8 = 0x04;
+/// Variant flag: a [`msg::TELEMETRY_TOUCHES`] companion is sent with each
+/// format-1 telemetry frame, carrying up to five touches. This lives in
+/// the variant byte because the 7-bit capability byte is already fully
+/// assigned (MIDI SysEx data bytes cannot carry a bit-7 flag). Hosts that
+/// do not see this bit, and older hosts, ignore the companion; format 1
+/// still reports the first touch only.
+pub const VARIANT_MULTI_TOUCH: u8 = 0x08;
 /// Capability bit: `SET_CONFIG` supported.
 pub const CAP_SET_CONFIG: u8 = 0x01;
 /// Capability bit: `ACTION` supported.
@@ -182,11 +189,6 @@ pub const CAP_STRIKES: u8 = 0x20;
 /// Without it hosts must assume an IMU is fitted (every earlier firmware ran
 /// only on the Sense board) and ask the user to double-press RESET.
 pub const CAP_BOARD: u8 = 0x40;
-/// Capability bit: a [`msg::TELEMETRY_TOUCHES`] companion is sent with each
-/// format-1 telemetry frame, carrying up to five touches. Hosts that do not
-/// set this bit, and older hosts, ignore the companion; format 1 still
-/// reports the first touch only.
-pub const CAP_MULTI_TOUCH: u8 = 0x80;
 
 /// Facts reported by `HELLO_REPLY`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -282,7 +284,6 @@ pub fn hello_reply(req: u8, info: &DeviceInfo) -> Reply {
         | CAP_CONFIG_PAGES
         | CAP_STRIKES
         | CAP_BOARD
-        | CAP_MULTI_TOUCH
         | if PERSISTENT { CAP_PERSISTENT } else { 0 };
     let _ = r.extend_from_slice(&[
         PROTOCOL_VERSION,
