@@ -21,6 +21,7 @@
 //! separate tasks: each hands its own timestamped samples to the event
 //! engine (`instrument-events`), so either keeps working without the other.
 //! The default build has no audio task and no high-priority executor.
+//! The onboard PDM microphone is a testing-only capture path, off at boot.
 
 #![no_std]
 #![no_main]
@@ -31,6 +32,7 @@ mod board;
 mod crash;
 mod i2c;
 mod imu;
+mod mic;
 mod shared;
 mod timing;
 mod trill;
@@ -61,6 +63,7 @@ bind_interrupts!(pub struct Irqs {
     CLOCK_POWER => vbus_detect::InterruptHandler;
     TWISPI0 => twim::InterruptHandler<peripherals::TWISPI0>;
     TWISPI1 => twim::InterruptHandler<peripherals::TWISPI1>;
+    PDM => embassy_nrf::pdm::InterruptHandler<peripherals::PDM>;
 });
 
 #[cfg(feature = "pcm-synth")]
@@ -219,6 +222,22 @@ fn main() -> ! {
         interrupt::EGU1_SWI1.set_priority(Priority::P5);
         let high = EXECUTOR_HIGH.start(interrupt::EGU1_SWI1);
         high.spawn(audio::audio_task().unwrap());
+    }
+
+    // Microphone test path: power pin starts low. The task lives on the
+    // medium-priority executor so a blocking Trill I²C read cannot delay
+    // DMA buffer swaps. Never started in safe mode.
+    {
+        let pdm_cfg = embassy_nrf::pdm::Config {
+            frequency: embassy_nrf::pdm::Frequency::_1280k,
+            ratio: embassy_nrf::pdm::Ratio::Ratio80,
+            operation_mode: embassy_nrf::pdm::OperationMode::Mono,
+            edge: embassy_nrf::pdm::Edge::LeftFalling,
+            ..Default::default()
+        };
+        let pdm = embassy_nrf::pdm::Pdm::new(p.PDM, Irqs, p.P1_00, p.P0_16, pdm_cfg);
+        let mic_power = Output::new(p.P1_10, Level::Low, OutputDrive::Standard0HighDrive1);
+        med.spawn(mic::mic_task(pdm, mic_power).unwrap());
     }
 
     // Internal IMU bus (on-board 10 k pull-ups), 400 kHz like Zephyr's board file.

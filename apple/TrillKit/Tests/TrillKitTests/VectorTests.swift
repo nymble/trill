@@ -63,6 +63,8 @@ final class VectorTests: XCTestCase {
         XCTAssertFalse(hello(variant: 0, caps: all | TrillProtocol.capBoard).hasMotionSensor)
         XCTAssertTrue(hello(variant: TrillProtocol.variantIMU, caps: all | TrillProtocol.capBoard).hasMotionSensor)
         XCTAssertFalse(hello(variant: TrillProtocol.variantMic, caps: all).hasMicrophone, "mic bit needs the capability")
+        XCTAssertTrue(hello(variant: TrillProtocol.variantIMU | TrillProtocol.variantMic,
+                            caps: all | TrillProtocol.capBoard).hasMicrophone)
         XCTAssertEqual(SensorState(rawValue: 5), .absent)
         // Only strip-played presets work without a motion sensor.
         let touchOnly = BuiltInPreset.all.filter(\.playsWithoutMotion).map(\.id)

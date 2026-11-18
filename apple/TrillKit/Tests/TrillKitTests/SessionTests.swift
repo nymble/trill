@@ -16,6 +16,10 @@ final class FakeTrill {
     var pages = false
     /// Firmware 0.5.0 behaviour: page 2 (directional strikes). Implies `pages`.
     var strikes = false { didSet { if strikes { pages = true } } }
+    /// Firmware 0.6.0 board report (capability bit 6).
+    var board = false
+    /// Variant bit 2: microphone test capture.
+    var mic = false
 
     func known(_ p: TrillParam) -> Bool { p.page == 0 || (pages && p.page == 1) || (strikes && p.page == 2) }
 
@@ -25,10 +29,11 @@ final class FakeTrill {
         let hdr = { (t: UInt8) in [0xF0, 0x7D, 0x54, 0x52, 0x01, t, id] as [UInt8] }
         switch m[5] {
         case 0x01:
-            let minor: UInt8 = strikes ? 5 : pages ? 4 : telemetry ? 3 : 2
-            let caps: UInt8 = (telemetry ? 0x0B : 3) | (pages ? 0x10 : 0) | (strikes ? 0x20 : 0)
+            let minor: UInt8 = board ? 6 : strikes ? 5 : pages ? 4 : telemetry ? 3 : 2
+            let caps: UInt8 = (telemetry ? 0x0B : 3) | (pages ? 0x10 : 0) | (strikes ? 0x20 : 0) | (board ? 0x40 : 0)
+            let variant: UInt8 = (board ? 0x02 : 0) | (mic ? 0x04 : 0)
             let count: UInt8 = strikes ? 37 : pages ? 30 : 13
-            return hdr(0x41) + [1, 0, minor, 0, 0, caps, 64, count, 0, 0, 5, UInt8(bootID >> 7), UInt8(bootID & 0x7F), 0xF7]
+            return hdr(0x41) + [1, 0, minor, 0, variant, caps, 64, count, 0, 0, 5, UInt8(bootID >> 7), UInt8(bootID & 0x7F), 0xF7]
         case 0x02:
             let payload = Array(m[7..<(m.count - 1)])
             if payload.isEmpty { return configReply(hdr, page: 0) }
@@ -46,7 +51,8 @@ final class FakeTrill {
             if new != config { generation = (generation + 1) & 0x3FFF; config = new }
             return configReply(hdr, page: TrillParam(rawValue: m[7])!.page)
         case 0x04:
-            guard let a = TrillAction(rawValue: m[7]), !a.needsConfigPages || pages else { return hdr(0x7F) + [7, m[7], 0xF7] }
+            guard let a = TrillAction(rawValue: m[7]), !a.needsConfigPages || pages,
+                  !a.needsMicrophone || mic else { return hdr(0x7F) + [7, m[7], 0xF7] }
             actions.append(a)
             if a == .restoreDefaults { config = .firmwareDefaults; return configReply(hdr, page: 0) }
             return hdr(0x44) + [a.rawValue, 0xF7]
@@ -316,5 +322,24 @@ extension SessionTests {
         want[.strikeDirections] = 4
         XCTAssertFalse(session.apply(want, now: now), "page-2 edit only: nothing sent")
         XCTAssertTrue(sent.isEmpty)
+    }
+    func testMicrophoneActionsNeedVariant() {
+        device.pages = true
+        device.strikes = true
+        session.connect(now: now); pump()
+        XCTAssertFalse(session.hello?.hasMicrophone ?? true)
+        XCTAssertFalse(session.perform(.startMic, now: now))
+        XCTAssertFalse(session.perform(.stopMic, now: now))
+        XCTAssertTrue(sent.isEmpty)
+
+        device.board = true
+        device.mic = true
+        session = ConfigSession { [unowned self] m in self.sent.append(m); return true }
+        sent = []
+        session.connect(now: now); pump()
+        XCTAssertTrue(session.hello?.hasMicrophone == true)
+        XCTAssertTrue(session.perform(.startMic, now: now)); pump()
+        XCTAssertTrue(session.perform(.stopMic, now: now)); pump()
+        XCTAssertEqual(device.actions, [.startMic, .stopMic])
     }
 }

@@ -4,10 +4,13 @@
 //!
 //! * CDC ACM diagnostics (first ttyACM / usbmodem): text status and
 //!   single-key commands.
-//! * USB-MIDI 1.0 (class compliant, one virtual cable): the instrument
-//!   output, produced by the `instrument-events` engine.
-//! * With feature `pcm-synth` only: a second CDC ACM port carrying the
-//!   framed PCM test stream of the on-board debug synth.
+//! * USB-MIDI 1.0 (class compliant, two virtual cables): the instrument
+//!   output, produced by the `instrument-events` engine, and the
+//!   configuration protocol.
+//! * A second CDC ACM port carrying framed PCM (`TRPC`). The default
+//!   firmware uses it for the microphone test switch; the optional
+//!   `pcm-synth` debug synth shares the same port and is pre-empted
+//!   while the microphone is on.
 //!
 //! This is not a USB Audio (sound card) device.
 
@@ -40,7 +43,7 @@ use crate::shared::*;
 pub type UsbDriver = Driver<'static, HardwareVbusDetect>;
 
 /// pid.codes *test* PID of this build (development only; see `trill-usb`).
-pub const USB_PID: u16 = trill_usb::product_id(cfg!(feature = "pcm-synth"));
+pub const USB_PID: u16 = trill_usb::product_id(true);
 const MAX_PACKET: usize = trill_usb::MAX_PACKET as usize;
 /// Events per MIDI packet. 15 x 4 = 60 bytes: always a short packet, so a
 /// transfer never needs a zero-length packet to terminate.
@@ -56,7 +59,6 @@ static MSOS_DESC: ConstStaticCell<[u8; 64]> = ConstStaticCell::new([0; 64]);
 static CONTROL_BUF: ConstStaticCell<[u8; trill_usb::CONTROL_BUF_LEN]> =
     ConstStaticCell::new([0; trill_usb::CONTROL_BUF_LEN]);
 static DIAG_STATE: StaticCell<State> = StaticCell::new();
-#[cfg(feature = "pcm-synth")]
 static PCM_STATE: StaticCell<State> = StaticCell::new();
 static BUS_EVENTS: StaticCell<BusEvents> = StaticCell::new();
 
@@ -76,6 +78,10 @@ impl BusEvents {
         let ready = self.configured && !self.suspended;
         if !ready {
             USB_EPOCH.fetch_add(1, Ordering::Relaxed);
+            // Host gone: drop the test capture and power the microphone down.
+            if MIC_ENABLED.load(Ordering::Relaxed) {
+                set_mic_enabled(false);
+            }
         }
         USB_READY.store(ready, Ordering::Relaxed);
         MIDI_WAKE.signal(());
@@ -111,7 +117,7 @@ pub async fn usb_task(usbd: Peri<'static, peripherals::USBD>, report: &'static B
     let driver = Driver::new(usbd, crate::Irqs, HardwareVbusDetect::new(crate::Irqs));
     let mut builder = Builder::new(
         driver,
-        trill_usb::device_config(cfg!(feature = "pcm-synth")),
+        trill_usb::device_config(true),
         CONFIG_DESC.take(),
         BOS_DESC.take(),
         MSOS_DESC.take(),
@@ -121,25 +127,17 @@ pub async fn usb_task(usbd: Peri<'static, peripherals::USBD>, report: &'static B
         configured: false,
         suspended: false,
     }));
-    #[cfg(feature = "pcm-synth")]
     let pcm_state = Some(PCM_STATE.init(State::new()));
-    #[cfg(not(feature = "pcm-synth"))]
-    let pcm_state = None;
     let f = trill_usb::add_functions(&mut builder, DIAG_STATE.init(State::new()), pcm_state);
     let mut dev = builder.build();
-    #[cfg(feature = "pcm-synth")]
-    {
-        let pcm = f.pcm.expect("pcm function");
-        embassy_futures::join::join4(
-            dev.run(),
-            diag_loop(f.diag, report),
-            midi_loop(f.midi),
-            pcm_loop(pcm),
-        )
-        .await;
-    }
-    #[cfg(not(feature = "pcm-synth"))]
-    embassy_futures::join::join3(dev.run(), diag_loop(f.diag, report), midi_loop(f.midi)).await;
+    let pcm = f.pcm.expect("pcm function");
+    embassy_futures::join::join4(
+        dev.run(),
+        diag_loop(f.diag, report),
+        midi_loop(f.midi),
+        pcm_loop(pcm),
+    )
+    .await;
 }
 
 /// A configuration reply being sent on cable 1, a few events per packet.
@@ -284,6 +282,10 @@ async fn config_request(msg: &[u8], truncated: bool) {
             trill_config::VARIANT_IMU
         } else {
             0
+        } | if !SAFE_MODE.load(Ordering::Relaxed) {
+            trill_config::VARIANT_MIC
+        } else {
+            0
         },
         uptime_s: Instant::now().as_secs() as u32,
         boot_id: BOOT_ID.load(Ordering::Relaxed),
@@ -321,6 +323,12 @@ async fn config_request(msg: &[u8], truncated: bool) {
             // Silence first; the reset follows once the ACK is out (below).
             MIDI_REQUEST.fetch_or(MIDI_REQ_PANIC, Ordering::Relaxed);
         }
+        Some(trill_config::Action::StartMic) => {
+            if !SAFE_MODE.load(Ordering::Relaxed) {
+                set_mic_enabled(true);
+            }
+        }
+        Some(trill_config::Action::StopMic) => set_mic_enabled(false),
         None => {}
     }
     if let Some(rate) = o.telemetry {
@@ -539,6 +547,18 @@ fn status_line(out: &mut String<OUT_LEN>) {
         },
     );
     midi_summary(out);
+    let _ = write!(
+        out,
+        " | mic={} blocks={} drop={} err={}",
+        if MIC_ENABLED.load(Ordering::Relaxed) {
+            "on"
+        } else {
+            "off"
+        },
+        r(&s.mic_blocks),
+        r(&s.mic_dropped),
+        r(&s.mic_errors),
+    );
     #[cfg(feature = "pcm-synth")]
     let _ = write!(
         out,
@@ -751,7 +771,17 @@ fn imu_report(out: &mut String<OUT_LEN>) {
             let _ = out.push_str("imu: probing");
         }
     }
-    let _ = out.push_str(" | mic: not supported yet\r\n");
+    let _ = write!(
+        out,
+        " | mic: {}\r\n",
+        if SAFE_MODE.load(Ordering::Relaxed) {
+            "disabled (safe mode)"
+        } else if MIC_ENABLED.load(Ordering::Relaxed) {
+            "on (test capture, 16 kHz PCM)"
+        } else {
+            "off"
+        },
+    );
 }
 
 fn banner(out: &mut String<OUT_LEN>, report: &BootReport) {
@@ -762,9 +792,9 @@ fn banner(out: &mut String<OUT_LEN>, report: &BootReport) {
         USB_VID,
         USB_PID,
         if cfg!(feature = "pcm-synth") {
-            "MIDI + diag + PCM debug synth"
+            "MIDI + diag + PCM mic + debug synth"
         } else {
-            "MIDI + diag"
+            "MIDI + diag + PCM mic"
         },
         TRILL_SCAN_BITS,
         TRILL_POLL_MS,
@@ -886,40 +916,81 @@ async fn diag_loop(class: CdcAcmClass<'static, UsbDriver>, report: &'static Boot
     join(reader, writer).await;
 }
 
-#[cfg(feature = "pcm-synth")]
 async fn pcm_loop(class: CdcAcmClass<'static, UsbDriver>) {
     use motion_synth::stream;
     let (mut tx, _rx) = class.split();
-    let mut frame = [0u8; stream::frame_len(BLOCK)];
+    const MAX: usize = stream::frame_len(MIC_BLOCK);
+    let mut frame = [0u8; MAX];
     loop {
         tx.wait_connection().await;
+        while MIC.try_receive().is_ok() {}
+        #[cfg(feature = "pcm-synth")]
         while PCM.try_receive().is_ok() {}
         PCM_ENABLED.store(true, Ordering::Relaxed);
         loop {
-            let block = match with_timeout(Duration::from_millis(100), PCM.receive()).await {
-                Ok(b) => b,
-                Err(_) => {
-                    if tx.dtr() {
+            if MIC_ENABLED.load(Ordering::Relaxed) {
+                match with_timeout(Duration::from_millis(20), MIC.receive()).await {
+                    Ok(block) => {
+                        let Some(n) = stream::encode(
+                            &mut frame,
+                            block.seq,
+                            MIC_SAMPLE_RATE,
+                            block.flags,
+                            &block.samples,
+                        ) else {
+                            continue;
+                        };
+                        if !tx.dtr() || write_all(&mut tx, &frame[..n]).await.is_err() {
+                            break;
+                        }
+                        bump(&STATS.pcm_sent);
                         continue;
                     }
+                    Err(_) => {
+                        if tx.dtr() {
+                            continue;
+                        }
+                        break;
+                    }
+                }
+            }
+            #[cfg(feature = "pcm-synth")]
+            {
+                match with_timeout(Duration::from_millis(100), PCM.receive()).await {
+                    Ok(block) => {
+                        let Some(n) = stream::encode(
+                            &mut frame,
+                            block.seq,
+                            SAMPLE_RATE,
+                            block.flags,
+                            &block.samples,
+                        ) else {
+                            continue;
+                        };
+                        if !tx.dtr() || write_all(&mut tx, &frame[..n]).await.is_err() {
+                            break;
+                        }
+                        bump(&STATS.pcm_sent);
+                    }
+                    Err(_) => {
+                        if tx.dtr() {
+                            continue;
+                        }
+                        break;
+                    }
+                }
+            }
+            #[cfg(not(feature = "pcm-synth"))]
+            {
+                Timer::after_millis(20).await;
+                if !tx.dtr() {
                     break;
                 }
-            };
-            let Some(n) = stream::encode(
-                &mut frame,
-                block.seq,
-                SAMPLE_RATE,
-                block.flags,
-                &block.samples,
-            ) else {
-                continue;
-            };
-            if !tx.dtr() || write_all(&mut tx, &frame[..n]).await.is_err() {
-                break;
             }
-            bump(&STATS.pcm_sent);
         }
         PCM_ENABLED.store(false, Ordering::Relaxed);
+        while MIC.try_receive().is_ok() {}
+        #[cfg(feature = "pcm-synth")]
         while PCM.try_receive().is_ok() {}
         Timer::after_millis(10).await;
     }
