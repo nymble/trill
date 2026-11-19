@@ -5,12 +5,18 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      appstore_screenshots_only:
+        description: "Run only the App Store / TestFlight screenshot job (iPhone 6.9, iPad 13, Mac)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
+  # Keep screenshot-only dispatch from cancelling (or being cancelled by) a normal CI run on the same ref.
+  group: ${{ github.event_name == 'workflow_dispatch' && (inputs.appstore_screenshots_only == true || inputs.appstore_screenshots_only == 'true') && format('appstore-shots-{0}', github.ref) || format('ci-{0}', github.ref) }}
   cancel-in-progress: true
 
 env:
@@ -20,6 +26,7 @@ jobs:
   host:
     name: fmt, clippy, test, thumbv7em check
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.appstore_screenshots_only != true && inputs.appstore_screenshots_only != 'true') }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -47,7 +54,7 @@ jobs:
       - name: Motion synth demo render
         run: cargo run --release --locked -p motion-synth --example render_wav -- /tmp/motion-synth-demo.wav
       - name: Makefile parses
-        run: make --dry-run ci pi-zero dist fw-uf2 synth-demo protocol-vectors apple apple-test-ipad-sim apple-ipad-sim apple-ios-ipa apple-dmg test-kit >/dev/null
+        run: make --dry-run ci pi-zero dist fw-uf2 synth-demo protocol-vectors apple apple-test-ipad-sim apple-ipad-sim apple-appstore-shots apple-ios-ipa apple-dmg test-kit >/dev/null
 
   firmware:
     name: XIAO nRF52840 Sense firmware (link + UF2 check)
@@ -112,6 +119,7 @@ jobs:
   apple:
     name: Apple apps (macOS + iOS, unsigned) and TrillKit tests
     runs-on: macos-15
+    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.appstore_screenshots_only != true && inputs.appstore_screenshots_only != 'true') }}
     # The apps carry the firmware built by the firmware job from this commit.
     needs: firmware
     timeout-minutes: 45
@@ -190,6 +198,7 @@ jobs:
   test-kit:
     name: Test kit (Mac app + iOS Simulator app + matching firmware, one commit)
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.appstore_screenshots_only != true && inputs.appstore_screenshots_only != 'true') }}
     needs: [firmware, apple]
     steps:
       - uses: actions/checkout@v4
@@ -220,6 +229,7 @@ jobs:
   cross:
     name: cross-build ${{ matrix.target }}
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_dispatch' || (inputs.appstore_screenshots_only != true && inputs.appstore_screenshots_only != 'true') }}
     needs: host
     strategy:
       fail-fast: false
@@ -244,3 +254,49 @@ jobs:
       - run: cargo zigbuild --release --locked -p trill-cli --target ${{ matrix.target }}
       - name: Inspect binary
         run: readelf -h -A target/${{ matrix.target }}/release/trill | grep -E 'Machine|Tag_CPU_arch' || true
+
+  appstore-screenshots:
+    name: App Store / TestFlight screenshots
+    if: ${{ github.event_name == 'workflow_dispatch' && (inputs.appstore_screenshots_only == true || inputs.appstore_screenshots_only == 'true') }}
+    runs-on: macos-15
+    needs: firmware
+    timeout-minutes: 60
+    env:
+      XCODEGEN_VERSION: 2.45.4
+      XCODEGEN_SHA256: 090ec29491aad50aec10631bf6e62253fed733c50f3aab0f5ffc86bc170bdbef
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+          xcrun simctl list devices available
+      - name: Install XcodeGen (pinned, checksum verified)
+        run: |
+          curl -fsSL --retry 5 --retry-delay 15 --retry-all-errors -o "$RUNNER_TEMP/xcodegen.zip" "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          echo "${XCODEGEN_SHA256}  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+      - uses: actions/download-artifact@v4
+        with:
+          name: xiao-sense-fw-unvalidated-on-hardware
+          path: in/fw
+      - name: Firmware for the app bundle (same commit, checksum verified)
+        run: |
+          (cd in/fw && shasum -a 256 -c SHA256SUMS)
+          v=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
+          mkdir -p dist && cp in/fw/xiao-sense-fw.uf2 "dist/xiao-sense-fw-$v.uf2"
+          make apple-firmware
+      - name: Generate Xcode project, build apps, capture screenshots
+        run: make apple-appstore-shots
+      - name: Record pixel sizes
+        run: python3 apple/scripts/list_png_sizes.py dist/appstore-screenshots
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trillium-appstore-screenshots
+          path: dist/appstore-screenshots/
+          if-no-files-found: error
+          retention-days: 30

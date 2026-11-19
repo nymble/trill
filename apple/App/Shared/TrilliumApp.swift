@@ -1,5 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-only
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 @main
 struct TrilliumApp: App {
@@ -47,7 +50,12 @@ struct ContentView: View {
                     .zIndex(1)
             }
         }
-        .onAppear { applyLaunchOverrides() }
+        .onAppear {
+            applyLaunchOverrides()
+            #if os(macOS)
+            applyMacWindowSize()
+            #endif
+        }
         .task {
             guard showSplash else { return }
             try? await Task.sleep(nanoseconds: 1_200_000_000)
@@ -55,8 +63,9 @@ struct ContentView: View {
         }
     }
 
-    /// Simulator and screenshot helpers (`--skip-splash`, `--tab=home|presets|sensors|settings`).
-    /// Ignored in normal launches; the iOS Simulator has no USB MIDI device.
+    /// Simulator and screenshot helpers (`--skip-splash`, `--tab=...`,
+    /// `--settings=mapping`, `--sensors-page=overview|charts|linear`,
+    /// `--window-size=WxH` on macOS). Ignored in normal launches.
     private func applyLaunchOverrides() {
         let args = ProcessInfo.processInfo.arguments
         if let arg = args.first(where: { $0.hasPrefix("--tab=") }) {
@@ -68,7 +77,45 @@ struct ContentView: View {
             default: break
             }
         }
+        if let arg = args.first(where: { $0.hasPrefix("--settings=") }) {
+            switch String(arg.dropFirst("--settings=".count)) {
+            case "mapping":
+                model.tab = .settings
+                model.settingsPath = [.mapping]
+            case "connection":
+                model.tab = .settings
+                model.settingsPath = [.connection]
+            default: break
+            }
+        }
+        if let arg = args.first(where: { $0.hasPrefix("--sensors-page=") }) {
+            let page = String(arg.dropFirst("--sensors-page=".count))
+            if ["overview", "charts", "linear"].contains(page) {
+                model.tab = .sensors
+                model.sensorsPageOverride = page
+            }
+        }
     }
+
+    #if os(macOS)
+    /// `--window-size=WIDTHxHEIGHT` in points (the whole window, including the title bar).
+    private func applyMacWindowSize() {
+        guard let arg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--window-size=") }) else { return }
+        let parts = String(arg.dropFirst("--window-size=".count)).split(separator: "x")
+        guard parts.count == 2, let w = Double(parts[0]), let h = Double(parts[1]), w > 0, h > 0 else { return }
+        DispatchQueue.main.async {
+            guard let win = NSApp.windows.first(where: { $0.isVisible }) ?? NSApp.windows.first else { return }
+            if let screen = win.screen ?? NSScreen.main {
+                let visible = screen.visibleFrame
+                let x = visible.midX - w / 2
+                let y = visible.midY - h / 2
+                win.setFrame(NSRect(x: x, y: y, width: w, height: h), display: true)
+            } else {
+                win.setFrame(NSRect(x: 80, y: 80, width: w, height: h), display: true)
+            }
+        }
+    }
+    #endif
 }
 
 struct SplashView: View {

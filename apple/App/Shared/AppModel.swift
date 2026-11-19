@@ -84,6 +84,9 @@ final class AppModel: ObservableObject {
     // Navigation
     @Published var tab: AppTab = .home
     @Published var settingsPath: [SettingsPage] = []
+    /// Screenshot helper: `overview`, `charts`, or `linear` (`--sensors-page=`).
+    @Published var sensorsPageOverride: String?
+    private var screenshotDemoSeq = 0
 
     /// Jump to the full mapping editor (Settings › Sound & mapping).
     func openMapping() {
@@ -148,6 +151,9 @@ final class AppModel: ObservableObject {
         // 30 Hz UI drain + 10 Hz-or-better timeout checks.
         timer = Timer.scheduledTimer(withTimeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
+        }
+        if ProcessInfo.processInfo.arguments.contains("--demo-hardware") {
+            startScreenshotDemo()
         }
     }
 
@@ -430,17 +436,21 @@ final class AppModel: ObservableObject {
         }
         noteHits(newEvents)
         monitor.idle(now: now)
-        let (frames, lost) = telemetryBuffer.drain()
-        if !frames.isEmpty || lost > 0 {
-            liveTelemetry.apply(frames, dropped: lost)
-            if !sensorsPaused { telemetry = liveTelemetry }
+        if session.isScreenshotDemo {
+            tickScreenshotDemo()
+        } else {
+            let (frames, lost) = telemetryBuffer.drain()
+            if !frames.isEmpty || lost > 0 {
+                liveTelemetry.apply(frames, dropped: lost)
+                if !sensorsPaused { telemetry = liveTelemetry }
+            }
         }
         if sensorsVisible { clock = MIDIClient.now() }
         let pending = session.pending
         session.tick(now: now)
         session.maintainTelemetry(desiredRate: sensorsVisible && sensorsLive ? telemetryRateHz : hardwareVisible ? 10 : nil, now: now)
         session.maintainStatus(now: now)
-        if now - lastUSBScan > 1 {
+        if !session.isScreenshotDemo, now - lastUSBScan > 1 {
             lastUSBScan = now
             let scan = TrilliumUSB.scan()
             if scan != usb { usb = scan }
@@ -479,6 +489,7 @@ final class AppModel: ObservableObject {
     /// A board was unplugged, swapped or re-enumerated: drop what was learnt
     /// about the old one and, when a board is there, read HELLO again.
     private func boardChanged() {
+        guard !session.isScreenshotDemo else { return }
         mic.disconnect()
         resetSensors()
         deviceChanges.forgetBoot()
@@ -501,6 +512,55 @@ final class AppModel: ObservableObject {
         liveTelemetry.reset()
         telemetry = liveTelemetry
         framesAtPause = 0
+        if session.isScreenshotDemo { fillScreenshotTelemetry() }
+    }
+
+    /// `--demo-hardware`: show a connected T1 with battery, Bluetooth and a linear sensor.
+    private func startScreenshotDemo() {
+        midiError = nil
+        session.applyScreenshotDemo(now: now)
+        draft = session.acknowledged ?? draft
+        usb = TrilliumUSB.Scan(
+            info: HardwareSummary.USBInfo(
+                vendorID: 0x1209, productID: 0x0003, name: "Trillium",
+                ports: [
+                    .init(path: "/dev/cu.usbmodem101", interface: 1),
+                    .init(path: "/dev/cu.usbmodem105", interface: 5),
+                ]
+            ),
+            signature: []
+        )
+        fillScreenshotTelemetry()
+        sessionRevision += 1
+    }
+
+    private func fillScreenshotTelemetry() {
+        // HardwareSummary freshness uses MIDIClient.now() (mach time), not systemUptime.
+        let now = MIDIClient.now()
+        var model = TelemetryModel(window: 10)
+        let rate = TelemetryFrame.defaultRateHz
+        let n = 10 * rate
+        let t0 = now - Double(n) / Double(rate)
+        var frames: [(TelemetryFrame, Double)] = []
+        frames.reserveCapacity(n)
+        for i in 0..<n {
+            let t = t0 + Double(i) / Double(rate)
+            frames.append((.screenshotDemo(seq: i, timeMs: i * (1000 / rate)), t))
+        }
+        model.apply(frames)
+        liveTelemetry = model
+        telemetry = model
+        screenshotDemoSeq = n
+        clock = now
+    }
+
+    private func tickScreenshotDemo() {
+        guard !sensorsPaused else { return }
+        let t = MIDIClient.now()
+        let frame = TelemetryFrame.screenshotDemo(seq: screenshotDemoSeq, timeMs: screenshotDemoSeq * 20)
+        screenshotDemoSeq += 1
+        liveTelemetry.apply([(frame, t)])
+        telemetry = liveTelemetry
     }
 
     func setMicTest(_ on: Bool) {
