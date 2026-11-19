@@ -75,7 +75,7 @@ targets:
       - target: TrilliumIOS
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: $(TRILL_BUNDLE_ID).uitests
+        PRODUCT_BUNDLE_IDENTIFIER: $(TRILL_BUNDLE_ID).tests
         GENERATE_INFOPLIST_FILE: YES
         IPHONEOS_DEPLOYMENT_TARGET: "16.0"
         TARGETED_DEVICE_FAMILY: "1,2"

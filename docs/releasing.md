@@ -10,7 +10,7 @@
 
 Releases are posted on GitHub as downloads: the Trillium Mac app (a DMG, and the same app as a zip), the iOS Simulator app (iPhone and iPad), the XIAO Sense firmware, the test kit and the `trill` CLI.
 
-1. Bump the version everywhere at once: `version` in `Cargo.toml` and `firmware/xiao-sense/Cargo.toml`, `MARKETING_VERSION` in `apple/Config/Base.xcconfig`. Run `cargo update -w` in the root and in `firmware/xiao-sense` so the lock files match.
+1. Bump the version everywhere at once: `version` in `Cargo.toml` and `firmware/xiao-sense/Cargo.toml`, `MARKETING_VERSION` in `apple/Config/Base.xcconfig`. Increment `CURRENT_PROJECT_VERSION` in the same xcconfig (App Store Connect and TestFlight require a new build number for each upload). Run `cargo update -w` in the root and in `firmware/xiao-sense` so the lock files match, or bump only the workspace package versions in the lock files when dependencies are unchanged.
 2. In `CHANGELOG.md`, move the entries from `[Unreleased]` into a `## [X.Y.Z] - YYYY-MM-DD` section. The release notes come from that section, and the release job fails if it is missing.
 3. Run `make ci`, `make apple-test` and `make tools-test`, and make sure CI on `main` is green.
 4. **With the maintainer's approval**, tag and push: `git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z`.
@@ -22,7 +22,7 @@ Releases are posted on GitHub as downloads: the Trillium Mac app (a DMG, and the
 
 A **manual run** (Actions → Release → *Run workflow*) builds and packages the same files from any branch and keeps them as a workflow artifact (`trillium-<version>-downloads`). It does not create a release.
 
-Permissions: every build job has `contents: read`. Only the draft job, which runs on tags, gets `contents: write`, through the built-in `GITHUB_TOKEN`. No other secrets are used: the app is not signed or notarized, because that needs Apple Developer ID credentials (see `docs/apple-app.md`). A development IPA for a physical iPhone or iPad is not a release download; build it locally with `make apple-ios-ipa`.
+Permissions: every build job has `contents: read`. Only the draft job, which runs on tags, gets `contents: write`, through the built-in `GITHUB_TOKEN`. No other secrets are used: the app is not signed or notarized, because that needs Apple Developer ID credentials (see `docs/apple-app.md`). A development IPA for a physical iPhone or iPad is not a release download; build it locally with `make apple-ios-ipa`. A secret-guarded TestFlight archive and upload is documented in `docs/apple-app.md` and implemented by `apple/scripts/archive_testflight.sh` and `.github/workflows/testflight.yml`; it does not run unless the App Store Connect API key secrets (`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8`) are present, and it never tags or submits for App Store review.
 
 ## Release downloads
 
