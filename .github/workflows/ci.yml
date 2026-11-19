@@ -160,6 +160,12 @@ jobs:
         run: make apple-ios-device
       - name: Launch on the iPad Simulator and capture screenshots
         run: make apple-ipad-sim
+      - uses: actions/upload-artifact@v4
+        with:
+          name: trillium-ipad-simulator-screenshots
+          path: dist/ipad-screenshots/
+          if-no-files-found: error
+          retention-days: 14
       - name: Package and inspect
         run: |
           make apple-dist
@@ -179,12 +185,6 @@ jobs:
             dist/apple/*.zip
             dist/apple/README.txt
             dist/apple/SHA256SUMS
-          retention-days: 14
-      - uses: actions/upload-artifact@v4
-        with:
-          name: trillium-ipad-simulator-screenshots
-          path: dist/ipad-screenshots/
-          if-no-files-found: error
           retention-days: 14
 
   test-kit:

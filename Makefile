@@ -189,10 +189,22 @@ apple-dmg:
 	ditto $(APPLE_DD)/Build/Products/Release/Trillium.app $(DIST)/dmg-stage/Trillium.app
 	ln -s /Applications $(DIST)/dmg-stage/Applications
 	rm -f $(DIST)/Trillium-macOS-$(VERSION).dmg
-	hdiutil create -volname "Trillium $(VERSION)" -srcfolder $(DIST)/dmg-stage \
-		-ov -format UDZO -fs HFS+ $(DIST)/Trillium-macOS-$(VERSION).dmg
-	rm -rf $(DIST)/dmg-stage
-	hdiutil imageinfo $(DIST)/Trillium-macOS-$(VERSION).dmg
+	# hdiutil create can print "created:" while the UDZO file is still being
+	# finalized; imageinfo then fails with "corrupt image" on macos-15 runners.
+	# Leave the stage folder in place and retry create + imageinfo.
+	@ok=0; \
+	for i in 1 2 3; do \
+		hdiutil create -volname "Trillium $(VERSION)" -srcfolder $(DIST)/dmg-stage \
+			-ov -format UDZO -fs HFS+ $(DIST)/Trillium-macOS-$(VERSION).dmg || continue; \
+		sync; \
+		sleep 2; \
+		if hdiutil imageinfo $(DIST)/Trillium-macOS-$(VERSION).dmg; then ok=1; break; fi; \
+		echo "hdiutil imageinfo failed (attempt $$i); retrying"; \
+		rm -f $(DIST)/Trillium-macOS-$(VERSION).dmg; \
+		sleep 2; \
+	done; \
+	rm -rf $(DIST)/dmg-stage; \
+	test $$ok -eq 1
 	mnt=$$(mktemp -d $(DIST)/dmg-mnt.XXXXXX); \
 	hdiutil attach -nobrowse -readonly -mountpoint "$$mnt" $(DIST)/Trillium-macOS-$(VERSION).dmg; \
 	ok=1; \
