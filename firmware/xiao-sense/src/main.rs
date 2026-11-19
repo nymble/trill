@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Nymble (https://github.com/nymble)
 
 //! Firmware for the Seeed XIAO nRF52840 **Sense** (application image for
-//! the factory UF2 bootloader; see `memory.x` and docs/firmware-xiao-sense.md).
+//! the factory UF2 bootloader; see `link/memory.x` and docs/firmware-xiao-sense.md).
 //!
 //! Priorities (Cortex-M NVIC, lower number = more urgent):
 //!
@@ -10,7 +10,7 @@
 //! |---|---|---|---|
 //! | high | EGU1_SWI1 | P5 | audio (debug synth block render; only with feature `pcm-synth`) |
 //! | med | EGU0_SWI0 | P6 | USB device, diagnostics, MIDI writer, PCM stream (`pcm-synth`) |
-//! | imu | EGU2_SWI2 | P7 | IMU (833 Hz, short blocking I²C reads on its own bus) |
+//! | imu | EGU3_SWI3 | P7 | IMU (833 Hz, short blocking I²C reads on its own bus) |
 //! | thread | — | lowest | Trill (blocking I²C with timeouts), LED, health |
 //!
 //! Sensor I/O may block for bounded time (I²C timeouts) without delaying
@@ -22,14 +22,25 @@
 //! engine (`instrument-events`), so either keeps working without the other.
 //! The default build has no audio task and no high-priority executor.
 //! The onboard PDM microphone is a testing-only capture path, off at boot.
+//!
+//! With the `ble-midi` feature the S140 SoftDevice (already in flash) is
+//! enabled after early boot and owns priorities P0, P1 and P4, the RADIO,
+//! TIMER0, RTC0, POWER/CLOCK and EGU2_SWI2 (its event interrupt, P6 here).
+//! Every application interrupt is therefore set to P2, P3 or P5..P7
+//! before its driver starts, and USB power events arrive through the
+//! SoftDevice (`ble::softdevice_task`) instead of the POWER interrupt.
 
 #![no_std]
 #![no_main]
 
 #[cfg(feature = "pcm-synth")]
 mod audio;
+#[cfg(feature = "ble-midi")]
+mod ble;
 mod board;
 mod crash;
+#[cfg(not(feature = "ble-midi"))]
+mod cs;
 mod i2c;
 mod imu;
 mod mic;
@@ -58,6 +69,9 @@ use shared::{
     MIDI_CONFIGURED, PCM_ENABLED, SAFE_MODE, STATS, TOUCH,
 };
 
+// CLOCK_POWER is only enabled by the hardware VBUS detector (builds and
+// boots without the SoftDevice). With the SoftDevice running it keeps
+// POWER_CLOCK for itself and reports USB power as SoC events instead.
 bind_interrupts!(pub struct Irqs {
     USBD => nrf_usb::InterruptHandler<peripherals::USBD>;
     CLOCK_POWER => vbus_detect::InterruptHandler;
@@ -85,8 +99,9 @@ unsafe fn EGU0_SWI0() {
     unsafe { EXECUTOR_MED.on_interrupt() }
 }
 
+// EGU3_SWI3, not EGU2_SWI2: the SoftDevice uses SWI2 for its events.
 #[interrupt]
-unsafe fn EGU2_SWI2() {
+unsafe fn EGU3_SWI3() {
     // SAFETY: called only from this interrupt.
     unsafe { EXECUTOR_IMU.on_interrupt() }
 }
@@ -134,8 +149,10 @@ async fn led_task(mut led: Led, previous_crash: bool) {
             rotation_dps: motion.rotation_dps,
             // Blue heartbeat: a host has configured the USB-MIDI function
             // (or opened the PCM debug port). Not proof an app is listening.
+            // A BLE central with MIDI notifications on counts the same way.
             usb_streaming: MIDI_CONFIGURED.load(Ordering::Relaxed)
-                || PCM_ENABLED.load(Ordering::Relaxed),
+                || PCM_ENABLED.load(Ordering::Relaxed)
+                || shared::ble_midi_streaming(),
         };
         let out = ctl.update(now, &inputs);
         if out.changed {
@@ -163,11 +180,28 @@ fn main() -> ! {
     let report = REPORT.init(crash::take_boot_report(resetreas));
     let safe_mode = report.crashes >= crash::MAX_CRASHES;
     SAFE_MODE.store(safe_mode, Ordering::Relaxed);
+    // BLE build: interrupts must reach the SoftDevice first. Safe mode,
+    // or a board without a SoftDevice in flash, keeps the plain USB-only
+    // setup (VTOR on this image, no SoftDevice).
+    #[cfg(feature = "ble-midi")]
+    let use_ble = !safe_mode && ble::softdevice_info().is_some();
+    #[cfg(feature = "ble-midi")]
+    if use_ble {
+        ble::route_interrupts_through_softdevice();
+    }
 
     let mut cfg = NrfConfig::default();
     cfg.hfclk_source = HfclkSource::ExternalXtal; // required by USB
     cfg.lfclk_source = LfclkSource::ExternalXtal; // 32.768 kHz crystal X1
+                                                  // P2: allowed with or without the SoftDevice (it reserves P0, P1, P4).
+    cfg.gpiote_interrupt_priority = Priority::P2;
+    cfg.time_interrupt_priority = Priority::P2;
     let p = embassy_nrf::init(cfg);
+    // Peripheral interrupts the drivers enable later: never P0 (default).
+    interrupt::USBD.set_priority(Priority::P3);
+    interrupt::TWISPI0.set_priority(Priority::P3);
+    interrupt::TWISPI1.set_priority(Priority::P3);
+    interrupt::PDM.set_priority(Priority::P3);
 
     // Cycle counter for render-time measurement.
     let mut cp = cortex_m::Peripherals::take().unwrap();
@@ -192,10 +226,33 @@ fn main() -> ! {
     #[cfg(feature = "timing-gpio")]
     timing::init(p.P0_02, p.P0_03);
 
+    // MIDI over BLE: enable the SoftDevice now (RNG done, no protected
+    // peripheral touched yet). Not in safe mode: a boot loop must not be
+    // able to come from the radio stack.
+    #[cfg(feature = "ble-midi")]
+    let ble = if !use_ble {
+        None
+    } else {
+        interrupt::EGU2_SWI2.set_priority(Priority::P6);
+        Some(ble::start())
+    };
+
     // USB runs on the medium-priority executor; built inside its task.
     interrupt::EGU0_SWI0.set_priority(Priority::P6);
     let med = EXECUTOR_MED.start(interrupt::EGU0_SWI0);
-    med.spawn(usb::usb_task(p.USBD, report).unwrap());
+    #[cfg(not(feature = "ble-midi"))]
+    med.spawn(usb::usb_task(p.USBD, report, usb::Vbus::hardware()).unwrap());
+    #[cfg(feature = "ble-midi")]
+    match &ble {
+        Some(b) => {
+            med.spawn(usb::usb_task(p.USBD, report, usb::Vbus::Soft(b.vbus)).unwrap());
+            med.spawn(ble::softdevice_task(b.vbus).unwrap());
+            if let Some(server) = b.server {
+                med.spawn(ble::ble_midi_task(server, b.name).unwrap());
+            }
+        }
+        None => med.spawn(usb::usb_task(p.USBD, report, usb::Vbus::hardware()).unwrap()),
+    }
 
     // User RGB LED: common anode to 3V3, cathodes on GPIOs (active low).
     // Start high = off, so nothing lights before the LED task decides.
@@ -268,8 +325,8 @@ fn main() -> ! {
     );
 
     // IMU above thread mode (Trill's blocking reads) and below USB.
-    interrupt::EGU2_SWI2.set_priority(Priority::P7);
-    let imu_exec = EXECUTOR_IMU.start(interrupt::EGU2_SWI2);
+    interrupt::EGU3_SWI3.set_priority(Priority::P7);
+    let imu_exec = EXECUTOR_IMU.start(interrupt::EGU3_SWI3);
     imu_exec.spawn(imu::imu_task(imu_twim, imu_power, imu_int1).unwrap());
 
     executor.run(|spawner| {

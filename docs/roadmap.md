@@ -54,7 +54,7 @@ Planned. The board should report what it is, rather than the app guessing.
 
 ## BLE-MIDI and discovery
 
-Planned, after the [licence decision](music-connectivity.md#licensing-notes-for-ble-engineering-analysis-not-legal-advice) recorded in the connectivity research.
+**Started:** the `ble-midi` firmware build and the app's Bluetooth MIDI pairing are in ([ble-midi.md](ble-midi.md)); hardware testing on a T1, a runtime switch and discovery are next. Publishing BLE builds still waits on the [licence decision](music-connectivity.md#licensing-notes-for-ble-engineering-analysis-not-legal-advice) recorded in the connectivity research.
 
 - Use standard BLE-MIDI so a Mac, iPhone, iPad or DAW sees the board as a regular MIDI port.
 - **Initial configuration is over USB:** install firmware, name the board, set or confirm its model, and pair it with that Mac or iPhone.

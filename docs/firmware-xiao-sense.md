@@ -24,7 +24,7 @@ Default build (USB-MIDI + diagnostics):
 | Executor (NVIC priority) | Task | Rate / deadline |
 |---|---|---|
 | Medium (`EGU0_SWI0`, P6) | USB device, diagnostics port, MIDI writer, PCM writer, and microphone capture when the test switch is on | USB full speed; writer wakes on new input or every 2 ms |
-| IMU (`EGU2_SWI2`, P7) | IMU: data-ready wait, 14-byte burst read, motion processing, engine `motion()` | **833 Hz ODR** (0.5.0; was 416 Hz), accelerometer ±8 g (was ±4 g), gyro ±1000 °/s; every sample is read and processed (~1.2 ms period) |
+| IMU (`EGU3_SWI3`, P7) | IMU: data-ready wait, 14-byte burst read, motion processing, engine `motion()` | **833 Hz ODR** (0.5.0; was 416 Hz), accelerometer ±8 g (was ±4 g), gyro ±1000 °/s; every sample is read and processed (~1.2 ms period) |
 | Thread | Trill: identify, configure (ultra-fast, 10 bit), status + centroid read, engine `touch()` for new frames only | Poll every 5 ms; frame ID filters repeats |
 
 **Why the IMU has its own executor (0.5.0).** Every I²C transaction is a blocking busy-wait (bounded by a 5 ms timeout). A Trill status + centroid read takes about 2.3 ms at 100 kHz. When the IMU task shared thread mode with the Trill task, a sample that became ready during a Trill read waited for it, adding up to one 416 Hz sample period of delay and jitter to taps, strikes and motion controllers. At P7 the IMU task preempts the Trill read and is itself preempted by USB (P6). State shared across executors goes through critical-section mutexes and atomics, as before. Together with 833 Hz, the worst-case wait from motion to the sample that sees it falls from about 2.4 ms + up to 2.3 ms (Trill read) to about 1.2 ms. **This is a design calculation; it has not been measured on hardware.** The Trill bus stays at 100 kHz: 400 kHz would cut each touch read to about 0.6 ms but depends on the external pull-ups and wiring, so it needs a hardware check first.
@@ -59,8 +59,9 @@ HFCLK runs from the 32 MHz crystal (USB needs it) and LFCLK from the 32.768 kHz 
 | `0x000EC000–0x000F4000` | Storage partition (Zephyr/Omi settings) | Never |
 | `0x000F4000–0x00100000` | UF2 bootloader, MBR params, settings | **Never** |
 | RAM `0x20000008–0x20040000` | Application (first 8 bytes kept for the MBR) | — |
+| RAM `0x20000000–0x20008000` | SoftDevice, `ble-midi` build only (application from `0x20008000`) | — |
 
-The application window comes from Zephyr's `nrf52840_partition_uf2_sdv7.dtsi`, which is the layout of the `xiao_ble` board that Omi's DevKit firmware builds on. Seeed and Omi both document S140 7.3.0 for this bootloader. The firmware never enables the SoftDevice, so it uses all of RAM. It sets `VTOR` to its own vector table at reset (`cortex-m-rt` `set-vtor`).
+The application window comes from Zephyr's `nrf52840_partition_uf2_sdv7.dtsi`, which is the layout of the `xiao_ble` board that Omi's DevKit firmware builds on. Seeed and Omi both document S140 7.3.0 for this bootloader. The default firmware never enables the SoftDevice, so it uses all of RAM. It sets `VTOR` to its own vector table at reset (`cortex-m-rt` `set-vtor`). The optional `ble-midi` build enables the SoftDevice at run time, links with `link/memory-ble.x` and hands interrupts back to the MBR at boot ([ble-midi.md](ble-midi.md)); it never writes below `0x27000` either.
 
 **Why the UF2 tool is strict.** The Adafruit-derived UF2 bootloader treats everything from the end of the MBR (`0x1000`) up as writable application space, SoftDevice included. A UF2 file with blocks below `0x27000` would overwrite the SoftDevice. [`tools/xiao_uf2.py`](../tools/xiao_uf2.py) refuses any image with data outside `0x27000–0xEC000`, any bootloader-family image (`0xD663823C`), any image without the nRF52840 family ID (`0xADA52840`), and any image whose vector table does not point into RAM and the application.
 
@@ -252,6 +253,6 @@ Design budget (estimates, not measurements): [motion-synth.md](motion-synth.md#l
 
 - USB Audio Class (sound card) microphone or output, BLE audio, recording and reuse of microphone audio in the app, iOS play-through.
 - I²S DAC or PWM audio output ([options](motion-synth.md#output-paths)).
-- BLE (any service, including BLE-MIDI), MPE, multi-touch voices, Omi protocol compatibility.
+- BLE other than the optional BLE-MIDI build ([ble-midi.md](ble-midi.md)); configuration over BLE; MPE, multi-touch voices, Omi protocol compatibility.
 - Watchdog, low-power modes, settings storage.
 - Battery voltage or charge-status reading. Charging is done by the board's charger IC without firmware ([XIAO design: power](design-xiao-nrf52840.md#power-usb-and-battery)); the firmware does not read `P0.17` (charge status), `P0.14`/`P0.31` (battery divider) or drive `P0.13` (charge current).

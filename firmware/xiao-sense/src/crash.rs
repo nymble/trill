@@ -163,6 +163,14 @@ unsafe fn HardFault(ef: &cortex_m_rt::ExceptionFrame) -> ! {
 /// a plain reset afterwards returns to this application.
 pub fn enter_uf2_bootloader() -> ! {
     const DFU_MAGIC_UF2_RESET: u8 = 0x57;
+    // With the SoftDevice running, GPREGRET is written through its API.
+    #[cfg(feature = "ble-midi")]
+    if crate::shared::BLE_STATE.load(core::sync::atomic::Ordering::Relaxed)
+        != crate::shared::BLE_OFF
+    {
+        crate::ble::set_gpregret(DFU_MAGIC_UF2_RESET);
+        cortex_m::peripheral::SCB::sys_reset()
+    }
     embassy_nrf::pac::POWER
         .gpregret()
         .write(|w| w.set_gpregret(DFU_MAGIC_UF2_RESET));

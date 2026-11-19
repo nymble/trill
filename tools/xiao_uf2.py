@@ -132,7 +132,7 @@ def elf_to_uf2(blob: bytes) -> bytes:
     pages = segments_to_pages(segs)
     first = pages.get(APP_START)
     if first is None:
-        raise Unsafe(f"no vector table at 0x{APP_START:08X}; was the image linked with firmware/xiao-sense/memory.x?")
+        raise Unsafe(f"no vector table at 0x{APP_START:08X}; was the image linked with firmware/xiao-sense/link/memory.x?")
     sp, reset = struct.unpack_from("<II", first, 0)
     check_vector_table(sp, reset)
     return build_uf2(pages)

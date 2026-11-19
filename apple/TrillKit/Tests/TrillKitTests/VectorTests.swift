@@ -69,6 +69,11 @@ final class VectorTests: XCTestCase {
                             caps: all | TrillProtocol.capBoard).hasMicrophone)
         XCTAssertFalse(hello(variant: 0, caps: all).supportsMultiTouch)
         XCTAssertTrue(hello(variant: TrillProtocol.variantMultiTouch, caps: all).supportsMultiTouch)
+        // BLE-MIDI (variant bit 4); no other bit implies it, and it is 7-bit.
+        XCTAssertEqual(TrillProtocol.variantBLEMIDI, 0x10)
+        XCTAssertFalse(hello(variant: 0x0F, caps: all | TrillProtocol.capBoard).hasBLEMIDI)
+        XCTAssertTrue(hello(variant: TrillProtocol.variantBLEMIDI, caps: all).hasBLEMIDI)
+        XCTAssertFalse(hello(variant: TrillProtocol.variantBLEMIDI, caps: all).supportsMultiTouch)
         XCTAssertEqual(SensorState(rawValue: 5), .absent)
         // Only strip-played presets work without a motion sensor.
         let touchOnly = BuiltInPreset.all.filter(\.playsWithoutMotion).map(\.id)

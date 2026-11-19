@@ -1,0 +1,12 @@
+[package]
+name = "ble-midi"
+description = "no_std MIDI over Bluetooth LE (Apple / MMA BLE-MIDI 1.0) packet framing: service and characteristic UUIDs, timestamped packet encoder, and a decoder for tests and hosts"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version = "1.81"
+publish = false
+
+[dependencies]

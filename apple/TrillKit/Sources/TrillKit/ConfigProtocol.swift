@@ -40,6 +40,10 @@ public enum TrillProtocol {
     public static let variantMic: UInt8 = 0x04
     /// Companion `0x51` multi-touch telemetry is sent with each format-1 frame.
     public static let variantMultiTouch: UInt8 = 0x08
+    /// MIDI over Bluetooth LE is running (firmware built with `ble-midi`):
+    /// the board advertises the standard BLE-MIDI service and sends the
+    /// same instrument MIDI as USB. Configuration stays on USB.
+    public static let variantBLEMIDI: UInt8 = 0x10
     public static let capSetConfig: UInt8 = 0x01
     public static let capActions: UInt8 = 0x02
     public static let capPersistent: UInt8 = 0x04
@@ -383,6 +387,8 @@ public enum TrillReply: Equatable, Sendable {
         public var supportsTelemetry: Bool { capabilities & TrillProtocol.capTelemetry != 0 }
         /// Up to five touches in a companion SysEx (variant bit 3).
         public var supportsMultiTouch: Bool { variant & TrillProtocol.variantMultiTouch != 0 }
+        /// BLE-MIDI is running on the board (variant bit 4).
+        public var hasBLEMIDI: Bool { variant & TrillProtocol.variantBLEMIDI != 0 }
         /// Parameters 14...30 and action 5 (firmware 0.4.0+).
         public var supportsConfigPages: Bool { capabilities & TrillProtocol.capConfigPages != 0 }
         /// Parameters 31...37, directional strikes (firmware 0.5.0+).

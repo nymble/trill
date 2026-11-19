@@ -8,6 +8,10 @@
 	<true/>
 	<key>com.apple.security.device.serial</key>
 	<true/>
+	<!-- Bluetooth MIDI pairing panel (CABTLEMIDIWindowController) scans
+	     and connects BLE-MIDI devices for CoreMIDI. -->
+	<key>com.apple.security.device.bluetooth</key>
+	<true/>
 	<!-- Only files and drives the user picks in an open/save dialog
 	     (preset import/export, reading a UF2 and INFO_UF2.TXT). -->
 	<key>com.apple.security.files.user-selected.read-write</key>

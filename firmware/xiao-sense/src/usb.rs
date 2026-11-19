@@ -20,7 +20,7 @@ use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 use embassy_futures::join::join;
 use embassy_futures::select::{select, Either};
-use embassy_nrf::usb::vbus_detect::HardwareVbusDetect;
+use embassy_nrf::usb::vbus_detect::{HardwareVbusDetect, SoftwareVbusDetect, VbusDetect};
 use embassy_nrf::usb::Driver;
 use embassy_nrf::{peripherals, Peri};
 use embassy_sync::blocking_mutex::raw::CriticalSectionRawMutex;
@@ -40,7 +40,38 @@ use crate::crash::BootReport;
 use crate::shared::*;
 
 /// Concrete driver type.
-pub type UsbDriver = Driver<'static, HardwareVbusDetect>;
+pub type UsbDriver = Driver<'static, Vbus>;
+
+/// USB power detection: the POWER peripheral directly, or (with the
+/// SoftDevice enabled, `ble-midi`) its USB power events.
+pub enum Vbus {
+    Hard(HardwareVbusDetect),
+    #[allow(dead_code)] // constructed only in the `ble-midi` build
+    Soft(&'static SoftwareVbusDetect),
+}
+
+impl Vbus {
+    /// Detector on the POWER peripheral (SoftDevice not enabled).
+    pub fn hardware() -> Self {
+        Self::Hard(HardwareVbusDetect::new(crate::Irqs))
+    }
+}
+
+impl VbusDetect for Vbus {
+    fn is_usb_detected(&self) -> bool {
+        match self {
+            Self::Hard(v) => v.is_usb_detected(),
+            Self::Soft(v) => v.is_usb_detected(),
+        }
+    }
+
+    async fn wait_power_ready(&mut self) -> Result<(), ()> {
+        match self {
+            Self::Hard(v) => v.wait_power_ready().await,
+            Self::Soft(v) => v.wait_power_ready().await,
+        }
+    }
+}
 
 /// pid.codes *test* PID of this build (development only; see `trill-usb`).
 pub const USB_PID: u16 = trill_usb::product_id(true);
@@ -113,8 +144,12 @@ impl Handler for BusEvents {
 /// Build the composite device and run it with the diagnostics, MIDI and
 /// (optionally) PCM loops. Lives on the medium-priority executor.
 #[embassy_executor::task]
-pub async fn usb_task(usbd: Peri<'static, peripherals::USBD>, report: &'static BootReport) {
-    let driver = Driver::new(usbd, crate::Irqs, HardwareVbusDetect::new(crate::Irqs));
+pub async fn usb_task(
+    usbd: Peri<'static, peripherals::USBD>,
+    report: &'static BootReport,
+    vbus: Vbus,
+) {
+    let driver = Driver::new(usbd, crate::Irqs, vbus);
     let mut builder = Builder::new(
         driver,
         trill_usb::device_config(true),
@@ -285,6 +320,8 @@ fn fill_packet(
     while n < MIDI_EVENTS_PER_PACKET {
         let Some(m) = e.next_message(now) else { break };
         note_on |= matches!(m, instrument_events::MidiMessage::NoteOn { .. });
+        // Same instrument MIDI to BLE-MIDI when a central listens.
+        ble_midi_send(&m);
         buf[4 * n..4 * n + 4].copy_from_slice(&m.usb_packet(trill_usb::CABLE_INSTRUMENT));
         n += 1;
     }
@@ -312,6 +349,10 @@ async fn config_request(msg: &[u8], truncated: bool) {
             0
         } | if !SAFE_MODE.load(Ordering::Relaxed) {
             trill_config::VARIANT_MIC
+        } else {
+            0
+        } | if ble_midi_running() {
+            trill_config::VARIANT_BLE_MIDI
         } else {
             0
         } | trill_config::VARIANT_MULTI_TOUCH,
@@ -417,6 +458,17 @@ async fn midi_write(
     }
 }
 
+/// USB stopped being a MIDI sink: replies to that connection are
+/// meaningless now, and a telemetry subscription ends with it.
+fn usb_gone(reply: &mut PendingReply, sched: &mut trill_config::telemetry::Schedule) {
+    MIDI_CONFIGURED.store(false, Ordering::Relaxed);
+    reply.clear();
+    sched.stop();
+    TELEMETRY_RATE.store(0, Ordering::Relaxed);
+    TELEMETRY_REQUEST.store(TELEMETRY_NO_CHANGE, Ordering::Relaxed);
+    while CONFIG_REPLIES.try_receive().is_ok() {}
+}
+
 async fn midi_loop(class: MidiClass<'static, UsbDriver>) {
     let (mut tx, mut rx) = class.split();
     // Host -> device: cable 1 SysEx is the configuration protocol; anything
@@ -442,43 +494,65 @@ async fn midi_loop(class: MidiClass<'static, UsbDriver>) {
             }
         }
     };
+    // Device -> host. One engine session runs while any sink listens:
+    // USB (configured, not suspended) and/or a BLE-MIDI central with
+    // notifications on (`ble-midi` build). Instrument events go to every
+    // active sink; configuration replies and telemetry are USB only.
     let writer = async {
         let mut buf = [0u8; MAX_PACKET];
         let mut reply = PendingReply::new();
         let mut sched = trill_config::telemetry::Schedule::new();
         let mut last_imu = 0u32;
         loop {
-            tx.wait_connection().await;
-            if !USB_READY.load(Ordering::Relaxed) {
-                // Endpoint enabled but suspended / not yet configured.
+            let usb_now = USB_READY.load(Ordering::Relaxed);
+            if !usb_now && !ble_midi_streaming() {
+                // Nobody listening (or USB enabled but not yet configured).
                 let _ = select(MIDI_WAKE.wait(), Timer::after_millis(20)).await;
                 continue;
             }
-            let epoch = USB_EPOCH.load(Ordering::Relaxed);
-            MIDI_CONFIGURED.store(true, Ordering::Relaxed);
+            // `Some(epoch)` while USB is a sink in this session.
+            let mut usb: Option<u32> = None;
+            if usb_now {
+                tx.wait_connection().await;
+                usb = Some(USB_EPOCH.load(Ordering::Relaxed));
+                MIDI_CONFIGURED.store(true, Ordering::Relaxed);
+            }
             // Reset sequence (CC123, CC120, bend centre, pressure 0, RPN 0).
             with_engine(|e| e.connect(now_us32()));
             loop {
-                if USB_EPOCH.load(Ordering::Relaxed) != epoch || !USB_READY.load(Ordering::Relaxed)
-                {
+                if let Some(epoch) = usb {
+                    if USB_EPOCH.load(Ordering::Relaxed) != epoch
+                        || !USB_READY.load(Ordering::Relaxed)
+                    {
+                        usb = None;
+                        usb_gone(&mut reply, &mut sched);
+                    }
+                } else if USB_READY.load(Ordering::Relaxed) && ble_midi_streaming() {
+                    // USB arrived during a BLE session: start a fresh
+                    // session so the USB host gets the reset sequence too.
+                    break;
+                }
+                if usb.is_none() && !ble_midi_streaming() {
                     break;
                 }
                 let now = now_us32();
-                reply.refill();
-                // Telemetry: lowest priority on cable 1 (after config
-                // replies), and instrument events always fill the packet
-                // first. A frame that cannot go out in its period is
-                // skipped and counted; values are sampled when it is sent.
-                let t64 = Instant::now().as_micros();
-                let req = TELEMETRY_REQUEST.swap(TELEMETRY_NO_CHANGE, Ordering::Relaxed);
-                if req != TELEMETRY_NO_CHANGE {
-                    sched.subscribe(req, t64);
+                if usb.is_some() {
+                    reply.refill();
+                    // Telemetry: lowest priority on cable 1 (after config
+                    // replies), and instrument events always fill the packet
+                    // first. A frame that cannot go out in its period is
+                    // skipped and counted; values are sampled when it is sent.
+                    let t64 = Instant::now().as_micros();
+                    let req = TELEMETRY_REQUEST.swap(TELEMETRY_NO_CHANGE, Ordering::Relaxed);
+                    if req != TELEMETRY_NO_CHANGE {
+                        sched.subscribe(req, t64);
+                    }
+                    if reply.is_empty() && CONFIG_REPLIES.is_empty() && sched.due(t64) {
+                        let (frame, touches) = telemetry_messages(&mut sched, &mut last_imu);
+                        reply.load_telemetry(&frame, &touches);
+                    }
+                    TELEMETRY_RATE.store(sched.rate_hz(), Ordering::Relaxed);
                 }
-                if reply.is_empty() && CONFIG_REPLIES.is_empty() && sched.due(t64) {
-                    let (frame, touches) = telemetry_messages(&mut sched, &mut last_imu);
-                    reply.load_telemetry(&frame, &touches);
-                }
-                TELEMETRY_RATE.store(sched.rate_hz(), Ordering::Relaxed);
                 let (n, note_on) = with_engine(|e| {
                     if MIDI_REQUEST.swap(0, Ordering::Relaxed) & MIDI_REQ_PANIC != 0 {
                         e.panic(now);
@@ -491,6 +565,11 @@ async fn midi_loop(class: MidiClass<'static, UsbDriver>) {
                     let _ = select(MIDI_WAKE.wait(), Timer::after_millis(MIDI_TICK_MS)).await;
                     continue;
                 }
+                let Some(epoch) = usb else {
+                    // BLE only: fill_packet already queued the events.
+                    embassy_futures::yield_now().await;
+                    continue;
+                };
                 // `n` can be non-zero with only telemetry in it; that is a
                 // normal packet on cable 1.
                 if note_on {
@@ -500,25 +579,22 @@ async fn midi_loop(class: MidiClass<'static, UsbDriver>) {
                 crate::timing::note_write(false);
                 if r.is_err() {
                     bump(&STATS.midi_write_errors);
-                    break;
+                    usb = None;
+                    usb_gone(&mut reply, &mut sched);
+                    continue;
                 }
                 bump(&STATS.midi_packets);
                 STATS
                     .midi_events
                     .fetch_add((n / 4) as u32, Ordering::Relaxed);
             }
+            if usb.is_some() {
+                usb_gone(&mut reply, &mut sched);
+            }
             // Forget everything queued or sounding; on the next connection
-            // the reset sequence goes out first. Notes the host was holding
-            // while unplugged are the host's responsibility.
-            MIDI_CONFIGURED.store(false, Ordering::Relaxed);
+            // the reset sequence goes out first. Notes a host was holding
+            // while disconnected are the host's responsibility.
             with_engine(|e| e.disconnect());
-            // Replies to a previous connection are meaningless now, and a
-            // telemetry subscription ends with the connection.
-            reply.clear();
-            sched.stop();
-            TELEMETRY_RATE.store(0, Ordering::Relaxed);
-            TELEMETRY_REQUEST.store(TELEMETRY_NO_CHANGE, Ordering::Relaxed);
-            while CONFIG_REPLIES.try_receive().is_ok() {}
         }
     };
     join(reader, writer).await;
@@ -812,6 +888,42 @@ fn imu_report(out: &mut String<OUT_LEN>) {
     );
 }
 
+/// BLE-MIDI line (`ble-midi` build only).
+fn ble_report(out: &mut String<OUT_LEN>) {
+    #[cfg(feature = "ble-midi")]
+    {
+        let state = match BLE_STATE.load(Ordering::Relaxed) {
+            BLE_ADVERTISING => "advertising",
+            BLE_CONNECTED => "connected",
+            BLE_STREAMING => "streaming",
+            BLE_FAILED => "failed",
+            _ => "off",
+        };
+        let _ = write!(
+            out,
+            "ble-midi: {} name=\"{}\" packets={} dropped={}",
+            state,
+            crate::ble::device_name().as_str(),
+            BLE_PACKETS.load(Ordering::Relaxed),
+            BLE_DROPPED.load(Ordering::Relaxed),
+        );
+        let _ = match crate::ble::softdevice_info() {
+            Some(i) => write!(
+                out,
+                " | softdevice S{} {}.{}.{} fwid=0x{:04x}\r\n",
+                i.id,
+                i.version / 1_000_000,
+                i.version / 1_000 % 1_000,
+                i.version % 1_000,
+                i.fwid
+            ),
+            None => write!(out, " | no softdevice in flash\r\n"),
+        };
+    }
+    #[cfg(not(feature = "ble-midi"))]
+    let _ = out;
+}
+
 fn banner(out: &mut String<OUT_LEN>, report: &BootReport) {
     let _ = write!(
         out,
@@ -829,6 +941,7 @@ fn banner(out: &mut String<OUT_LEN>, report: &BootReport) {
         u8::from(SAFE_MODE.load(Ordering::Relaxed)),
     );
     imu_report(out);
+    ble_report(out);
     let _ = write!(
         out,
         "resetreas=0x{:08x} consecutive_crashes={}",

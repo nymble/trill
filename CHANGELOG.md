@@ -4,6 +4,13 @@ All notable changes to this project are documented here. Versions follow [Semant
 
 ## [Unreleased]
 
+### Added
+- **MIDI over Bluetooth LE (build option, `ble-midi`):** a second application-only UF2 (`xiao-sense-fw-ble-midi-<version>.uf2`) for battery-powered boards (T1 and up). It enables the S140 SoftDevice already in flash (never written) and advertises the standard BLE-MIDI service as `Trillium XXXX` (low 16 bits of the chip's BLE address). It sends the same instrument MIDI as USB, which keeps working at the same time; configuration, telemetry and the microphone test stay on USB. HELLO variant bit 4 (`0x10`) reports it. New `crates/ble-midi` with timestamp framing and test vectors. See `docs/ble-midi.md`. Not yet tested on hardware.
+- **Bluetooth MIDI in the app:** Settings › Connection has a Bluetooth MIDI… button (iPhone and iPad: the system Bluetooth MIDI panel; Mac: the system panel or Audio MIDI Setup). Detected hardware shows "BLE MIDI" and the button when the firmware reports it. The MIDI monitor uses a Bluetooth Trillium source when no USB instrument port is present, and the port pickers mark Bluetooth sources. The app gains a Bluetooth usage description, and the Mac app the sandbox Bluetooth entitlement, for the system pairing panel.
+
+### Changed
+- Firmware: the IMU executor moved from `EGU2_SWI2` to `EGU3_SWI3` and peripheral interrupts are no longer left at priority 0, in every build (required next to the SoftDevice). The memory layouts moved to `firmware/xiao-sense/link/`.
+
 ### Fixed
 - **Microphone test showed no chart and played nothing (Mac app 0.7.0):** the app opened the PCM port (`/dev/cu.usbmodem…`, interface 5) with the default terminal line discipline, which is line-buffered and rewrites or drops control bytes (CR, NL, erase, kill, EOF, start/stop). Binary `TRPC` frames never passed their CRC, so no block reached the level chart or play-through. The port is now opened read-only, non-blocking, in raw mode with DTR raised; the line speed is never changed. The panel reports when no data arrives within 2 s. Only the app changes; firmware 0.7.0 is unchanged. Regression tests run a frame full of control bytes through a pseudo-terminal in both modes.
 - **Board changes are noticed:** the app watches the board's USB enumeration (macOS) and the HELLO boot ID. When a board is unplugged, swapped or restarted it stops the microphone test, clears the sensor history and reads HELLO again.

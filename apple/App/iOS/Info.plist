@@ -18,6 +18,8 @@
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Bluetooth is used only to pair a Trillium for MIDI through the system Bluetooth MIDI panel. No data leaves your device.</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>

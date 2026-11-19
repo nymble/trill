@@ -162,7 +162,9 @@ final class AppModel: ObservableObject {
         // Suggest the Trill ports once, without sending anything: port 1 =
         // instrument output, port 2 = configuration. The user still has to
         // press Connect before the app sends a byte.
-        if monitorSourceID == nil, let s = sources.first(where: { $0.isTrill && $0.portIndex == 0 }) {
+        // USB first; a Bluetooth MIDI Trillium feeds the same monitor when
+        // it is the only instrument source.
+        if monitorSourceID == nil, let s = instrumentSource(online: false) {
             monitorSourceID = s.id
         }
         if configSourceID == nil, let s = sources.first(where: { $0.isTrill && $0.portIndex == 1 }) {
@@ -211,8 +213,15 @@ final class AppModel: ObservableObject {
     func connectToDetected() {
         if let s = sources.first(where: { $0.isTrill && $0.portIndex == 1 && !$0.isOffline }) { configSourceID = s.id }
         if let d = destinations.first(where: { $0.isTrill && $0.portIndex == 1 && !$0.isOffline }) { configDestinationID = d.id }
-        if let s = sources.first(where: { $0.isTrill && $0.portIndex == 0 && !$0.isOffline }) { monitorSourceID = s.id }
+        if let s = instrumentSource(online: true) { monitorSourceID = s.id }
         connectConfig()
+    }
+
+    /// Trillium's instrument output (port 1): the USB source if present,
+    /// otherwise its Bluetooth MIDI source.
+    func instrumentSource(online: Bool) -> MIDIEndpointInfo? {
+        let candidates = sources.filter { $0.isTrill && $0.portIndex == 0 && (!online || !$0.isOffline) }
+        return candidates.first { !$0.isBluetooth } ?? candidates.first
     }
 
     /// Name of the built-in or saved preset matching what the device runs

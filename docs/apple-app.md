@@ -24,7 +24,9 @@ The app has four tabs. The first three are for everyday use; everything detailed
 
 Protocol behaviour is unchanged: one request in flight, 1 s timeout, request IDs, boot-ID restart detection, and **nothing is sent until you connect**, either by pressing Connect or by turning on *Connect automatically*. Only the configuration pages the firmware advertises are read or written.
 
-**Not in this version:** Bluetooth MIDI or any wireless link (the firmware has no BLE, and the app asks for no Bluetooth permission); over-the-air updates; an iPhone firmware updater; settings stored on the device (they are RAM only); battery level and heading (not measured by the firmware/board); recording or reuse of microphone audio, and iOS play-through (the Mac Sensors tab has a testing-only capture and play-through switch); host-side processing or virtual MIDI ports; MPE. Virtual endpoints are left out on purpose for now. A processed route would need an off-by-default virtual source with loop prevention, and on iOS the app's lifetime limits it.
+**Bluetooth MIDI:** with the optional `ble-midi` firmware ([ble-midi.md](ble-midi.md)), Settings › Connection › Bluetooth MIDI… opens the system pairing panel (iPhone/iPad: `CABTMIDICentralViewController`; Mac: `CABTLEMIDIWindowController` or Audio MIDI Setup). The app itself never scans; Bluetooth permission is for that panel. Bluetooth carries the instrument only; settings, telemetry and firmware stay on USB.
+
+**Not in this version:** configuration or discovery over Bluetooth; over-the-air updates; an iPhone firmware updater; settings stored on the device (they are RAM only); battery level and heading (not measured by the firmware/board); recording or reuse of microphone audio, and iOS play-through (the Mac Sensors tab has a testing-only capture and play-through switch); host-side processing or virtual MIDI ports; MPE. Virtual endpoints are left out on purpose for now. A processed route would need an off-by-default virtual source with loop prevention, and on iOS the app's lifetime limits it.
 
 ## How it fits together
 

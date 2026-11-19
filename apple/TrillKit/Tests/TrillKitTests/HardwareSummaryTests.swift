@@ -107,4 +107,36 @@ final class HardwareSummaryTests: XCTestCase {
         d.forgetBoot()
         XCTAssertFalse(d.helloChanged(bootID: 9))
     }
+
+    func testBLEMIDIReported() {
+        let v = TrillProtocol.variantIMU | TrillProtocol.variantMic | TrillProtocol.variantMultiTouch | TrillProtocol.variantBLEMIDI
+        let h = HardwareSummary(hello: Self.hello(variant: v), telemetry: Self.frame(linear: .absent), usb: Self.usb)
+        XCTAssertTrue(h.bleMIDI)
+        XCTAssertTrue(h.hasBLE)
+        XCTAssertEqual(h.model, .t0, "battery not reported yet, so not T1")
+        XCTAssertEqual(h.capabilities, ["USB MIDI", "motion sensor", "microphone (test)", "BLE MIDI"])
+        let rows = Dictionary(uniqueKeysWithValues: h.rows.map { ($0.label, $0.value) })
+        XCTAssertTrue(rows["BLE"]?.hasPrefix("BLE MIDI on") == true)
+        XCTAssertTrue(rows["Transport"]?.hasSuffix("BLE MIDI instrument only") == true)
+        // With battery reported as well, the board is a T1.
+        let t1 = HardwareSummary(hello: Self.hello(variant: v), telemetry: nil, extras: .init(battery: true))
+        XCTAssertEqual(t1.model, .t1)
+    }
+
+    func testNoBLEMIDI() {
+        let h = HardwareSummary(hello: Self.hello(), telemetry: Self.frame(linear: .absent))
+        XCTAssertFalse(h.bleMIDI)
+        let rows = Dictionary(uniqueKeysWithValues: h.rows.map { ($0.label, $0.value) })
+        XCTAssertEqual(rows["BLE"], "not in this firmware")
+        XCTAssertFalse(h.capabilities.contains("BLE MIDI"))
+    }
+
+    #if canImport(CoreMIDI)
+    func testBluetoothDriverDetection() {
+        XCTAssertTrue(MIDIClient.isBluetoothDriver("com.apple.AppleMIDIBluetoothDriver"))
+        XCTAssertTrue(MIDIClient.isBluetoothDriver("com.apple.AppleBLEMIDIDriver"))
+        XCTAssertFalse(MIDIClient.isBluetoothDriver("com.apple.AppleMIDIUSBDriver"))
+        XCTAssertFalse(MIDIClient.isBluetoothDriver(nil))
+    }
+    #endif
 }

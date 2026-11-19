@@ -16,7 +16,7 @@ FW_DIR  := firmware/xiao-sense
 FW_ELF  := $(FW_DIR)/target/thumbv7em-none-eabihf/release/xiao-sense-fw
 FW_UF2  := $(DIST)/xiao-sense-fw-$(VERSION).uf2
 
-.PHONY: all ci fmt fmt-check clippy test tools-test check-thumb fw fw-check fw-uf2 fw-uf2-pcm synth-demo build pi-zero pi-arm64 x86-musl dist clean \
+.PHONY: all ci fmt fmt-check clippy test tools-test check-thumb fw fw-check fw-uf2 fw-uf2-pcm fw-uf2-ble synth-demo build pi-zero pi-arm64 x86-musl dist clean \
         protocol-vectors apple apple-project apple-test apple-test-ios-sim apple-test-ipad-sim apple-mac apple-ios-sim apple-ios-device apple-ipad-sim apple-ios-ipa apple-dist apple-dmg apple-icon apple-firmware test-kit
 
 all: ci
@@ -54,7 +54,9 @@ protocol-vectors:
 fw-check:
 	cd $(FW_DIR) && $(CARGO) clippy --release --locked -- -D warnings
 	cd $(FW_DIR) && $(CARGO) clippy --release --locked --features pcm-synth -- -D warnings
+	cd $(FW_DIR) && $(CARGO) clippy --release --locked --features ble-midi -- -D warnings
 	$(MAKE) fw-uf2-pcm
+	$(MAKE) fw-uf2-ble
 	$(MAKE) fw-uf2
 
 fw:
@@ -72,6 +74,14 @@ fw-uf2-pcm:
 	mkdir -p $(DIST)
 	python3 tools/xiao_uf2.py convert $(FW_ELF) -o $(DIST)/xiao-sense-fw-pcm-synth-$(VERSION).uf2
 	python3 tools/xiao_uf2.py inspect $(DIST)/xiao-sense-fw-pcm-synth-$(VERSION).uf2
+
+# MIDI over Bluetooth LE build (docs/ble-midi.md): enables the S140
+# SoftDevice already in flash; still an application-only UF2.
+fw-uf2-ble:
+	cd $(FW_DIR) && $(CARGO) build --release --locked --features ble-midi
+	mkdir -p $(DIST)
+	python3 tools/xiao_uf2.py convert $(FW_ELF) -o $(DIST)/xiao-sense-fw-ble-midi-$(VERSION).uf2
+	python3 tools/xiao_uf2.py inspect $(DIST)/xiao-sense-fw-ble-midi-$(VERSION).uf2
 
 # Render the scripted motion demo to dist/motion-synth-demo.wav on the host.
 synth-demo:
