@@ -40,9 +40,11 @@
 # DEVELOPMENT_TEAM is also written there when TEAM_ID is set.
 # CURRENT_PROJECT_VERSION, if set in the environment, overrides the
 # committed build number (the workflow passes github.run_number).
-# The script never commits that file. It also clears the committed
-# ad-hoc Mac identity (CODE_SIGN_IDENTITY[sdk=macosx*] = -) so archive
-# and export can use cloud-managed Apple Distribution signing.
+# The script never commits that file. It also overrides the committed
+# ad-hoc Mac identity (CODE_SIGN_IDENTITY[sdk=macosx*] = -) with Apple
+# Development so the archive is signed and entitlements (including App
+# Sandbox) are embedded; export then uses Apple Distribution and a Mac
+# Installer Distribution pkg.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -143,13 +145,20 @@ write_export_options() {
 PLIST
 }
 
-# Override Base.xcconfig for this run only (git-ignored). Clear the
-# committed ad-hoc Mac identity so cloud-managed Apple Distribution
-# (and, at export, Mac Installer Distribution) can be used.
+# Override Base.xcconfig for this run only (git-ignored). Replace the
+# committed ad-hoc Mac identity with Apple Development so the archive is
+# signed and entitlements are embedded; export then uses Apple
+# Distribution and a Mac Installer Distribution pkg.
 {
   printf 'DEVELOPMENT_TEAM = %s\n' "$TEAM_ID"
   printf 'CODE_SIGN_STYLE = Automatic\n'
-  printf 'CODE_SIGN_IDENTITY[sdk=macosx*] =\n'
+  # Base.xcconfig sets CODE_SIGN_IDENTITY[sdk=macosx*] = - for local/CI
+  # ad-hoc runs. An empty override still leaves the Mac archive unsigned,
+  # so entitlements (including App Sandbox) are dropped and App Store
+  # Connect rejects the pkg (error 90296). Apple Development at archive
+  # time, then export re-signs with Apple Distribution.
+  printf 'CODE_SIGN_IDENTITY[sdk=macosx*] = Apple Development\n'
+  printf 'CODE_SIGN_IDENTITY = Apple Development\n'
   if [ -n "${CURRENT_PROJECT_VERSION:-}" ]; then
     printf 'CURRENT_PROJECT_VERSION = %s\n' "$CURRENT_PROJECT_VERSION"
   fi
@@ -220,10 +229,12 @@ archive_one() {
   xcodebuild -project "$PROJECT" -scheme "$scheme" -configuration Release \
     -destination "$destination" -archivePath "$archive" \
     CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM="$TEAM_ID" \
+    CODE_SIGN_IDENTITY="Apple Development" \
     CURRENT_PROJECT_VERSION="$BUILD" \
     -allowProvisioningUpdates \
     ${AUTH[@]+"${AUTH[@]}"} \
     archive
+  verify_archive "$archive" "$scheme"
   echo "Exporting $scheme (destination export, method app-store-connect)"
   xcodebuild -exportArchive -archivePath "$archive" -exportPath "$export_path" \
     -exportOptionsPlist "$opts" -allowProvisioningUpdates \
@@ -258,8 +269,36 @@ verify_ios_ipa() {
   esac
 }
 
-# Confirm the exported macOS product is a distribution-signed installer pkg,
-# not an ad-hoc "Sign to Run Locally" archive leftover.
+# The archived app must be signed so entitlements can be attached.
+# Ad-hoc / unsigned Mac archives drop App Sandbox and App Store Connect
+# rejects the pkg (error 90296).
+verify_archive() {
+  local archive="$1"
+  local scheme="$2"
+  local app
+  app="$(find "$archive/Products" -name '*.app' -maxdepth 3 -type d | head -1)"
+  if [ -z "$app" ]; then
+    echo "verify: no app in $archive" >&2
+    return 1
+  fi
+  echo "Archived $(basename "$app") ($scheme) signing:"
+  codesign -dv --verbose=2 "$app" 2>&1 | sed 's/^/  /' || true
+  local info
+  info="$(codesign -dv --verbose=2 "$app" 2>&1 || true)"
+  if echo "$info" | grep -qiE 'code object is not signed|Sign to Run Locally|ad-?hoc'; then
+    echo "archive $scheme is unsigned or ad-hoc; entitlements would be missing." >&2
+    return 1
+  fi
+  if ! echo "$info" | grep -qiE 'Authority=Apple (Development|Distribution)'; then
+    echo "archive $scheme is not signed with Apple Development or Apple Distribution." >&2
+    echo "$info" >&2
+    return 1
+  fi
+}
+
+# Confirm the exported macOS product is a distribution-signed installer pkg
+# whose app has App Sandbox and Apple Distribution signing — not an ad-hoc
+# "Sign to Run Locally" leftover.
 verify_macos_pkg() {
   local pkg="$1"
   local info
@@ -274,6 +313,50 @@ verify_macos_pkg() {
     echo "macOS pkg is not signed with Mac Installer Distribution (or 3rd Party Mac Developer Installer)." >&2
     return 1
   fi
+  local tmp app ents ident
+  tmp="$(mktemp -d)"
+  if ! pkgutil --expand-full "$pkg" "$tmp/expanded" 2>/dev/null; then
+    pkgutil --expand "$pkg" "$tmp/expanded"
+  fi
+  app="$(find "$tmp/expanded" -name '*.app' -type d | head -1)"
+  if [ -z "$app" ]; then
+    # Component package Payload may still be a compressed cpio.
+    local payload
+    payload="$(find "$tmp/expanded" -name Payload -type f | head -1 || true)"
+    if [ -n "$payload" ]; then
+      mkdir -p "$tmp/payload"
+      (cd "$tmp/payload" && gzip -dc "$payload" 2>/dev/null | cpio -idm 2>/dev/null) || \
+        (cd "$tmp/payload" && xar -xf "$payload" 2>/dev/null) || true
+      app="$(find "$tmp/payload" -name '*.app' -type d | head -1)"
+    fi
+  fi
+  if [ -z "$app" ]; then
+    echo "verify: no app inside $pkg" >&2
+    rm -rf "$tmp"
+    return 1
+  fi
+  echo "macOS app inside pkg signing:"
+  ident="$(codesign -dv --verbose=2 "$app" 2>&1 || true)"
+  echo "$ident" | sed 's/^/  /'
+  ents="$(codesign -d --entitlements :- "$app" 2>/dev/null || true)"
+  echo "  entitlements:"
+  echo "$ents" | sed 's/^/    /'
+  if ! echo "$ident" | grep -qiE 'Authority=Apple Distribution|Authority=3rd Party Mac Developer Application'; then
+    echo "app inside the pkg is not signed with Apple Distribution." >&2
+    rm -rf "$tmp"
+    return 1
+  fi
+  if ! printf '%s' "$ents" | grep -q 'com.apple.security.app-sandbox'; then
+    echo "app inside the pkg is missing com.apple.security.app-sandbox." >&2
+    rm -rf "$tmp"
+    return 1
+  fi
+  if printf '%s' "$ents" | grep -A1 'com.apple.security.app-sandbox' | grep -q '<false/>'; then
+    echo "app inside the pkg has App Sandbox disabled." >&2
+    rm -rf "$tmp"
+    return 1
+  fi
+  rm -rf "$tmp"
 }
 
 upload_one() {
