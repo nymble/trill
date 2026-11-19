@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Trillium — Ambient Lab — M-of-N</title>
+  <meta name="description" content="Trillium is a companion app for motion- and touch-sensing musical instruments that play as class-compliant USB MIDI.">
+  <link rel="canonical" href="https://m-of-n.com/ambient-lab/trillium/">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/style.css?v=9">
+  <meta name="color-scheme" content="light dark">
+  <meta property="og:title" content="Trillium — Ambient Lab — M-of-N">
+  <meta property="og:description" content="A companion app for motion- and touch-sensing musical instruments.">
+  <meta property="og:url" content="https://m-of-n.com/ambient-lab/trillium/">
+  <meta property="og:type" content="website">
+</head>
+<body class="ambient trillium">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="/" aria-label="M-of-N home">M-of-N</a>
+      <nav class="nav" aria-label="Primary">
+        <ul>
+          <li>
+            <details class="menu">
+              <summary>Projects</summary>
+              <ul>
+                <li><a href="https://airlink.m-of-n.com/">AirLink</a></li>
+                <li><a href="/ambient-lab/">Ambient Lab</a></li>
+              </ul>
+            </details>
+          </li>
+          <li><a href="/contact">Contact</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="page-banner">
+      <div class="wrap">
+        <p class="back"><a href="/ambient-lab/">Ambient Lab</a></p>
+        <div class="hero hero-page">
+          <h1>Trillium</h1>
+          <p class="tagline">A companion app for motion- and touch-sensing musical instruments.</p>
+        </div>
+        <p class="lead">Trillium monitors and configures instruments built around a Seeed Studio XIAO nRF52840 Sense and its onboard IMU. Several hardware models are planned, from a motion-only board to one with a Bela Trill Flex touch sensor; see Hardware below. The instruments play as class-compliant USB MIDI devices into GarageBand, Logic, AUM, or any MIDI app. The app provides presets and sensor modes such as touch, tilt scale, and theremin.</p>
+        <p class="status"><strong>Status:</strong> early and experimental. Trillium 0.6.0 carries firmware 0.6.0 and installs it on a Trillium Zero from the macOS app. The iPhone app has not yet run on hardware.</p>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <section class="hardware" aria-labelledby="hardware-title">
+        <h2 id="hardware-title">Hardware</h2>
+        <table class="models">
+          <thead><tr><th>Model</th><th>What it is</th><th>Status</th><th>Design</th></tr></thead>
+          <tbody>
+            <tr><td><strong>T0</strong> Trillium Zero</td><td>One Seeed Studio XIAO nRF52840 Sense on USB</td><td>Showcase; runs today</td><td><a href="/ambient-lab/trillium/zero/">Trillium Zero build</a></td></tr>
+            <tr><td><strong>T1</strong></td><td>T0 plus battery and BLE</td><td>Tested on an early prototype</td><td><a href="https://github.com/nymble/trillium/blob/main/docs/hardware/trillium-zero.md#optional-battery-toward-t1">Battery wiring</a></td></tr>
+            <tr><td><strong>T2</strong></td><td>T1 plus LED and buttons</td><td>Planned</td><td><a href="https://github.com/nymble/trillium/tree/main/hardware/t2">T2 design files</a></td></tr>
+            <tr><td><strong>F1</strong></td><td>T2 plus the <a href="https://bela.io/products/trill/">Bela Trill Flex</a></td><td>Planned</td><td><a href="https://github.com/nymble/trillium/tree/main/hardware/f1">F1 design files</a></td></tr>
+          </tbody>
+        </table>
+        <p>The hardware designs are open source. Firmware is bundled with the Trillium app, which installs and updates it. Schematics, layouts, parts lists and enclosures are in the <a href="https://github.com/nymble/trillium/tree/main/hardware">hardware folder</a> of the repository.</p>
+      </section>
+
+      <section aria-labelledby="downloads-title">
+        <h2 id="downloads-title">Downloads</h2>
+        <ul class="downloads">
+          <li>
+            <a href="https://github.com/nymble/trillium/releases/download/v0.6.0/Trillium-macOS-0.6.0.dmg">macOS</a>
+            <p class="meta">Trillium 0.6.0, macOS 13 or later, universal · 2.27 MB · SHA-256 b7ad779cbf3e037bc43b755a2cf59e18753d1acd5b33579008af7bdc9e5fd288</p>
+            <p>The app is unsigned. After dragging it to Applications, open it once, then use System Settings › Privacy &amp; Security › Open Anyway (macOS 15 or later), or right-click the app and choose Open (macOS 13 or 14).</p>
+          </li>
+          <li>
+            <span class="dl-name">iPhone and iPad</span> <span class="soon">Coming soon</span>
+            <p class="meta">iOS and iPadOS 16 or later</p>
+            <p>Installs via TestFlight or the App Store later.</p>
+          </li>
+          <li>
+            <a href="https://github.com/nymble/trillium">Source code</a>
+            <p class="meta">GitHub, dual-licensed: GPL-3.0 or a commercial license from M-of-N</p>
+            <p>The firmware and app source are available in the project repository under the GNU GPL v3, or under a <a href="https://github.com/nymble/trillium/blob/main/COMMERCIAL-LICENSE.md">commercial license</a> from M-of-N. For commercial terms, <a href="/contact">contact us</a>.</p>
+          </li>
+        </ul>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>&copy; 2026 M-of-N. Trill is a trademark of Bela.</p>
+      <nav aria-label="Legal">
+        <ul>
+          <li><a href="/ambient-lab/trillium/privacy/">Trillium privacy</a></li>
+          <li><a href="/privacy">Privacy</a></li>
+          <li><a href="/terms">Terms</a></li>
+        </ul>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>
