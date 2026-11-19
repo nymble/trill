@@ -4,6 +4,14 @@ All notable changes to this project are documented here. Versions follow [Semant
 
 ## [Unreleased]
 
+### Fixed
+- **Microphone test showed no chart and played nothing (Mac app 0.7.0):** the app opened the PCM port (`/dev/cu.usbmodem…`, interface 5) with the default terminal line discipline, which is line-buffered and rewrites or drops control bytes (CR, NL, erase, kill, EOF, start/stop). Binary `TRPC` frames never passed their CRC, so no block reached the level chart or play-through. The port is now opened read-only, non-blocking, in raw mode with DTR raised; the line speed is never changed. The panel reports when no data arrives within 2 s. Only the app changes; firmware 0.7.0 is unchanged. Regression tests run a frame full of control bytes through a pseudo-terminal in both modes.
+- **Board changes are noticed:** the app watches the board's USB enumeration (macOS) and the HELLO boot ID. When a board is unplugged, swapped or restarted it stops the microphone test, clears the sensor history and reads HELLO again.
+
+### Added
+- **Detected hardware in Settings:** model in the T0/T1/T2/F1 lineup plus a capability list, firmware version and build, USB ID, motion sensor, Linear sensor (state, 30 channels, touches), microphone, battery and BLE (not reported by current firmware), transport and serial ports (diagnostics and PCM). While Settings is open the app requests a slow sensor stream to keep it current.
+- **Sensors layout follows the board:** charts appear only for sensors that are present. A missing Linear sensor (reported by the firmware as retrying) or motion sensor collapses to one line under *Not available*.
+
 ## [0.7.0] - 2026-11-18
 
 ### Added

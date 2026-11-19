@@ -17,6 +17,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack(path: $model.settingsPath) {
             List {
+                Section("Detected hardware") { HardwareSummaryView() }
                 Section {
                     row(.mapping, "Sound & mapping", "slider.horizontal.3",
                         "What plays the notes, controllers, taps, strikes and gestures")
@@ -32,6 +33,8 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .onAppear { model.hardwareVisible = true }
+            .onDisappear { model.hardwareVisible = false }
             .navigationDestination(for: SettingsPage.self) { page in
                 switch page {
                 case .mapping: MappingView()
@@ -181,5 +184,25 @@ struct DeviceToolsView: View {
         } message: {
             Text("Replaces the current sound on the instrument. Your saved presets are not affected.")
         }
+    }
+}
+
+/// Concise summary of the connected board: model plus capabilities,
+/// firmware, USB ID, sensors, microphone, battery and BLE, transport and ports.
+struct HardwareSummaryView: View {
+    @EnvironmentObject var model: AppModel
+
+    var body: some View {
+        let rows = model.hardware.rows
+        Grid(alignment: .leading, horizontalSpacing: 12, verticalSpacing: 3) {
+            ForEach(rows.indices, id: \.self) { i in
+                GridRow {
+                    Text(rows[i].label).foregroundStyle(.secondary)
+                    Text(rows[i].value).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                }
+                .font(.caption)
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 }
