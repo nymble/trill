@@ -163,7 +163,7 @@ struct SensorsView: View {
                         if page == .overview { MotionOverview() } else { dashboard }
                     }
                     if page == .charts {
-                        MicTestPanel()
+                        if model.hardware.sensorPanels.contains(.microphone) { MicTestPanel() }
                         UnavailableNotes()
                     }
                 }
@@ -202,27 +202,39 @@ struct SensorsView: View {
 
     private var dashboard: some View {
         let t = model.telemetry
+        // Only the sensors this board has; re-evaluated when a board changes.
+        let panels = model.hardware.sensorPanels
+        let motion = panels.contains(.motion)
+        let linear = panels.contains(.linearSensor)
         let end = model.sensorsPaused ? (t.lastHostTime ?? model.clock) : model.clock
         let rate = Double(model.session.telemetryRate ?? model.telemetryRateHz)
         let brk = max(0.25, 4 / max(rate, 1))
         let imu: (Int) -> (TelemetryFrame) -> Double? = { i in { $0.imuValid ? $0.accel[i] : nil } }
         let gyro: (Int) -> (TelemetryFrame) -> Double? = { i in { $0.imuValid ? $0.gyro[i] : nil } }
         return VStack(alignment: .leading, spacing: 16) {
-            LineChart(title: "Acceleration", unit: "g", points: t.points, series: [
-                ChartSeries(id: "X", color: ChartSeries.x.0, dash: ChartSeries.x.1, value: imu(0)),
-                ChartSeries(id: "Y", color: ChartSeries.y.0, dash: ChartSeries.y.1, value: imu(1)),
-                ChartSeries(id: "Z", color: ChartSeries.z.0, dash: ChartSeries.z.1, value: imu(2)),
-                ChartSeries(id: "|a|", color: .primary, dash: [8, 3, 2, 3], value: { f in
-                    f.imuValid ? sqrt(f.accel.reduce(0) { $0 + $1 * $1 }) : nil }),
-            ], end: end, window: t.window, breakAfter: brk, minSpan: 0.5)
-            LineChart(title: "Rotation rate (gyro)", unit: "°/s", points: t.points, series: [
-                ChartSeries(id: "X", color: ChartSeries.x.0, dash: ChartSeries.x.1, value: gyro(0)),
-                ChartSeries(id: "Y", color: ChartSeries.y.0, dash: ChartSeries.y.1, value: gyro(1)),
-                ChartSeries(id: "Z", color: ChartSeries.z.0, dash: ChartSeries.z.1, value: gyro(2)),
-            ], end: end, window: t.window, breakAfter: brk, minSpan: 20)
-            ViewThatFits(in: .horizontal) {
-                HStack(alignment: .top, spacing: 16) { orientation(t, end, brk); TouchPanel(frame: t.latest).frame(maxWidth: 360) }
-                VStack(alignment: .leading, spacing: 16) { orientation(t, end, brk); TouchPanel(frame: t.latest) }
+            if motion {
+                LineChart(title: "Acceleration", unit: "g", points: t.points, series: [
+                    ChartSeries(id: "X", color: ChartSeries.x.0, dash: ChartSeries.x.1, value: imu(0)),
+                    ChartSeries(id: "Y", color: ChartSeries.y.0, dash: ChartSeries.y.1, value: imu(1)),
+                    ChartSeries(id: "Z", color: ChartSeries.z.0, dash: ChartSeries.z.1, value: imu(2)),
+                    ChartSeries(id: "|a|", color: .primary, dash: [8, 3, 2, 3], value: { f in
+                        f.imuValid ? sqrt(f.accel.reduce(0) { $0 + $1 * $1 }) : nil }),
+                ], end: end, window: t.window, breakAfter: brk, minSpan: 0.5)
+                LineChart(title: "Rotation rate (gyro)", unit: "°/s", points: t.points, series: [
+                    ChartSeries(id: "X", color: ChartSeries.x.0, dash: ChartSeries.x.1, value: gyro(0)),
+                    ChartSeries(id: "Y", color: ChartSeries.y.0, dash: ChartSeries.y.1, value: gyro(1)),
+                    ChartSeries(id: "Z", color: ChartSeries.z.0, dash: ChartSeries.z.1, value: gyro(2)),
+                ], end: end, window: t.window, breakAfter: brk, minSpan: 20)
+            }
+            if motion && linear {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 16) { orientation(t, end, brk); TouchPanel(frame: t.latest).frame(maxWidth: 360) }
+                    VStack(alignment: .leading, spacing: 16) { orientation(t, end, brk); TouchPanel(frame: t.latest) }
+                }
+            } else if motion {
+                orientation(t, end, brk)
+            } else if linear {
+                TouchPanel(frame: t.latest).frame(maxWidth: 480, alignment: .leading)
             }
             HealthPanel()
             EventsPanel()
@@ -497,9 +509,7 @@ struct UnavailableNotes: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Not available").font(.headline)
-            if model.session.hello?.hasMicrophone != true {
-                Text("Microphone: this firmware does not offer the testing-only capture path.")
-            }
+            ForEach(model.hardware.missingSensors, id: \.self) { Text($0) }
             Text("Battery: not measured – this firmware has no battery-voltage reading.")
             Text("Heading (yaw): no magnetometer on the XIAO nRF52840 Sense.")
         }

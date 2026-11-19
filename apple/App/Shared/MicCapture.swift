@@ -9,8 +9,6 @@ import SwiftUI
 import TrillKit
 #if os(macOS)
 import AVFoundation
-import IOKit
-import IOKit.serial
 #endif
 
 /// Live state for the Sensors microphone test panel.
@@ -29,7 +27,7 @@ final class MicCapture: ObservableObject {
     private var waveformCount = 0
 
 #if os(macOS)
-    private var handle: FileHandle?
+    private var openGeneration = 0
     private var source: DispatchSourceRead?
     private let reader = ReaderState()
     private var player: MicPlayer?
@@ -88,25 +86,31 @@ final class MicCapture: ObservableObject {
             status = "The USB PCM port was not found. Check that the board enumerates as 1209:0003."
             return
         }
+        let fd: Int32
         do {
-            let fh = try FileHandle(forReadingFrom: URL(fileURLWithPath: path))
-            handle = fh
-            let fd = fh.fileDescriptor
-            let src = DispatchSource.makeReadSource(fileDescriptor: fd, queue: queue)
-            src.setEventHandler { [weak self] in
-                let available = Int(src.data)
-                guard available > 0, let data = try? fh.read(upToCount: max(available, 1)), !data.isEmpty else { return }
-                guard let self else { return }
-                let frames = self.reader.parser.push(Array(data))
-                guard !frames.isEmpty else { return }
-                DispatchQueue.main.async { self.apply(frames) }
-            }
-            src.setCancelHandler { try? fh.close() }
-            source = src
-            src.resume()
-            status = "Listening on \(path)"
+            // Raw mode: the default tty line discipline mangles binary frames.
+            fd = try RawSerial.openForReading(path)
         } catch {
-            status = "Could not open the USB PCM port."
+            status = "Could not open the USB PCM port (\(error))."
+            return
+        }
+        let src = DispatchSource.makeReadSource(fileDescriptor: fd, queue: queue)
+        src.setEventHandler { [weak self] in
+            let data = RawSerial.readAvailable(fd)
+            guard !data.isEmpty, let self else { return }
+            let frames = self.reader.parser.push(data)
+            guard !frames.isEmpty else { return }
+            DispatchQueue.main.async { self.apply(frames) }
+        }
+        src.setCancelHandler { close(fd) }
+        source = src
+        src.resume()
+        status = "Listening on \(path)"
+        let generation = openGeneration &+ 1
+        openGeneration = generation
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+            guard let self, self.wanted, self.openGeneration == generation, self.frames == 0 else { return }
+            self.status = "No microphone data on \(path) yet. Unplug and reconnect the board, then try again."
         }
 #else
         status = "Microphone play-through and the USB PCM port are available in the Mac app."
@@ -117,7 +121,7 @@ final class MicCapture: ObservableObject {
 #if os(macOS)
         source?.cancel()
         source = nil
-        handle = nil
+        openGeneration &+= 1
         player?.stop()
         player = nil
 #endif
@@ -154,47 +158,9 @@ final class MicCapture: ObservableObject {
         }
     }
 
-    /// The PCM CDC data interface is interface 5 on the six-interface layout.
-    private static let pcmInterface = 5
-    private static let vid = 0x1209
-    private static let pids: Set<Int> = [0x0002, 0x0003]
-
+    /// The PCM CDC data interface (interface 5 on the six-interface layout).
     static func findPcmPort() -> String? {
-        let matching = IOServiceMatching(kIOSerialBSDServiceValue)
-        var it: io_iterator_t = 0
-        guard IOServiceGetMatchingServices(kIOMainPortDefault, matching, &it) == KERN_SUCCESS else {
-            return nil
-        }
-        defer { IOObjectRelease(it) }
-        var fallback: String?
-        while true {
-            let service = IOIteratorNext(it)
-            if service == 0 { break }
-            defer { IOObjectRelease(service) }
-            func prop(_ s: io_object_t, _ k: String) -> Any? {
-                IORegistryEntryCreateCFProperty(s, k as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue()
-            }
-            let path = (prop(service, kIOCalloutDeviceKey) as? String)
-                ?? (prop(service, "IOCalloutDevice") as? String)
-            guard let path else { continue }
-            var parent: io_object_t = 0
-            var current = service
-            var vid = 0, pid = 0, iface = -1
-            // Walk up to the USB device; note the first interface number seen.
-            while IORegistryEntryGetParentEntry(current, kIOServicePlane, &parent) == KERN_SUCCESS {
-                if current != service { IOObjectRelease(current) }
-                current = parent
-                if let v = prop(current, "idVendor") as? Int { vid = v }
-                if let p = prop(current, "idProduct") as? Int { pid = p }
-                if iface < 0, let n = prop(current, "bInterfaceNumber") as? Int { iface = n }
-                if vid != 0 && pid != 0 { break }
-            }
-            if current != service { IOObjectRelease(current) }
-            guard vid == Self.vid, Self.pids.contains(pid) else { continue }
-            if iface == pcmInterface { return path }
-            if fallback == nil { fallback = path }
-        }
-        return fallback
+        TrilliumUSB.serialPorts().first { $0.role == .microphonePCM }?.path
     }
 #endif
 }

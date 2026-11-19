@@ -41,6 +41,15 @@ final class AppModel: ObservableObject {
     /// Off by default and not remembered across launches.
     let mic = MicCapture()
 
+    // Detected hardware (Settings summary, Sensors layout)
+    /// The Settings list is on screen: a slow telemetry stream keeps the
+    /// sensor presence in the summary current.
+    @Published var hardwareVisible = false
+    /// The board on USB (macOS; empty on iOS).
+    @Published private(set) var usb = TrilliumUSB.Scan(info: nil, signature: [])
+    private var deviceChanges = DeviceChangeDetector()
+    private var lastUSBScan: TimeInterval = 0
+
     // Configuration
     @Published var sessionRevision = 0
     @Published var draft = DeviceConfig.firmwareDefaults { didSet { if draft != oldValue { draftChangedAt = now } } }
@@ -335,6 +344,9 @@ final class AppModel: ObservableObject {
     func connectConfig() {
         guard let c = client, let s = configSourceID, configDestinationID != nil else { return }
         _ = c.setConfigSource(s)
+        // A (re)connect may reach a different board: start from a clean slate.
+        mic.disconnect()
+        resetSensors()
         session.connect(now: now)
         sessionRevision += 1
     }
@@ -352,6 +364,11 @@ final class AppModel: ObservableObject {
         let wasReady = session.isReady
         let before = session.acknowledged
         session.receive(bytes, now: now)
+        if let h = session.hello, deviceChanges.helloChanged(bootID: h.bootID) {
+            // A different board (or the same one restarted) answered.
+            mic.disconnect()
+            resetSensors()
+        }
         if let ack = session.acknowledged, ack != before, !wasReady || draft == (before ?? ack) {
             // Follow the device while the user has no unapplied edits.
             draft = ack
@@ -402,7 +419,13 @@ final class AppModel: ObservableObject {
         if sensorsVisible { clock = MIDIClient.now() }
         let pending = session.pending
         session.tick(now: now)
-        session.maintainTelemetry(desiredRate: sensorsVisible && sensorsLive ? telemetryRateHz : nil, now: now)
+        session.maintainTelemetry(desiredRate: sensorsVisible && sensorsLive ? telemetryRateHz : hardwareVisible ? 10 : nil, now: now)
+        if now - lastUSBScan > 1 {
+            lastUSBScan = now
+            let scan = TrilliumUSB.scan()
+            if scan != usb { usb = scan }
+            if deviceChanges.usbChanged(scan.signature) { boardChanged() }
+        }
         if pending != session.pending { sessionRevision += 1 }
         firmwareTick()
         // Live editing: send edits once the user pauses for a moment and the
@@ -432,6 +455,27 @@ final class AppModel: ObservableObject {
     func clearMonitor() { monitor.clear() }
 
     func setHideRealtime(_ on: Bool) { monitor.hideRealtime = on }
+
+    /// A board was unplugged, swapped or re-enumerated: drop what was learnt
+    /// about the old one and, when a board is there, read HELLO again.
+    private func boardChanged() {
+        mic.disconnect()
+        resetSensors()
+        deviceChanges.forgetBoot()
+        if session.phase != .disconnected {
+            session.disconnect(now: now)
+            sessionRevision += 1
+        }
+        if autoConnect || install.reconnects, trillDetected { connectToDetected() }
+    }
+
+    /// What is known about the connected board. Telemetry older than 2 s
+    /// is not used, so a removed sensor does not linger.
+    var hardware: HardwareSummary {
+        let fresh = (liveTelemetry.age(now: MIDIClient.now()) ?? .infinity) < 2 ? liveTelemetry.latest : nil
+        return HardwareSummary(hello: session.isReady ? session.hello : nil, telemetry: fresh,
+                               usb: usb.info, microphoneOn: mic.wanted)
+    }
 
     func resetSensors() {
         liveTelemetry.reset()
