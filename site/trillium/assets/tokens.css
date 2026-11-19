@@ -1,0 +1,38 @@
+:root {
+  /* Trillium brand tokens (Stage). Generated from tokens.json */
+  --tr-black: #0C0C0D; /* Primary ground. ~58% of any layout. */
+  --tr-graphite: #232326; /* Panels, cards, icon ground. ~20%. */
+  --tr-ash: #8A8580; /* Secondary text on black (5.4:1). */
+  --tr-ash-light: #B3ADA4; /* Resting UI icons and captions on black (8.8:1). */
+  --tr-warm-white: #F4F1EA; /* Text on black (17.3:1); light ground. ~13%. */
+  --tr-signal: #FF5A1F; /* The brand orange: mark, active state, primary button. ~6%. */
+  --tr-amber: #FFB020; /* Levels, meters, highlights only. ~3%. */
+  --tr-ember: #E8480F; /* Mark color on light grounds (not for text). */
+  --tr-rust: #C23D0E; /* Orange text on light grounds (4.7:1 on warm white). */
+  --tr-unavailable: #55524D; /* Disabled UI on black (decorative, not for text). */
+  --tr-connected: #6FAE9A; /* Connected / OK status dot. */
+  --tr-record: #FF5A1F; /* Alias of signal for live/record states. */
+  --tr-bg: var(--tr-black);
+  --tr-surface: var(--tr-graphite);
+  --tr-text: var(--tr-warm-white);
+  --tr-text-muted: var(--tr-ash);
+  --tr-accent: var(--tr-signal);
+  --tr-on-accent: var(--tr-black);
+  --tr-icon-rest: var(--tr-ash-light);
+  --tr-icon-hover: var(--tr-warm-white);
+  --tr-icon-active: var(--tr-signal);
+  --tr-font-display: "Outfit", "Inter", system-ui, sans-serif;
+  --tr-font-ui: "Inter", system-ui, -apple-system, sans-serif;
+  --tr-font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+  --tr-radius-card: 20px;
+  --tr-radius-control: 10px;
+}
+
+/* Light grounds (release notes, print, docs) */
+.tr-light {
+  --tr-bg: var(--tr-warm-white);
+  --tr-surface: #FFFFFF;
+  --tr-text: var(--tr-black);
+  --tr-text-muted: #55524D;
+  --tr-accent-text: var(--tr-rust);
+}
