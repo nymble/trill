@@ -8,6 +8,7 @@ const INFO: DeviceInfo = DeviceInfo {
     variant: VARIANT_PCM_SYNTH,
     uptime_s: 5,
     boot_id: 7,
+    status: Status::NONE,
 };
 
 fn packets(cable: u8, msg: &[u8]) -> Vec<[u8; 4]> {

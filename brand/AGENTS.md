@@ -1,4 +1,4 @@
-# For AI agents (Claude, Grok, Codex, Cursor, …)
+# For AI agents
 
 Before you make or change anything visual for Trillium (icons, UI colors, web pages, release notes, slides, social images, docs), **read `BRAND.md` in this folder.** Then:
 

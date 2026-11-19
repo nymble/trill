@@ -24,6 +24,8 @@ public final class ConfigSession {
         case action(TrillAction)
         case telemetryStart(Int)
         case telemetryStop
+        /// Battery and Bluetooth status (needs `variantStatus`).
+        case getStatus
 
         var title: String {
             switch self {
@@ -34,6 +36,7 @@ public final class ConfigSession {
             case let .action(a): return a.title
             case let .telemetryStart(r): return "sensor stream \(r) Hz"
             case .telemetryStop: return "stop sensor stream"
+            case .getStatus: return "read battery and Bluetooth status"
             }
         }
     }
@@ -70,6 +73,11 @@ public final class ConfigSession {
     public private(set) var telemetryLease: TimeInterval = 5
     public private(set) var telemetryAckAt: TimeInterval?
     public private(set) var telemetryError: String?
+    /// Latest battery and Bluetooth status (nil = not read, or firmware without it).
+    public private(set) var status: DeviceStatus?
+    public private(set) var statusAt: TimeInterval?
+    /// Status poll period while connected.
+    public let statusInterval: TimeInterval = 2
 
     public let timeout: TimeInterval
     public let maxQueue = 8
@@ -100,6 +108,8 @@ public final class ConfigSession {
         telemetryRate = nil
         telemetryAckAt = nil
         telemetryError = nil
+        status = nil
+        statusAt = nil
         phase = .handshaking
         note(now, "handshake: HELLO sent")
         transmit(.hello, now: now)
@@ -110,6 +120,8 @@ public final class ConfigSession {
         queue = []
         telemetryRate = nil
         telemetryAckAt = nil
+        status = nil
+        statusAt = nil
         phase = .disconnected
         note(now, "disconnected")
     }
@@ -172,9 +184,34 @@ public final class ConfigSession {
     public func perform(_ action: TrillAction, now: TimeInterval) -> Bool {
         guard isReady, !action.needsConfigPages || supportsConfigPages,
               !action.needsBoard || hello?.canEnterBootloader == true,
-              !action.needsMicrophone || hello?.hasMicrophone == true else { return false }
+              !action.needsMicrophone || hello?.hasMicrophone == true,
+              !action.needsBluetooth || hello?.hasBLEMIDI == true else { return false }
         enqueue(.action(action), now: now)
         return true
+    }
+
+    /// Battery and Bluetooth status can be read (HELLO variant bit 5).
+    public var supportsStatus: Bool { hello?.supportsStatus ?? false }
+
+    /// Turn Bluetooth discoverability on or off (Bluetooth firmware only).
+    @discardableResult
+    public func setDiscoverable(_ on: Bool, now: TimeInterval) -> Bool {
+        perform(on ? .bluetoothDiscoverableOn : .bluetoothDiscoverableOff, now: now)
+    }
+
+    /// Turn the Bluetooth MIDI service on or off (Bluetooth firmware only).
+    @discardableResult
+    public func setBluetoothMIDI(_ on: Bool, now: TimeInterval) -> Bool {
+        perform(on ? .bluetoothMIDIOn : .bluetoothMIDIOff, now: now)
+    }
+
+    /// Keep the status fresh: read it every `statusInterval` while ready.
+    /// Call from the UI timer. Does nothing on firmware without status.
+    public func maintainStatus(now: TimeInterval) {
+        guard isReady, supportsStatus else { return }
+        let inFlight = pending?.request == .getStatus || queue.contains(.getStatus)
+        guard !inFlight else { return }
+        if statusAt.map({ now - $0 >= statusInterval }) ?? true { enqueue(.getStatus, now: now) }
     }
 
     /// The device streams sensor telemetry (HELLO capability, firmware 0.3.0+).
@@ -245,6 +282,12 @@ public final class ConfigSession {
             telemetryRate = rate
             telemetryLease = TimeInterval(max(lease, 1))
             telemetryAckAt = now
+        case let .status(_, st):
+            if status?.offReason != st.offReason || status?.battery != st.battery || p.request != .getStatus {
+                note(now, "\(p.request.title): battery \(st.batteryText), \(st.discoverableText), \(st.bluetoothMIDIText)")
+            }
+            status = st
+            statusAt = now
         case let .error(_, code, detail):
             let c = TrillErrorCode(rawValue: code)
             var text = "\(p.request.title): device error \(code) (\(c?.summary ?? "unknown"))"
@@ -253,6 +296,7 @@ public final class ConfigSession {
             }
             note(now, text, error: true)
             if Self.isTelemetry(p.request) { telemetryError = text }
+            if p.request == .getStatus { statusAt = now }
             if phase == .handshaking { fail(now, text); return }
         }
         sendNext(now: now)
@@ -269,6 +313,7 @@ public final class ConfigSession {
         }
         note(now, text, error: true)
         if Self.isTelemetry(p.request) { telemetryError = text }
+        if p.request == .getStatus { statusAt = now }
         sendNext(now: now)
     }
 
@@ -297,6 +342,7 @@ public final class ConfigSession {
         case let .action(a): bytes = TrillCodec.action(id, a)
         case let .telemetryStart(rate): bytes = TrillCodec.telemetryStart(id, rateHz: rate)
         case .telemetryStop: bytes = TrillCodec.telemetryStop(id)
+        case .getStatus: bytes = TrillCodec.getStatus(id)
         }
         guard let b = bytes, send(b) else {
             note(now, "\(r.title): could not send", error: true)

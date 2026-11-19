@@ -24,7 +24,7 @@ final class VectorTests: XCTestCase {
 
     func testRequestsMatchRustEncoder() throws {
         let v = try Self.loadVectors()
-        XCTAssertEqual(v.count, 42)
+        XCTAssertEqual(v.count, 48)
         XCTAssertEqual(TrillCodec.hello(1), v["hello"]!.request)
         XCTAssertEqual(TrillCodec.getConfig(2), v["get_config"]!.request)
         XCTAssertEqual(TrillCodec.setConfig(3, [(.channel, 2), (.pitchMode, 1)]), v["set_channel_steps"]!.request)

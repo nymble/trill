@@ -51,7 +51,7 @@ The current capability of the XIAO 3V3 output is not stated on the Seeed wiki pa
 
 ## Power, USB and battery
 
-The XIAO nRF52840 Sense can run from USB, from one rechargeable lithium cell on its rear battery pads, or both. **Charging is done entirely by on-board hardware** (TI BQ25101) whenever USB VBUS is present. It needs no firmware, and this project's firmware does not control, measure or report it. The table is transcribed from the Seeed **XIAO nRF52840 Sense schematic, Rev V1.1** (KiCad, sheet 3 "Battery charge" and "System 3.3V"). Check the revision printed on your board's documentation; other revisions may differ.
+The XIAO nRF52840 Sense can run from USB, from one rechargeable lithium cell on its rear battery pads, or both. **Charging is done entirely by on-board hardware** (TI BQ25101) whenever USB VBUS is present. It needs no firmware, and this project's firmware does not control it; it does measure and report the battery ([battery.md](battery.md)). The table is transcribed from the Seeed **XIAO nRF52840 Sense schematic, Rev V1.1** (KiCad, sheet 3 "Battery charge" and "System 3.3V"). Check the revision printed on your board's documentation; other revisions may differ.
 
 | Block | Part (schematic) | What it does |
 |---|---|---|
@@ -63,7 +63,7 @@ The XIAO nRF52840 Sense can run from USB, from one rechargeable lithium cell on 
 | Battery ↔ USB switch-over | Q1 P-MOSFET (VBAT → VIN, gate = VBUS, R9 100 kΩ to GND) and D1 Schottky (VBUS → VIN) | With USB: the system runs from VBUS through D1, Q1 is off, and the charger charges the cell. Without USB: Q1 conducts and the cell feeds VIN. This is a simple switch-over, **not** a charger with an integrated power path (load sharing) |
 | 3.3 V rail | U6 **SGM2040-3.3** LDO, VIN → 3V3 | Labelled 3.3 V / 250 mA on the schematic. 3V3 is the XIAO 3V3 pin (pin 12) that powers the Trill and R1/R2 |
 
-**Firmware state of these pins.** The firmware never configures P0.13, P0.14, P0.17 or P0.31, so they stay in the nRF52840 reset state (input, disconnected). With P0.13 high-impedance the charger runs at the ≈ 50 mA setting. Battery voltage and charge status are **not measured or reported**. Adding them is a [roadmap](roadmap.md) item, not part of this design.
+**Firmware state of these pins.** The firmware drives P0.14 low from boot and never releases it, reads P0.31 (AIN7) once a second and P0.17 (~CHG) as an input, and reports battery presence, voltage, approximate percent and charging ([battery.md](battery.md)). It never configures P0.13, which stays in the reset state (input, disconnected), so the charger runs at the ≈ 50 mA setting. Firmware 0.7.0 and earlier left all four pins in the reset state.
 
 **Rules:**
 - One **rechargeable** Li-ion / LiPo cell only, 3.7 V nominal class, 4.2 V full charge. Never primary (non-rechargeable) cells and never multi-cell packs.

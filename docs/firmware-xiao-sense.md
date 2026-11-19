@@ -47,6 +47,7 @@ Touch and IMU are independent tasks; each hands timestamped samples to the [even
 | Trill SDA / SCL (D4 / D5, TWISPI0, 100 kHz) | P0.04 / P0.05 | [XIAO design](design-xiao-nrf52840.md) (external 4.7 kΩ pull-ups) |
 | User RGB LED red / green / blue (active low) | P0.26 / P0.30 / P0.06 | See [Status LED](#status-led) |
 | PDM mic CLK / DATA / power | P1.00 / P0.16 / P1.10 | Test capture, off by default; power pin low when off. Schematic; Omi `config.h` uses the same pins |
+| Battery-sense enable READ_BAT / battery voltage AIN7 / charger ~CHG | P0.14 / P0.31 / P0.17 | P0.14 driven **low from boot, always** (Seeed: never high while charging); AIN7 read at 1 Hz; ~CHG input, low = charging. P0.13 (charge current) is not driven. Seeed schematic and wiki; [battery.md](battery.md) |
 
 HFCLK runs from the 32 MHz crystal (USB needs it) and LFCLK from the 32.768 kHz crystal X1, so audio block timing is crystal-accurate.
 

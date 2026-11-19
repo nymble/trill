@@ -76,3 +76,8 @@ pub fn telemetry_start(req: u8, rate_hz: u8) -> Reply {
 pub fn telemetry_stop(req: u8) -> Reply {
     end(start(msg::TELEMETRY_STOP, req))
 }
+
+/// `GET_STATUS` (needs `VARIANT_STATUS`).
+pub fn get_status(req: u8) -> Reply {
+    end(start(msg::GET_STATUS, req))
+}

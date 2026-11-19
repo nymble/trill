@@ -566,6 +566,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "trill-board"
+version = "0.7.0"
+dependencies = [
+ "trill-config",
+]
+
+[[package]]
 name = "trill-cli"
 version = "0.7.0"
 dependencies = [

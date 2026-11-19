@@ -19,17 +19,24 @@
 //!   hosts connect through their Bluetooth MIDI panels.
 //! * The SoftDevice reports USB power events, so USB keeps working:
 //!   VBUS is fed to embassy-usb through a software detector.
+//! * Two settings, stored in flash (`trill_board::settings`) and changed
+//!   with protocol actions 10..=13: **discoverable** (advertise) and
+//!   **Bluetooth MIDI** (the MIDI service). Both default to on.
+//! * Bluetooth runs only while a battery is detected (`crate::battery`):
+//!   without one the board neither advertises nor keeps a link.
+//! * The standard Battery Service (0x180F, Battery Level 0x2A19, read and
+//!   notify) reports the approximate charge to a connected central.
 
 use core::fmt::Write as _;
 use core::mem;
-use core::sync::atomic::Ordering;
+use core::sync::atomic::{AtomicBool, Ordering};
 
-use embassy_futures::select::select;
+use embassy_futures::select::{select, select3, Either};
 use embassy_nrf::usb::vbus_detect::SoftwareVbusDetect;
 use embassy_time::{Instant, Timer};
 use heapless::String;
 use nrf_softdevice::ble::advertisement_builder::{
-    Flag, LegacyAdvertisementBuilder, LegacyAdvertisementPayload, ServiceList,
+    Flag, LegacyAdvertisementBuilder, LegacyAdvertisementPayload, ServiceList, ServiceUuid16,
 };
 use nrf_softdevice::ble::gatt_server::builder::ServiceBuilder;
 use nrf_softdevice::ble::gatt_server::characteristic::{Attribute, Metadata, Properties};
@@ -37,6 +44,9 @@ use nrf_softdevice::ble::gatt_server::{self, NotifyValueError, RegisterError, Wr
 use nrf_softdevice::ble::{peripheral, Connection, Uuid};
 use nrf_softdevice::{raw, Softdevice};
 use static_cell::StaticCell;
+
+use embedded_storage_async::nor_flash::NorFlash as _;
+use trill_board::settings;
 
 use crate::shared::*;
 
@@ -62,6 +72,24 @@ static NAME: StaticCell<Name> = StaticCell::new();
 static VBUS: StaticCell<SoftwareVbusDetect> = StaticCell::new();
 static SERVER: StaticCell<MidiServer> = StaticCell::new();
 static ADV: StaticCell<LegacyAdvertisementPayload> = StaticCell::new();
+static ADV_NO_MIDI: StaticCell<LegacyAdvertisementPayload> = StaticCell::new();
+/// The SoftDevice is enabled (POWER is then read through its events).
+static SD_ON: AtomicBool = AtomicBool::new(false);
+/// USB power as reported by the SoftDevice's USB events.
+static SD_VBUS: AtomicBool = AtomicBool::new(false);
+
+/// Battery Service and Battery Level characteristic (Bluetooth SIG).
+const BATTERY_SERVICE: u16 = 0x180F;
+const BATTERY_LEVEL: u16 = 0x2A19;
+/// Battery Level notification period while a central subscribes.
+const BATTERY_NOTIFY_SECS: u64 = 30;
+
+/// USB power when the SoftDevice owns POWER, `None` otherwise.
+pub fn usb_power() -> Option<bool> {
+    SD_ON
+        .load(Ordering::Relaxed)
+        .then(|| SD_VBUS.load(Ordering::Relaxed))
+}
 static SCAN: StaticCell<LegacyAdvertisementPayload> = StaticCell::new();
 
 /// The advertised and GAP device name for this chip.
@@ -215,9 +243,14 @@ pub fn start() -> Started {
         usb_status & USBREGSTATUS_VBUSDETECT != 0,
         usb_status & USBREGSTATUS_OUTPUTRDY != 0,
     ));
+    SD_VBUS.store(usb_status & USBREGSTATUS_VBUSDETECT != 0, Ordering::Relaxed);
+    SD_ON.store(true, Ordering::Relaxed);
 
     let server = match MidiServer::new(sd) {
-        Ok(s) => Some(&*SERVER.init(s)),
+        Ok(s) => {
+            BLE_AVAILABLE.store(true, Ordering::Relaxed);
+            Some(&*SERVER.init(s))
+        }
         Err(_) => {
             BLE_STATE.store(BLE_FAILED, Ordering::Relaxed);
             None
@@ -226,10 +259,20 @@ pub fn start() -> Started {
     Started { server, vbus, name }
 }
 
-/// The BLE-MIDI GATT service.
+/// The GATT services: BLE-MIDI and Battery.
 pub struct MidiServer {
     io_handle: u16,
     cccd_handle: u16,
+    battery_handle: u16,
+    battery_cccd_handle: u16,
+}
+
+/// Writes from the central that matter here.
+pub enum GattEvent {
+    /// MIDI notifications on or off.
+    Midi(bool),
+    /// Battery Level notifications on or off.
+    Battery(bool),
 }
 
 impl MidiServer {
@@ -249,15 +292,28 @@ impl MidiServer {
             )?
             .build();
         let _ = sb.build();
+
+        let mut bs = ServiceBuilder::new(sd, Uuid::new_16(BATTERY_SERVICE))?;
+        let level = [battery_level()];
+        let battery = bs
+            .add_characteristic(
+                Uuid::new_16(BATTERY_LEVEL),
+                Attribute::new(&level),
+                Metadata::new(Properties::new().read().notify()),
+            )?
+            .build();
+        let _ = bs.build();
         Ok(Self {
             io_handle: ch.value_handle,
             cccd_handle: ch.cccd_handle,
+            battery_handle: battery.value_handle,
+            battery_cccd_handle: battery.cccd_handle,
         })
     }
 }
 
 impl gatt_server::Server for MidiServer {
-    type Event = bool;
+    type Event = GattEvent;
 
     fn on_write(
         &self,
@@ -266,10 +322,13 @@ impl gatt_server::Server for MidiServer {
         _op: WriteOp,
         _offset: usize,
         data: &[u8],
-    ) -> Option<bool> {
+    ) -> Option<GattEvent> {
         if handle == self.cccd_handle && !data.is_empty() {
             // Notifications on or off.
-            return Some(data[0] & 0x01 != 0);
+            return Some(GattEvent::Midi(data[0] & 0x01 != 0));
+        }
+        if handle == self.battery_cccd_handle && !data.is_empty() {
+            return Some(GattEvent::Battery(data[0] & 0x01 != 0));
         }
         // MIDI in from the central (handle == io_handle): ignored.
         None
@@ -290,16 +349,32 @@ fn sd() -> &'static Softdevice {
 pub async fn softdevice_task(vbus: &'static SoftwareVbusDetect) -> ! {
     let sd = sd();
     sd.run_with_callback(|e| match e {
-        nrf_softdevice::SocEvent::PowerUsbDetected => vbus.detected(true),
-        nrf_softdevice::SocEvent::PowerUsbRemoved => vbus.detected(false),
+        nrf_softdevice::SocEvent::PowerUsbDetected => {
+            SD_VBUS.store(true, Ordering::Relaxed);
+            vbus.detected(true)
+        }
+        nrf_softdevice::SocEvent::PowerUsbRemoved => {
+            SD_VBUS.store(false, Ordering::Relaxed);
+            vbus.detected(false)
+        }
         nrf_softdevice::SocEvent::PowerUsbPowerReady => vbus.ready(),
         _ => {}
     })
     .await
 }
 
-/// Advertise, accept one central, stream instrument MIDI while it has
-/// notifications enabled, and advertise again after it leaves.
+/// Battery Level characteristic value: approximate percent, 0 when unknown.
+fn battery_level() -> u8 {
+    battery_percent().unwrap_or(0)
+}
+
+/// Bluetooth link manager. Advertises only while a battery is detected
+/// and the board is discoverable; the advertisement carries the BLE-MIDI
+/// service UUID only while Bluetooth MIDI is on (otherwise just the name,
+/// for the Battery Service). Accepts one central; streams instrument MIDI
+/// while Bluetooth MIDI is on and the central has notifications enabled.
+/// Turning Bluetooth MIDI off, or losing the battery, disconnects.
+/// Turning discoverable off stops advertising and keeps a current link.
 #[embassy_executor::task]
 pub async fn ble_midi_task(server: &'static MidiServer, name: &'static Name) {
     let sd = sd();
@@ -312,6 +387,12 @@ pub async fn ble_midi_task(server: &'static MidiServer, name: &'static Name) {
             .services_128(ServiceList::Complete, &[service_le])
             .build(),
     );
+    let adv_no_midi: &'static LegacyAdvertisementPayload = ADV_NO_MIDI.init(
+        LegacyAdvertisementBuilder::new()
+            .flags(&[Flag::GeneralDiscovery, Flag::LE_Only])
+            .services_16(ServiceList::Complete, &[ServiceUuid16::BATTERY])
+            .build(),
+    );
     let scan: &'static LegacyAdvertisementPayload =
         SCAN.init(LegacyAdvertisementBuilder::new().full_name(name).build());
     let config = peripheral::Config {
@@ -319,17 +400,32 @@ pub async fn ble_midi_task(server: &'static MidiServer, name: &'static Name) {
         ..Default::default()
     };
     loop {
+        let _ = gatt_server::set_value(sd, server.battery_handle, &[battery_level()]);
+        if !ble_power_ok() || !BLE_DISCOVERABLE.load(Ordering::Relaxed) {
+            BLE_STATE.store(BLE_OFF, Ordering::Relaxed);
+            BLE_WAKE.wait().await;
+            continue;
+        }
+        let midi = BLE_MIDI_ENABLED.load(Ordering::Relaxed);
         BLE_STATE.store(BLE_ADVERTISING, Ordering::Relaxed);
         let adv_kind = peripheral::ConnectableAdvertisement::ScannableUndirected {
-            adv_data: adv,
+            adv_data: if midi { adv } else { adv_no_midi },
             scan_data: scan,
         };
-        let conn = match peripheral::advertise_connectable(sd, adv_kind, &config).await {
-            Ok(c) => c,
-            Err(_) => {
+        // A setting or battery change restarts advertising (dropping the
+        // advertise future stops it).
+        let conn = match select(
+            peripheral::advertise_connectable(sd, adv_kind, &config),
+            BLE_WAKE.wait(),
+        )
+        .await
+        {
+            Either::First(Ok(c)) => c,
+            Either::First(Err(_)) => {
                 Timer::after_millis(500).await;
                 continue;
             }
+            Either::Second(()) => continue,
         };
         BLE_STATE.store(BLE_CONNECTED, Ordering::Relaxed);
         let _ = conn.set_conn_params(raw::ble_gap_conn_params_t {
@@ -338,19 +434,126 @@ pub async fn ble_midi_task(server: &'static MidiServer, name: &'static Name) {
             slave_latency: 0,
             conn_sup_timeout: SUPERVISION_TIMEOUT,
         });
-        let gatt = gatt_server::run(&conn, server, |notify| {
-            drain();
-            BLE_STATE.store(
-                if notify { BLE_STREAMING } else { BLE_CONNECTED },
-                Ordering::Relaxed,
-            );
-            // Let the MIDI writer start (or stop) feeding BLE.
-            MIDI_WAKE.signal(());
+        let _ = gatt_server::set_value(sd, server.battery_handle, &[battery_level()]);
+        let battery_notify = AtomicBool::new(false);
+        let gatt = gatt_server::run(&conn, server, |e| match e {
+            GattEvent::Midi(notify) => {
+                drain();
+                let on = notify && BLE_MIDI_ENABLED.load(Ordering::Relaxed);
+                BLE_STATE.store(
+                    if on { BLE_STREAMING } else { BLE_CONNECTED },
+                    Ordering::Relaxed,
+                );
+                // Let the MIDI writer start (or stop) feeding BLE.
+                MIDI_WAKE.signal(());
+            }
+            GattEvent::Battery(notify) => battery_notify.store(notify, Ordering::Relaxed),
         });
-        let _ = select(gatt, notifier(&conn, server)).await;
-        BLE_STATE.store(BLE_ADVERTISING, Ordering::Relaxed);
+        let _ = select3(
+            gatt,
+            notifier(&conn, server),
+            supervise(&conn, server, &battery_notify),
+        )
+        .await;
+        BLE_STATE.store(BLE_OFF, Ordering::Relaxed);
         drain();
         MIDI_WAKE.signal(());
+    }
+}
+
+/// While connected: end the link when Bluetooth MIDI is turned off (if it
+/// was on when the central connected) or the battery is no longer
+/// detected; keep the Battery Level current.
+async fn supervise(conn: &Connection, server: &MidiServer, battery_notify: &AtomicBool) {
+    let midi_at_connect = BLE_MIDI_ENABLED.load(Ordering::Relaxed);
+    let mut last_level = battery_level();
+    loop {
+        let _ = select(BLE_WAKE.wait(), Timer::after_secs(BATTERY_NOTIFY_SECS)).await;
+        let midi_turned_off = midi_at_connect && !BLE_MIDI_ENABLED.load(Ordering::Relaxed);
+        if !ble_power_ok() || midi_turned_off {
+            let _ = conn.disconnect();
+            // gatt_server::run returns once the link is down.
+            Timer::after_millis(100).await;
+            return;
+        }
+        let level = battery_level();
+        let _ = gatt_server::set_value(sd(), server.battery_handle, &[level]);
+        if level != last_level && battery_notify.load(Ordering::Relaxed) {
+            let _ = gatt_server::notify_value(conn, server.battery_handle, &[level]);
+        }
+        last_level = level;
+    }
+}
+
+/// 4-byte aligned record buffer (SoftDevice flash writes are word based).
+#[repr(C, align(4))]
+struct Aligned([u8; settings::RECORD_LEN]);
+
+fn read_slot(i: usize) -> [u32; 2] {
+    let a = settings::slot_addr(i);
+    // SAFETY: aligned reads of on-chip flash inside the storage page
+    // (0xEC000..0xED000), which is always mapped.
+    unsafe {
+        [
+            core::ptr::read_volatile(a as *const u32),
+            core::ptr::read_volatile((a + 4) as *const u32),
+        ]
+    }
+}
+
+/// Load the stored Bluetooth settings (defaults when nothing is stored).
+/// A plain flash read; call before the Bluetooth task starts.
+pub fn load_settings() {
+    let scan = settings::scan(read_slot);
+    let s = scan.latest.unwrap_or(settings::BleSettings::DEFAULT);
+    BLE_DISCOVERABLE.store(s.discoverable, Ordering::Relaxed);
+    BLE_MIDI_ENABLED.store(s.ble_midi, Ordering::Relaxed);
+    BLE_SETTINGS_STORED.store(scan.latest.is_some(), Ordering::Relaxed);
+}
+
+fn current_settings() -> settings::BleSettings {
+    settings::BleSettings {
+        discoverable: BLE_DISCOVERABLE.load(Ordering::Relaxed),
+        ble_midi: BLE_MIDI_ENABLED.load(Ordering::Relaxed),
+    }
+}
+
+/// Store the Bluetooth settings after a change: one 8-byte record appended
+/// to the log page, which is erased only when full (every 512 changes).
+/// Only the page at `settings::PAGE_ADDR` is ever written or erased.
+/// Runs in thread mode (the SoftDevice flash handle is not `Send`).
+#[embassy_executor::task]
+pub async fn settings_task() {
+    let mut flash = nrf_softdevice::Flash::take(sd());
+    loop {
+        BLE_SETTINGS_DIRTY.wait().await;
+        // Coalesce quick toggles into one write.
+        Timer::after_millis(500).await;
+        let want = current_settings();
+        let scan = settings::scan(read_slot);
+        if scan.latest == Some(want) {
+            BLE_SETTINGS_STORED.store(true, Ordering::Relaxed);
+            continue;
+        }
+        let slot = match scan.next_slot {
+            Some(i) => i,
+            None => {
+                let page = settings::PAGE_ADDR;
+                if flash.erase(page, page + settings::PAGE_SIZE).await.is_err() {
+                    continue;
+                }
+                0
+            }
+        };
+        let addr = settings::slot_addr(slot);
+        if addr < settings::PAGE_ADDR
+            || addr + settings::RECORD_LEN as u32 > settings::PAGE_ADDR + settings::PAGE_SIZE
+        {
+            continue;
+        }
+        let buf = Aligned(want.encode_bytes());
+        let ok = flash.write(addr, &buf.0).await.is_ok();
+        BLE_SETTINGS_STORED.store(ok && current_settings() == want, Ordering::Relaxed);
     }
 }
 

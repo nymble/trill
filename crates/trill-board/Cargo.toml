@@ -1,0 +1,13 @@
+[package]
+name = "trill-board"
+description = "no_std board support logic for the Trillium XIAO firmware: LiPo voltage-to-percent curve, battery presence heuristic and the Bluetooth settings record kept in flash"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+rust-version = "1.81"
+publish = false
+
+[dependencies]
+trill-config = { path = "../trill-config" }

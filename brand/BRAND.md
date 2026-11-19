@@ -1,6 +1,6 @@
 # Trillium brand guide
 
-**Trillium** is the companion app for motion- and touch-sensing musical instruments, an **Ambient Lab** project. This file is the source of truth for anything visual: app icons, web pages, release notes, slides, social images and UI. People and AI agents (Claude, Grok, Codex and others) should read it before making anything that represents Trillium.
+**Trillium** is the companion app for motion- and touch-sensing musical instruments, an **Ambient Lab** project. This file is the source of truth for anything visual: app icons, web pages, release notes, slides, social images and UI. People and AI agents should read it before making anything that represents Trillium.
 
 Palette name: **Stage**. Black, signal orange and warm white, like a lit stage and a hardware LED.
 
