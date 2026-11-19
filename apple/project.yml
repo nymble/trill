@@ -28,6 +28,11 @@ targets:
     platform: macOS
     sources:
       - App/Shared
+      # Brand colours by reference (single source of truth in brand/tokens/).
+      - path: ../brand/tokens/TrilliumColors.swift
+        group: App/Brand
+      # macOS icon set (Apple's macOS grid), from brand/apple/macOS-AppIcon.appiconset.
+      - App/macOS/AppIcon.xcassets
       - path: Firmware
         type: folder
         buildPhase: resources
@@ -45,6 +50,10 @@ targets:
     platform: iOS
     sources:
       - App/Shared
+      - path: ../brand/tokens/TrilliumColors.swift
+        group: App/Brand
+      # iOS/iPadOS icon set (1024 px: any, dark, tinted), from brand/apple/iOS-AppIcon.appiconset.
+      - App/iOS/AppIcon.xcassets
       - path: Firmware
         type: folder
         buildPhase: resources

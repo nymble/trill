@@ -172,7 +172,7 @@ Backups under `~/Downloads/Trill-hwtest-20261107/backup/` (plus the app's folder
    - **Since 0.6.0 the app writes firmware** to the UF2 drive. The macOS build uses `com.apple.security.temporary-exception.files.absolute-path.read-write` for `/Volumes/XIAO-SENSE/` so installs need no picking. App Review often rejects temporary exceptions; a store build may have to drop it and rely on the open-panel fallback (already implemented). Decide before submission, and explain the firmware install in review notes.
    - iOS: USB MIDI works through CoreMIDI (camera adapter / USB-C); test on a device.
 6. **Missing assets and metadata (not in the repo):**
-   - App icon exists (drawn by `apple/scripts/make_app_icon.swift`); check it covers every required size.
+   - App icons come from the brand kit (`brand/apple/`), one catalog per target; check they cover every required size.
    - Privacy manifest `PrivacyInfo.xcprivacy` and App Privacy answers.
    - Screenshots, description, support URL, privacy policy URL.
    - Age rating, export-compliance answer.

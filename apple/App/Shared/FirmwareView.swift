@@ -62,6 +62,7 @@ struct FirmwareView: View {
             #endif
         }
         .formStyle(.grouped)
+        .trilliumGround()
         .navigationTitle("Firmware")
     }
 }
@@ -85,7 +86,7 @@ struct FirmwareAssistant: View {
         Form {
             Section {
                 Label("Loading this firmware replaces the Omi (or any other) application on the board. Back up first. Bluetooth is not available in this firmware. The onboard microphone is a testing-only capture path in Trillium, not part of any instrument.", systemImage: "exclamationmark.triangle")
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Color.Trillium.amber)
                 Text("This assistant only reads files. It never writes to the board; you run the commands below yourself, dry run first.")
                     .foregroundStyle(.secondary)
             }
@@ -94,7 +95,7 @@ struct FirmwareAssistant: View {
                 if let u = imageURL { Text(u.path).font(.caption.monospaced()).textSelection(.enabled) }
                 if let s = summary {
                     Label(String(format: "Application-only nRF52840 image: %d blocks, 0x%08X–0x%08X", s.blocks, s.start, s.end), systemImage: "checkmark.seal")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(Color.Trillium.connected)
                     Text("SHA-256 \(s.sha256)").font(.caption.monospaced()).textSelection(.enabled)
                     Text("Compare with SHA256SUMS from the same CI artifact. This is an integrity check only; images are not signed.")
                         .font(.caption).foregroundStyle(.secondary)
@@ -109,11 +110,11 @@ struct FirmwareAssistant: View {
                         Text("\(k): \(i.fields[k] ?? "")").font(.caption.monospaced())
                     }
                     if i.problems.isEmpty {
-                        Label("nRF52840 with SoftDevice \(UF2.expectedSoftDevice)", systemImage: "checkmark.seal").foregroundStyle(.green)
+                        Label("nRF52840 with SoftDevice \(UF2.expectedSoftDevice)", systemImage: "checkmark.seal").foregroundStyle(Color.Trillium.connected)
                     }
                     ForEach(i.problems, id: \.self) { Label($0, systemImage: "xmark.octagon").foregroundStyle(.red) }
                     Text(hasCurrent ? "CURRENT.UF2 is present: the backup command can read the current application." : "No CURRENT.UF2 on this drive: a backup is not possible this way.")
-                        .font(.caption).foregroundStyle(hasCurrent ? Color.secondary : Color.orange)
+                        .font(.caption).foregroundStyle(hasCurrent ? Color.secondary : Color.Trillium.amber)
                 }
                 if let e = driveError { Label(e, systemImage: "xmark.octagon").foregroundStyle(.red) }
             } header: {
@@ -139,6 +140,7 @@ struct FirmwareAssistant: View {
             }
         }
         .formStyle(.grouped)
+        .trilliumGround()
         .fileImporter(isPresented: Binding(get: { pick != nil }, set: { if !$0 { pick = nil } }),
                       allowedContentTypes: pick == .drive ? [.folder, .volume] : [UTType(filenameExtension: "uf2") ?? .data, .data]) { r in
             let mode = pick

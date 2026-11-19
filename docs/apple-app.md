@@ -94,7 +94,7 @@ make apple                # test + macOS + iOS Simulator + device compile + dist
 
 On Linux, `make apple-test` runs the platform-independent TrillKit tests (protocol vectors, UMP, session, presets, UF2). That proves nothing about SwiftUI or CoreMIDI, which only build on macOS.
 
-The app icon (`apple/App/Shared/Assets.xcassets/AppIcon.appiconset`) is drawn in code: after changing `apple/scripts/make_app_icon.swift`, run `make apple-icon` and commit the PNGs. Tagged versions are packaged as GitHub Releases ([releasing.md](releasing.md)).
+The app follows the brand kit in [`brand/`](../brand/BRAND.md) (Stage palette). Each target has its own icon catalog, copied unchanged from the kit: `apple/App/macOS/AppIcon.xcassets` (from `brand/apple/macOS-AppIcon.appiconset`, Apple's macOS grid) and `apple/App/iOS/AppIcon.xcassets` (from `brand/apple/iOS-AppIcon.appiconset`: one 1024 px icon with default, dark and tinted versions). Colours come from `brand/tokens/TrilliumColors.swift`, which both targets compile by reference (see `project.yml`); `apple/App/Shared/Theme.swift` holds the button styles and icon states built on it. The in-app icons, Rhodonea mark and lockup in `apple/App/Shared/Assets.xcassets/Brand/` are byte-for-byte copies of `brand/ui-icons/`, `brand/icons/svg/rhodonea-glyph.svg` and `brand/wordmark/lockup-primary-transparent.svg`; `tools/test_brand_assets.py` checks that they still match. To change an icon or colour, change the kit, copy it again and commit both. Tagged versions are packaged as GitHub Releases ([releasing.md](releasing.md)).
 
 ## Run and install
 

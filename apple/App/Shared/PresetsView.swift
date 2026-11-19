@@ -89,6 +89,7 @@ struct PresetsView: View {
                 }
                 .padding()
             }
+            .trilliumGround()
             .navigationTitle("Presets")
             .navigationDestination(isPresented: $showEditor) { MappingView() }
             .confirmationDialog("Restore the original \(confirmRestore?.name ?? "")?", isPresented: Binding(
@@ -161,30 +162,31 @@ struct PresetCard: View {
             Button(action: action) {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        Image(systemName: symbol).font(.title2).foregroundStyle(.tint).frame(width: 30)
+                        Image(systemName: symbol).font(.title2).foregroundStyle((isActive ? TrilliumIconState.active : .rest).color).frame(width: 30)
                         Text(name).font(.headline)
                         if let badge {
                             Text(badge).font(.caption2.weight(.semibold)).padding(.horizontal, 6).padding(.vertical, 2)
-                                .background(Capsule().fill(.orange.opacity(0.2))).foregroundStyle(.orange)
+                                .background(Capsule().fill(Color.Trillium.amber.opacity(0.2))).foregroundStyle(Color.Trillium.amber)
                         }
                         Spacer()
-                        if isActive { Image(systemName: "checkmark.circle.fill").foregroundStyle(.green) }
+                        if isActive { Image(systemName: "checkmark.circle.fill").foregroundStyle(Color.Trillium.signal) }
                     }
                     Text(summary).font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.leading)
                         .lineLimit(4).fixedSize(horizontal: false, vertical: true)
-                    if let note { Text(note).font(.caption).foregroundStyle(.orange) }
+                    if let note { Text(note).font(.caption).foregroundStyle(Color.Trillium.amber) }
                     Spacer(minLength: 18)
                 }
                 .padding(12)
                 .frame(maxWidth: .infinity, minHeight: 124, alignment: .topLeading)
-                .background(RoundedRectangle(cornerRadius: 12).fill(.quaternary.opacity(isActive ? 0.9 : 0.45)))
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(isActive ? Color.accentColor : .clear, lineWidth: 2))
-                .contentShape(RoundedRectangle(cornerRadius: 12))
+                .background(RoundedRectangle(cornerRadius: 20).fill(Color.Trillium.graphite))
+                .overlay(RoundedRectangle(cornerRadius: 20).stroke(isActive ? Color.Trillium.signal : .clear, lineWidth: 2))
+                .contentShape(RoundedRectangle(cornerRadius: 20))
             }
             .buttonStyle(.plain)
             .accessibilityHint(isActive ? "Current sound" : "Use this sound")
             Button(action: edit) { Label("Edit", systemImage: "pencil") }
                 .controlSize(.small)
+                .tint(TrilliumIconState.rest.color)
                 .padding(8)
                 .help("Open in the editor; changes play live")
         }

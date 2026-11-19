@@ -44,6 +44,7 @@ struct SettingsView: View {
                     row(.about, "About Trillium", "info.circle", nil)
                 }
             }
+            .trilliumGround()
             .navigationTitle("Settings")
             .onAppear { model.hardwareVisible = true }
             .onDisappear { model.hardwareVisible = false }
@@ -67,7 +68,7 @@ struct SettingsView: View {
                     Text(title)
                     if let detail { Text(detail).font(.caption).foregroundStyle(.secondary) }
                 }
-            } icon: { Image(systemName: symbol) }
+            } icon: { Image(systemName: symbol).foregroundStyle(TrilliumIconState.rest.color) }
         }
     }
 }
@@ -131,7 +132,7 @@ struct ConnectionView: View {
                 EndpointPicker(title: "Requests to", endpoints: model.destinations, selection: $model.configDestinationID)
                 if model.configDestinationID != nil, !model.destinationLooksLikeTrill {
                     Label("This destination doesn't look like Trillium. Settings messages use a development SysEx ID that other devices normally ignore.", systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Color.Trillium.amber)
                 }
             } header: {
                 Text("Port 2: settings")
@@ -140,6 +141,7 @@ struct ConnectionView: View {
             }
         }
         .formStyle(.grouped)
+        .trilliumGround()
         .navigationTitle("Connection")
     }
 }
@@ -153,7 +155,7 @@ struct StatusRow: View {
             switch s.phase {
             case .disconnected: Label("Not connected", systemImage: "circle").foregroundStyle(.secondary)
             case .handshaking: Label("Connecting…", systemImage: "hourglass")
-            case .ready: Label("Connected", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+            case .ready: Label("Connected", systemImage: "checkmark.circle.fill").foregroundStyle(Color.Trillium.connected)
             case let .failed(why): Label(why, systemImage: "xmark.octagon").foregroundStyle(.red)
             }
             if let h = s.hello {
@@ -168,7 +170,7 @@ struct StatusRow: View {
             }
             if s.deviceRestarted {
                 Text("Trillium restarted since the last connection, so its settings went back to defaults.")
-                    .font(.caption).foregroundStyle(.orange)
+                    .font(.caption).foregroundStyle(Color.Trillium.amber)
             }
             if let p = s.pending { Text("Waiting for reply to request \(p.id)…").font(.caption).foregroundStyle(.secondary) }
         }
@@ -203,6 +205,7 @@ struct DeviceToolsView: View {
             }
         }
         .formStyle(.grouped)
+        .trilliumGround()
         .navigationTitle("Device")
         .confirmationDialog("Restore firmware defaults on Trillium?", isPresented: $confirmRestore) {
             Button("Restore defaults", role: .destructive) { model.perform(.restoreDefaults) }
@@ -232,21 +235,22 @@ struct HardwareSummaryView: View {
     }
 }
 
-/// Small battery indicator: symbol plus percent, shown when the board
-/// reports a battery. Nothing is shown otherwise.
+/// Small battery indicator: the brand battery icon plus percent (mono, as
+/// brand/BRAND.md asks for battery values), shown when the board reports a
+/// battery. Nothing is shown otherwise.
 struct BatteryIndicator: View {
     @EnvironmentObject var model: AppModel
 
     var body: some View {
         if let s = model.hardware.status, s.battery == .present {
-            Label {
-                Text(s.batteryPercent.map { "\($0) %" } ?? "battery")
-            } icon: {
-                Image(systemName: s.batterySymbol)
+            let low = (s.batteryPercent ?? 100) <= 15 && !s.charging
+            HStack(spacing: 4) {
+                TrilliumIcon(name: "battery", size: 14)
+                Text((s.batteryPercent.map { "\($0) %" } ?? "battery") + (s.charging ? " · charging" : ""))
+                    .font(.caption.monospaced())
+                    .foregroundStyle(low ? Color.Trillium.amber : Color.Trillium.ashLight)
             }
-            .labelStyle(.titleAndIcon)
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .accessibilityElement(children: .ignore)
             .accessibilityLabel("Battery \(s.batteryText)")
         }
     }
@@ -271,18 +275,29 @@ struct BluetoothControls: View {
                 get: { status?.bluetoothMIDI ?? false },
                 set: { model.setBluetoothMIDI($0) }))
             if let s = status {
-                Text("\(s.discoverableText) · \(s.bluetoothMIDIText)")
-                    .font(.caption).foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    if s.link == .connected || s.link == .streaming {
+                        Circle().fill(Color.Trillium.connected).frame(width: 7, height: 7)
+                            .accessibilityHidden(true)
+                    }
+                    Text("\(s.discoverableText) · \(s.bluetoothMIDIText)")
+                        .font(.caption.monospaced())
+                        .foregroundStyle(Color.Trillium.ashLight)
+                }
                 if let why = s.offExplanation {
-                    Label(why, systemImage: s.offReason == .noBattery ? "battery.0" : "info.circle")
-                        .font(.caption)
-                        .foregroundStyle(s.offReason == .noBattery ? Color.orange : Color.secondary)
+                    Label {
+                        Text(why)
+                    } icon: {
+                        TrilliumIcon(name: s.offReason == .noBattery ? "battery" : "wireless", size: 14)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(s.offReason == .noBattery ? Color.Trillium.amber : Color.Trillium.ashLight)
                 }
             } else {
-                Text("Reading Bluetooth status…").font(.caption).foregroundStyle(.secondary)
+                Text("Reading Bluetooth status…").font(.caption).foregroundStyle(Color.Trillium.ashLight)
             }
             Text("Settings are saved on Trillium. USB MIDI always works, whatever these are set to.")
-                .font(.caption2).foregroundStyle(.secondary)
+                .font(.caption2).foregroundStyle(Color.Trillium.ashLight)
         }
         .disabled(!ready || !powered)
     }

@@ -41,7 +41,7 @@ struct FirmwareCard: View {
                     .font(.callout).foregroundStyle(.secondary)
                 #if os(iOS)
                 Text("On iPhone and iPad, then choose the XIAO-SENSE drive once to allow access.").font(.caption).foregroundStyle(.secondary)
-                Button("Allow access to XIAO-SENSE…") { pickDrive = true }.buttonStyle(.borderedProminent)
+                Button("Allow access to XIAO-SENSE…") { pickDrive = true }.buttonStyle(.trilliumPrimary)
                 #endif
                 Button("Cancel", role: .cancel) { model.cancelFirmwareInstall() }.controlSize(.small)
             })
@@ -52,9 +52,9 @@ struct FirmwareCard: View {
                     .font(.callout).foregroundStyle(.secondary)
                 HStack {
                     #if os(macOS)
-                    Button("Allow…") { model.requestDriveAccess(suggested: url) }.buttonStyle(.borderedProminent)
+                    Button("Allow…") { model.requestDriveAccess(suggested: url) }.buttonStyle(.trilliumPrimary)
                     #else
-                    Button("Allow…") { pickDrive = true }.buttonStyle(.borderedProminent)
+                    Button("Allow…") { pickDrive = true }.buttonStyle(.trilliumPrimary)
                     #endif
                     Button("Cancel", role: .cancel) { model.cancelFirmwareInstall() }
                 }
@@ -65,7 +65,7 @@ struct FirmwareCard: View {
             return AnyView(progress("Waiting for Trillium to restart…", "The board restarts with the new firmware and reconnects."))
         case let .done(v, backup):
             return AnyView(VStack(alignment: .leading, spacing: 8) {
-                Label("Firmware \(v.description) installed", systemImage: "checkmark.seal.fill").font(.headline).foregroundStyle(.green)
+                Label("Firmware \(v.description) installed", systemImage: "checkmark.seal.fill").font(.headline).foregroundStyle(Color.Trillium.connected)
                 Text(backup == nil ? "Trillium is connected and reports the new version."
                      : "Trillium is connected and reports the new version. The previous firmware was backed up.")
                     .font(.callout).foregroundStyle(.secondary)
@@ -81,7 +81,7 @@ struct FirmwareCard: View {
                 Label("Firmware not installed", systemImage: "xmark.octagon").font(.headline).foregroundStyle(.red)
                 Text(why).font(.callout).foregroundStyle(.secondary)
                 HStack {
-                    Button("Try again") { model.startFirmwareInstall() }.buttonStyle(.borderedProminent)
+                    Button("Try again") { model.startFirmwareInstall() }.buttonStyle(.trilliumPrimary)
                     Button("Dismiss") { model.dismissFirmwareResult() }
                 }
             })
@@ -92,11 +92,11 @@ struct FirmwareCard: View {
         if model.bundledFirmware == nil {
             guard alwaysShow else { return nil }
             return AnyView(Label(model.bundledFirmwareError ?? "This build carries no firmware.", systemImage: "exclamationmark.triangle")
-                .foregroundStyle(.orange))
+                .foregroundStyle(Color.Trillium.amber))
         }
         if let h = model.session.hello, model.session.isReady, !h.hasMotionSensor {
             return AnyView(VStack(alignment: .leading, spacing: 6) {
-                Label("This board isn't supported", systemImage: "exclamationmark.triangle").font(.headline).foregroundStyle(.orange)
+                Label("This board isn't supported", systemImage: "exclamationmark.triangle").font(.headline).foregroundStyle(Color.Trillium.amber)
                 Text("It is a XIAO nRF52840 without the motion sensor. Trillium needs the Seeed Studio XIAO nRF52840 Sense (the model with the microphone and motion sensor).")
                     .font(.callout).foregroundStyle(.secondary)
             })
@@ -104,10 +104,10 @@ struct FirmwareCard: View {
         switch model.firmwareStatus {
         case let .updateAvailable(installed, b)?:
             return AnyView(VStack(alignment: .leading, spacing: 8) {
-                Label("Firmware update: \(installed.description) → \(b.description)", systemImage: "arrow.down.circle").font(.headline)
+                Label { Text("Firmware update: \(installed.description) → \(b.description)") } icon: { TrilliumIcon(name: "firmware-update", state: .active) }.font(.headline)
                 Text("This version of the app comes with firmware \(b.description). Installing takes under a minute; the firmware on the board is backed up first.")
                     .font(.callout).foregroundStyle(.secondary)
-                Button("Update firmware") { model.startFirmwareInstall() }.buttonStyle(.borderedProminent)
+                Button("Update firmware") { model.startFirmwareInstall() }.buttonStyle(.trilliumPrimary)
             })
         case let .newerThanApp(installed, b)?:
             return AnyView(Label("Trillium runs firmware \(installed.description), newer than the \(b.description) in this app. Update the Trillium app.",
@@ -115,7 +115,7 @@ struct FirmwareCard: View {
         case .current?:
             guard alwaysShow else { return nil }
             return AnyView(VStack(alignment: .leading, spacing: 8) {
-                Label("Firmware \(bundled) is up to date", systemImage: "checkmark.seal").foregroundStyle(.green)
+                Label("Firmware \(bundled) is up to date", systemImage: "checkmark.seal").foregroundStyle(Color.Trillium.connected)
                 Button("Reinstall firmware \(bundled)") { model.startFirmwareInstall() }.controlSize(.small)
             })
         default:
@@ -126,7 +126,7 @@ struct FirmwareCard: View {
                 Label("Board waiting for firmware", systemImage: "externaldrive").font(.headline)
                 Text("A board is in bootloader mode (\(drive.lastPathComponent)). Install Trillium firmware \(bundled) to use it.")
                     .font(.callout).foregroundStyle(.secondary)
-                Button("Install firmware \(bundled)") { model.startFirmwareInstall() }.buttonStyle(.borderedProminent)
+                Button("Install firmware \(bundled)") { model.startFirmwareInstall() }.buttonStyle(.trilliumPrimary)
             })
         }
         if !model.trillDetected, let other = model.otherBoards.first {
@@ -134,7 +134,7 @@ struct FirmwareCard: View {
                 Label("New board found", systemImage: "cpu").font(.headline)
                 Text("\(other.summary) is connected but isn't running Trillium firmware yet. Install firmware \(bundled) to turn a Seeed Studio XIAO nRF52840 Sense into a Trillium.")
                     .font(.callout).foregroundStyle(.secondary)
-                Button("Install firmware \(bundled)…") { model.startFirmwareInstall() }.buttonStyle(.borderedProminent)
+                Button("Install firmware \(bundled)…") { model.startFirmwareInstall() }.buttonStyle(.trilliumPrimary)
             })
         }
         guard alwaysShow else { return nil }

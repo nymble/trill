@@ -14,7 +14,7 @@ struct Card<Content: View>: View {
         VStack(alignment: .leading, spacing: 10) { content }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 14).fill(.quaternary.opacity(0.5)))
+            .background(RoundedRectangle(cornerRadius: 20).fill(Color.Trillium.graphite))
     }
 }
 
@@ -43,6 +43,7 @@ struct HomeView: View {
                 .frame(maxWidth: 720, alignment: .leading)
                 .frame(maxWidth: .infinity)
             }
+            .trilliumGround()
             .navigationTitle("Home")
             #if os(iOS)
             .navigationBarTitleDisplayMode(.inline)
@@ -71,7 +72,7 @@ struct ConnectionCard: View {
                     Label("Couldn't connect", systemImage: "xmark.octagon").font(.headline).foregroundStyle(.red)
                     Text(why).font(.callout).foregroundStyle(.secondary)
                     Button("Try again") { model.connectToDetected() }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.trilliumPrimary)
                         .disabled(!model.trillDetected)
                 case .disconnected:
                     if model.trillDetected { found } else { plugIn }
@@ -96,12 +97,12 @@ struct ConnectionCard: View {
 
     private var found: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Label("Trillium found", systemImage: "checkmark.circle").font(.headline).foregroundStyle(.green)
+            Label("Trillium found", systemImage: "checkmark.circle").font(.headline).foregroundStyle(Color.Trillium.connected)
             Text("Connect to choose sounds, watch the sensors and change settings. Playing works without connecting.")
                 .font(.callout).foregroundStyle(.secondary)
             HStack {
                 Button("Connect") { model.connectToDetected() }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.trilliumPrimary)
                     .keyboardShortcut(.defaultAction)
                 Toggle("Connect automatically", isOn: Binding(get: { model.autoConnect }, set: { model.autoConnect = $0 }))
                     .font(.callout)
@@ -112,7 +113,7 @@ struct ConnectionCard: View {
     private var connected: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Label("Connected", systemImage: "checkmark.circle.fill").font(.headline).foregroundStyle(.green)
+                Label("Connected", systemImage: "checkmark.circle.fill").font(.headline).foregroundStyle(Color.Trillium.connected)
                 Spacer()
                 Button("Disconnect") { model.disconnectConfig() }.controlSize(.small)
             }
@@ -122,7 +123,7 @@ struct ConnectionCard: View {
             }
             if model.session.deviceRestarted {
                 Text("Trillium restarted since you last connected, so it went back to its default sound.")
-                    .font(.caption).foregroundStyle(.orange)
+                    .font(.caption).foregroundStyle(Color.Trillium.amber)
             }
         }
     }
@@ -145,7 +146,7 @@ struct NowPlayingCard: View {
             Divider()
             RoutingList(lines: MappingSummary.lines(cfg, pages: model.session.supportedPages))
             HStack {
-                Button("Change sound") { model.tab = .presets }.buttonStyle(.borderedProminent)
+                Button("Change sound") { model.tab = .presets }.buttonStyle(.trilliumPrimary)
                 Button("Edit…") { model.openMapping() }
                 Spacer()
                 Button {
@@ -154,10 +155,12 @@ struct NowPlayingCard: View {
                     .help("Sends All Notes Off and resets controllers.")
                 Button {
                     model.perform(.recalibrateGyro)
-                } label: { Label("Recalibrate", systemImage: "scope") }
+                } label: { Label { Text("Recalibrate") } icon: { TrilliumIcon(name: "axes-calibrate", size: 16) } }
                     .help("Hold Trillium still for about a second.")
             }
             .controlSize(.small)
+            // Secondary actions stay warm white; orange is only for the primary button.
+            .tint(Color.Trillium.warmWhite)
             Text("Changes last until Trillium is unplugged. Save sounds you like as presets.")
                 .font(.caption).foregroundStyle(.secondary)
         }
@@ -172,7 +175,7 @@ struct RoutingList: View {
         VStack(alignment: .leading, spacing: 6) {
             ForEach(lines, id: \.self) { l in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Image(systemName: l.symbol).frame(width: 20).foregroundStyle(.tint)
+                    Image(systemName: l.symbol).frame(width: 20).foregroundStyle(TrilliumIconState.rest.color)
                     Text(l.input).frame(minWidth: 120, alignment: .leading)
                     Image(systemName: "arrow.right").font(.caption).foregroundStyle(.secondary)
                     Text(l.output).foregroundStyle(.secondary)

@@ -45,6 +45,12 @@ class ReleaseNotesTests(unittest.TestCase):
         self.assertIn("Trillium-macOS-unsigned-dev-1.2.3.zip", notes)
         self.assertIn("Trillium-macOS-1.2.3.dmg", notes)
 
+    def test_header_is_the_brand_release_header_at_the_tag(self):
+        h = rn.HEADER.format(v="1.2.3")
+        self.assertIn("/v1.2.3/brand/visuals/png/release-header-light-1600x546.png", h)
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.assertTrue(os.path.isfile(os.path.join(root, "brand/visuals/png/release-header-light-1600x546.png")))
+
 
 if __name__ == "__main__":
     unittest.main()

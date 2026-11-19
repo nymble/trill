@@ -11,6 +11,13 @@ cannot be released without written notes. Standard library only.
 import re
 import sys
 
+# Brand release header (brand/visuals/png/release-header-light-1600x546.png),
+# linked at the tag so the image matches the released tree.
+HEADER = (
+    "![Trillium {v}](https://raw.githubusercontent.com/nymble/trillium/v{v}/"
+    "brand/visuals/png/release-header-light-1600x546.png)"
+)
+
 DOWNLOADS = """\
 ## Downloads
 
@@ -55,7 +62,7 @@ def main() -> None:
     path = sys.argv[2] if len(sys.argv) == 3 else "CHANGELOG.md"
     with open(path, encoding="utf-8") as f:
         body = section(f.read(), version)
-    print(f"{body}\n\n{DOWNLOADS.format(v=version)}")
+    print(f"{HEADER.format(v=version)}\n\n{body}\n\n{DOWNLOADS.format(v=version)}")
 
 
 if __name__ == "__main__":
