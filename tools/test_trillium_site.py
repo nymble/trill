@@ -60,6 +60,34 @@ class TrilliumSiteTests(unittest.TestCase):
             self.assertNotRegex(html, r"\bTrill\b|\bBela\b|Trill Flex", p)
             self.assertNotRegex(html, r"\bF1\b|\bT2\b|\bT1\b", p)
 
+    def test_pages_lead_with_the_trillium_lockup(self):
+        # The M-of-N site header and nav are gone; pages open on the lockup.
+        # Titles and share text lead with Trillium. M-of-N stays a footer credit,
+        # and the privacy page still names who operates the app.
+        for p in PAGES:
+            html = read(p)
+            header = re.search(r'<header class="site-header">.*?</header>', html, re.S).group(0)
+            footer = re.search(r'<footer class="site-footer">.*?</footer>', html, re.S).group(0)
+            title = re.search(r"<title>([^<]+)</title>", html).group(1)
+            og = re.search(r'property="og:title" content="([^"]+)"', html).group(1)
+            self.assertIn('class="tr-lockup"', header, p)
+            self.assertNotIn("M-of-N", header, p)
+            self.assertNotRegex(header, r'class="brand"|class="nav"|aria-label="Primary"', p)
+            self.assertIn("Trillium", title, p)
+            self.assertIn("Trillium", og, p)
+            self.assertNotIn("M-of-N", title, p)
+            self.assertNotIn("M-of-N", og, p)
+            self.assertNotIn("og:site_name", html, p)
+            self.assertIn("&copy; 2026", footer, p)
+            self.assertIn("M-of-N", footer, p)
+            self.assertIn('href="/"', footer, p)
+            self.assertIn("trillium.css?v=3", html, p)
+        privacy = read("privacy/index.html")
+        self.assertIn("a project of M-of-N", privacy)
+        self.assertIn("Effective 19 November 2026", privacy)
+        self.assertIn("Bluetooth permission", privacy)
+        self.assertIn("does not use your device", privacy)
+
     def test_downloads_point_at_the_current_release(self):
         html = read("index.html")
         base = "https://github.com/nymble/trillium/releases/download/v0.7.0/"

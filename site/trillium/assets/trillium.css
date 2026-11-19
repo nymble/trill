@@ -24,23 +24,14 @@ body.ambient.trillium {
   font-family: var(--tr-font-ui);
 }
 
-/* Header: lockup left, site links right. */
+/* Header: the Trillium lockup only. M-of-N is a quiet footer credit. */
 body.ambient.trillium .site-header,
 body.ambient.trillium .page-banner { background-color: var(--tr-black); }
 body.ambient.trillium .site-header { border-bottom: 1px solid var(--tr-graphite); }
+/* Keep the lockup on the left: /style.css sends .wrap:not(:has(.brand)) to the right. */
 body.ambient.trillium .site-header .wrap { justify-content: flex-start; }
-body.ambient.trillium .tr-lockup { display: block; line-height: 0; margin-right: auto; }
+body.ambient.trillium .tr-lockup { display: block; line-height: 0; }
 body.ambient.trillium .tr-lockup img { display: block; width: auto; height: 32px; }
-body.ambient.trillium .site-header .brand { order: 2; font-size: .95rem; font-weight: 400; color: var(--tr-ash-light); }
-body.ambient.trillium .site-header .brand:hover { color: var(--tr-warm-white); }
-body.ambient.trillium .nav { order: 3; }
-body.ambient.trillium .nav a,
-body.ambient.trillium .menu summary { color: var(--tr-ash-light); }
-body.ambient.trillium .nav a:hover,
-body.ambient.trillium .menu summary:hover,
-body.ambient.trillium .menu[open] summary { color: var(--tr-warm-white); }
-body.ambient.trillium .menu ul { background: var(--tr-graphite); border-color: var(--tr-unavailable); border-radius: var(--tr-radius-control); box-shadow: none; }
-body.ambient.trillium .menu ul li a { color: var(--tr-warm-white); }
 
 /* Banner with the Light trails key visual, set off-centre to the right. */
 body.ambient.trillium .page-banner { padding-bottom: 2.5rem; }
@@ -104,10 +95,10 @@ body.ambient.trillium td strong { font-family: var(--tr-font-mono); font-weight:
 body.ambient.trillium figure.schematic img { border-color: var(--tr-graphite); border-radius: var(--tr-radius-card); background: var(--tr-warm-white); }
 body.ambient.trillium figure.schematic figcaption { color: var(--tr-ash); }
 
-/* Footer */
-body.ambient.trillium .site-footer { border-top-color: var(--tr-graphite); color: var(--tr-ash); }
-body.ambient.trillium .site-footer a { color: var(--tr-ash-light); text-decoration-color: var(--tr-unavailable); }
-body.ambient.trillium .site-footer a:hover { color: var(--tr-warm-white); }
+/* Footer: quiet M-of-N credit and legal links only. */
+body.ambient.trillium .site-footer { border-top-color: var(--tr-graphite); color: var(--tr-ash); font-size: .8rem; }
+body.ambient.trillium .site-footer a { color: var(--tr-ash); text-decoration: none; }
+body.ambient.trillium .site-footer a:hover { color: var(--tr-ash-light); text-decoration: underline; text-decoration-color: var(--tr-unavailable); }
 
 /* Print: the light ground from the kit; orange text becomes Rust. */
 @media print {
