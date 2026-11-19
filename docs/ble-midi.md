@@ -36,7 +36,7 @@ carries the USB-only image.
 | Link | One central at a time, no pairing or bonding; preferred connection interval 7.5–15 ms; advertising every 100 ms |
 | MIDI | The same instrument messages USB sends on cable 0, produced once by the event engine. Writes from the central are ignored |
 | Report | HELLO variant bit 4 (`0x10`) is set while BLE-MIDI is running. The diagnostics banner shows `ble-midi: <state> name="Trillium XXXX" packets=… dropped=…` |
-| Safe mode | After repeated crashes the board boots USB-only (no SoftDevice), as before |
+| Fallback | After repeated crashes (safe mode), or when no SoftDevice is found in flash (its info-struct magic), the board boots USB-only without enabling it. The banner line reports the SoftDevice found (e.g. `softdevice S140 7.3.0 fwid=0x0123`) |
 
 When both USB and a Bluetooth central are listening, every instrument
 message goes to both. If USB appears during a Bluetooth session, the

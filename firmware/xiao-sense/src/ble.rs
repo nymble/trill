@@ -77,6 +77,37 @@ const APP_BASE: u32 = raw::MBR_SIZE + raw::SD_FLASH_SIZE;
 /// SoftDevice base (right after the 4 KiB MBR).
 const SD_BASE: u32 = raw::MBR_SIZE;
 
+/// The SoftDevice's information struct in flash (read only).
+#[derive(Clone, Copy)]
+pub struct SoftDeviceInfo {
+    /// Firmware ID (S140 7.3.0 = 0x0123).
+    pub fwid: u16,
+    /// SoftDevice ID (140).
+    pub id: u32,
+    /// Version as `major * 1_000_000 + minor * 1_000 + bugfix`.
+    pub version: u32,
+}
+
+/// Read the SoftDevice information struct below the application. `None`
+/// when no SoftDevice is present (wrong magic): the BLE build then runs
+/// USB-only instead of calling into empty flash.
+pub fn softdevice_info() -> Option<SoftDeviceInfo> {
+    const MAGIC: u32 = 0x51B1_E5DB;
+    let at = |off: u32| -> u32 {
+        // SAFETY: aligned reads of on-chip flash inside the MBR/SoftDevice
+        // region, which is always mapped.
+        unsafe { core::ptr::read_volatile((SD_BASE + off) as *const u32) }
+    };
+    if at(raw::SOFTDEVICE_INFO_STRUCT_OFFSET + 4) != MAGIC {
+        return None;
+    }
+    Some(SoftDeviceInfo {
+        fwid: at(raw::SD_FWID_OFFSET) as u16,
+        id: at(raw::SD_ID_OFFSET),
+        version: at(raw::SD_VERSION_OFFSET),
+    })
+}
+
 /// Hand interrupt dispatch back to the MBR -> SoftDevice -> application
 /// chain the SoftDevice needs (its own RADIO/TIMER0/RTC0/POWER/SVC
 /// handlers must run first). The reset handler pointed VTOR at this image;

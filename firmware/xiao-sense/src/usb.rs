@@ -901,12 +901,24 @@ fn ble_report(out: &mut String<OUT_LEN>) {
         };
         let _ = write!(
             out,
-            "ble-midi: {} name=\"{}\" packets={} dropped={}\r\n",
+            "ble-midi: {} name=\"{}\" packets={} dropped={}",
             state,
             crate::ble::device_name().as_str(),
             BLE_PACKETS.load(Ordering::Relaxed),
             BLE_DROPPED.load(Ordering::Relaxed),
         );
+        let _ = match crate::ble::softdevice_info() {
+            Some(i) => write!(
+                out,
+                " | softdevice S{} {}.{}.{} fwid=0x{:04x}\r\n",
+                i.id,
+                i.version / 1_000_000,
+                i.version / 1_000 % 1_000,
+                i.version % 1_000,
+                i.fwid
+            ),
+            None => write!(out, " | no softdevice in flash\r\n"),
+        };
     }
     #[cfg(not(feature = "ble-midi"))]
     let _ = out;

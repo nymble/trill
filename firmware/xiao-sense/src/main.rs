@@ -180,10 +180,13 @@ fn main() -> ! {
     let report = REPORT.init(crash::take_boot_report(resetreas));
     let safe_mode = report.crashes >= crash::MAX_CRASHES;
     SAFE_MODE.store(safe_mode, Ordering::Relaxed);
-    // BLE build: interrupts must reach the SoftDevice first. Safe mode
-    // keeps the plain USB-only setup (VTOR on this image, no SoftDevice).
+    // BLE build: interrupts must reach the SoftDevice first. Safe mode,
+    // or a board without a SoftDevice in flash, keeps the plain USB-only
+    // setup (VTOR on this image, no SoftDevice).
     #[cfg(feature = "ble-midi")]
-    if !safe_mode {
+    let use_ble = !safe_mode && ble::softdevice_info().is_some();
+    #[cfg(feature = "ble-midi")]
+    if use_ble {
         ble::route_interrupts_through_softdevice();
     }
 
@@ -227,7 +230,7 @@ fn main() -> ! {
     // peripheral touched yet). Not in safe mode: a boot loop must not be
     // able to come from the radio stack.
     #[cfg(feature = "ble-midi")]
-    let ble = if safe_mode {
+    let ble = if !use_ble {
         None
     } else {
         interrupt::EGU2_SWI2.set_priority(Priority::P6);
