@@ -72,11 +72,17 @@ struct EndpointPicker: View {
         Picker(title, selection: $selection) {
             Text("None").tag(MIDIUniqueID?.none)
             ForEach(endpoints) { e in
-                Text(e.title + (e.isOffline ? " (offline)" : "") + (e.isBluetooth ? " · Bluetooth" : "")
-                     + (e.portIndex.map { " · port \($0 + 1)" } ?? ""))
-                    .tag(MIDIUniqueID?.some(e.id))
+                Text(label(e)).tag(MIDIUniqueID?.some(e.id))
             }
         }
+    }
+
+    private func label(_ e: MIDIEndpointInfo) -> String {
+        var parts: [String] = [e.title]
+        if e.isOffline { parts[0] += " (offline)" }
+        if e.isBluetooth { parts.append("Bluetooth") }
+        if let i = e.portIndex { parts.append("port \(i + 1)") }
+        return parts.joined(separator: " · ")
     }
 }
 
