@@ -202,10 +202,11 @@ struct InstrumentRing: View {
         ctx.stroke(circle(c, radius(s.rearmRatio)), with: .color(Color.Trillium.unavailable), style: StrokeStyle(lineWidth: 1, dash: [1, 3]))
         ctx.stroke(circle(c, radius(1)), with: .color(Color.Trillium.ashLight), style: StrokeStyle(lineWidth: 1, dash: [4, 3]))
         let small = Font.system(size: max(8, labelSize * 0.5)).monospaced()
+        // Scale labels sit on the S–SE boundary, clear of the note labels.
         ctx.draw(Text(String(format: "%.2f g", s.accelThreshold)).font(small).foregroundColor(Color.Trillium.ashLight),
-                 at: CGPoint(x: c.x + radius(1) * 0.72 + 4, y: c.y + radius(1) * 0.72 + 4), anchor: .topLeading)
+                 at: point(c, radius(1) + 8, 157.5))
         ctx.draw(Text("v127").font(small).foregroundColor(Color.Trillium.ash),
-                 at: CGPoint(x: c.x + rP * 0.72 + 2, y: c.y + rP * 0.72 + 2), anchor: .topLeading)
+                 at: point(c, rP - 8, 157.5))
 
         // Recent strikes as dots at their direction and strength.
         let recent = snapshot.recentStrikes.filter { $0.sector != nil }
@@ -396,7 +397,7 @@ struct InstrumentControls: View {
                     Picker("Scale", selection: $model.instrumentPrefs.scaleID) {
                         ForEach(HandpanScale.all) { s in Text(s.name).tag(s.id) }
                     }
-                    .labelsHidden().pickerStyle(.menu)
+                    .labelsHidden().pickerStyle(.menu).tint(Color.Trillium.warmWhite)
                     .onChange(of: model.instrumentPrefs.scaleID) { id in
                         if let s = HandpanScale.named(id) { model.instrumentPrefs.dingMIDI = s.ding.midi }
                     }
@@ -405,7 +406,7 @@ struct InstrumentControls: View {
                     Picker("Ding", selection: $model.instrumentPrefs.dingMIDI) {
                         ForEach(Array(HandpanScale.dingRange), id: \.self) { m in Text(SpelledNote.ding(midi: m).name).tag(m) }
                     }
-                    .labelsHidden().pickerStyle(.menu)
+                    .labelsHidden().pickerStyle(.menu).tint(Color.Trillium.warmWhite)
                 }
                 Picker("Layout", selection: $model.instrumentPrefs.layout) {
                     Text("Clockwise").tag(HandpanLayout.clockwise)
@@ -441,9 +442,9 @@ struct InstrumentControls: View {
                             Text("Set pose").tag(model.instrumentPrefs.settings.up)
                         }
                     }
-                    .labelsHidden().pickerStyle(.menu)
+                    .labelsHidden().pickerStyle(.menu).tint(Color.Trillium.warmWhite)
                 }
-                HStack {
+                VStack(alignment: .leading, spacing: 8) {
                     Button("Set current pose as up") { model.setCurrentPoseAsUp() }
                         .disabled(!model.instrumentSnapshot.readout.gravityValid)
                     Button("Make last strike N") { model.makeLastStrikeNorth() }
@@ -503,6 +504,7 @@ struct InstrumentControls: View {
                 Text(format(value.wrappedValue)).font(.callout.monospaced()).foregroundStyle(Color.Trillium.ashLight)
             }
             Slider(value: value, in: range, step: step).accessibilityLabel(title)
+                .tint(Color.Trillium.ashLight)
         }
     }
 }

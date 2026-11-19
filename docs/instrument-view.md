@@ -72,7 +72,7 @@ Settings are saved on the Mac, iPhone or iPad (not on the board).
 ## The screen
 
 - **Ring.** There are 8 sectors with their compass point, the ring 1 note (large) and the ring 2 note (small). The ring that tilt selects is bright and the other is dimmed. The ding sits in the centre.
-- **Live push.** A radial line shows direction and strength on a square-root scale. It's amber below threshold and turns orange, filling its sector, while it's over threshold: the only orange on the screen apart from the MIDI switch.
+- **Live push.** A radial line shows direction and strength on a square-root scale. It's amber below threshold and turns orange, filling its sector, while it's over threshold: the only orange on the screen apart from switches that are on. Sliders and pickers stay neutral.
 - **Threshold zones.** The dashed circle is the threshold, labelled in g. The dotted circle is the re-arm level, and the outer hairline is velocity 127.
 - **Last hit.** Outlined in amber, bright for 1.5 s. Recent strikes are dots at their direction and strength. A notch on the inner edge shows which way the up axis leans.
 - **Tilt strip.** Tilt from vertical on 0–90°, with the Ring 1, Ring 2 and Ding zones as areas and the current tilt as a line. **INVERTED** appears next to the scale name when the board is upside down.
