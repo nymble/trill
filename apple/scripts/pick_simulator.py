@@ -6,7 +6,8 @@ Usage:
   pick_simulator.py           # iPhone (default)
   pick_simulator.py iphone
   pick_simulator.py ipad
-  pick_simulator.py iphone-69 # 6.9" App Store size (1320x2868), e.g. iPhone 16/17 Pro Max
+  pick_simulator.py iphone-69 # 6.9" (1320x2868), e.g. iPhone 16/17 Pro Max
+  pick_simulator.py iphone-63 # 6.3"/6.1" (1206x2622 or 1179x2556), e.g. iPhone 16/17 Pro
   pick_simulator.py ipad-13   # 13" App Store size (2064x2752), e.g. iPad Pro 13-inch
 
 Used by `make apple-test-ios-sim`, `make apple-test-ipad-sim`,
@@ -28,6 +29,17 @@ IPHONE_69_NAMES = (
     "iPhone 16 Pro Max",
     "iPhone 17 Plus",
     "iPhone 16 Plus",
+)
+
+# Medium Dynamic Island iPhone (App Store Connect's required iPhone tab).
+# "iPhone 17 Pro" must not also match "iPhone 17 Pro Max".
+IPHONE_63_NAMES = (
+    "iPhone 17 Pro",
+    "iPhone 16 Pro",
+    "iPhone 15 Pro",
+    "iPhone 17",
+    "iPhone 16",
+    "iPhone 15",
 )
 
 IPAD_13_NAMES = (
@@ -70,10 +82,12 @@ def _runtimes(devices: dict[str, list[dict[str, Any]]]) -> list[str]:
 def pick(devices: dict[str, list[dict[str, Any]]], kind: str) -> dict[str, Any] | None:
     """Return the chosen device dict (with at least udid and name), or None."""
     kind = kind.lower()
-    if kind not in ("iphone", "ipad", "iphone-69", "ipad-13"):
-        raise ValueError(f"kind must be iphone, ipad, iphone-69 or ipad-13, not {kind!r}")
+    if kind not in ("iphone", "ipad", "iphone-69", "iphone-63", "ipad-13"):
+        raise ValueError(f"kind must be iphone, ipad, iphone-69, iphone-63 or ipad-13, not {kind!r}")
     if kind == "iphone-69":
         return pick_named(devices, IPHONE_69_NAMES, "iPhone")
+    if kind == "iphone-63":
+        return pick_named(devices, IPHONE_63_NAMES, "iPhone")
     if kind == "ipad-13":
         return pick_named(devices, IPAD_13_NAMES, "iPad")
     prefix = "iPad" if kind == "ipad" else "iPhone"
@@ -85,6 +99,16 @@ def pick(devices: dict[str, list[dict[str, Any]]], kind: str) -> dict[str, Any] 
             found = sorted(found, key=lambda d: (ipad_rank(str(d.get("name", ""))), str(d.get("name", ""))))
         return found[0]
     return None
+
+
+def name_matches(name: str, want: str) -> bool:
+    """Substring match that does not let 'iPhone 17 Pro' hit 'iPhone 17 Pro Max'."""
+    n, w = name.lower(), want.lower()
+    if w not in n:
+        return False
+    if "pro" in w and "max" not in w and "max" in n:
+        return False
+    return True
 
 
 def pick_named(
@@ -99,9 +123,7 @@ def pick_named(
             want_l = want.lower()
             for d in found:
                 name = str(d.get("name", ""))
-                if want_l in name.lower():
-                    # Don't let "iPad Pro 13-inch" also match a 12.9-inch device
-                    # and don't let "Pro Max" match a non-Max via short tokens.
+                if name_matches(name, want):
                     return d
     return None
 
@@ -138,7 +160,12 @@ def list_devicetypes() -> list[dict[str, Any]]:
 
 def try_create(kind: str) -> dict[str, Any] | None:
     """Create a preferred simulator if the device type and a usable runtime exist."""
-    names = IPHONE_69_NAMES if kind == "iphone-69" else IPAD_13_NAMES if kind == "ipad-13" else ()
+    names = (
+        IPHONE_69_NAMES if kind == "iphone-69"
+        else IPHONE_63_NAMES if kind == "iphone-63"
+        else IPAD_13_NAMES if kind == "ipad-13"
+        else ()
+    )
     types = list_devicetypes()
     runtimes = [r for r in list_runtimes() if r.get("isAvailable") and "iOS" in str(r.get("name", ""))]
     if not runtimes:
@@ -146,7 +173,7 @@ def try_create(kind: str) -> dict[str, Any] | None:
     runtimes.sort(key=lambda r: tuple(int(p) for p in re.findall(r"\d+", str(r.get("version", "")))), reverse=True)
     runtime = runtimes[0]
     for want in names:
-        dt = next((t for t in types if want.lower() in str(t.get("name", "")).lower()), None)
+        dt = next((t for t in types if name_matches(str(t.get("name", "")), want)), None)
         if not dt:
             continue
         ident = f"App Store {dt['name']}"
@@ -168,7 +195,7 @@ def pick_or_create(kind: str) -> dict[str, Any] | None:
     chosen = pick(list_available(), kind)
     if chosen:
         return chosen
-    if kind in ("iphone-69", "ipad-13"):
+    if kind in ("iphone-69", "iphone-63", "ipad-13"):
         return try_create(kind)
     return None
 
@@ -181,8 +208,8 @@ def main(argv: list[str] | None = None) -> int:
             print(__doc__.strip(), file=sys.stderr)
             return 0
         kind = args[0].lower()
-        if kind not in ("iphone", "ipad", "iphone-69", "ipad-13") or len(args) != 1:
-            print("usage: pick_simulator.py [iphone|ipad|iphone-69|ipad-13]", file=sys.stderr)
+        if kind not in ("iphone", "ipad", "iphone-69", "iphone-63", "ipad-13") or len(args) != 1:
+            print("usage: pick_simulator.py [iphone|ipad|iphone-69|iphone-63|ipad-13]", file=sys.stderr)
             return 2
     chosen = pick_or_create(kind)
     if not chosen:

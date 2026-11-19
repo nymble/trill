@@ -166,7 +166,8 @@ apple-ipad-sim: apple-ios-sim
 		--app $(APPLE_DD)/Build/Products/Debug-iphonesimulator/Trillium.app
 
 # App Store / TestFlight screenshots at Apple's required sizes: iPhone 6.9"
-# (1320x2868), iPad 13" (2064x2752) and Mac (2560x1600 or 2880x1800).
+# (1320x2868), iPhone 6.3"/6.1" (1206x2622 or 1179x2556), iPad 13"
+# (2064x2752) and Mac (2880x1800).
 # Home/connect is the real disconnected screen; other shots use --demo-hardware.
 # Used by the workflow_dispatch "app store screenshots" job. Pixel sizes are
 # checked in the script.

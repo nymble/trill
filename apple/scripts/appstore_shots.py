@@ -2,8 +2,9 @@
 # SPDX-License-Identifier: GPL-3.0-only
 """Capture App Store / TestFlight screenshots from the real app.
 
-iPhone 6.9" (1320x2868 portrait), iPad 13" (2064x2752 portrait) and Mac
-(2560x1600 or 2880x1800) from a macOS CI runner or a local Mac with Xcode.
+iPhone 6.9" (1320x2868) and the required App Store Connect iPhone tab sizes
+(1206x2622 or 1179x2556), iPad 13" (2064x2752) and Mac (2880x1800) from a
+macOS CI runner or a local Mac with Xcode.
 
 Home/connect is captured without hardware. The other four shots use
 `--demo-hardware` so Settings can show battery and Bluetooth, and Sensors
@@ -29,9 +30,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pick_simulator as ps
 
-IPHONE_SIZE = (1320, 2868)
-IPAD_SIZE = (2064, 2752)
-MAC_SIZES = ((2880, 1800), (2560, 1600))
+IPHONE_69_SIZES = ((1320, 2868), (1290, 2796), (1260, 2736))
+IPHONE_63_SIZES = ((1206, 2622), (1179, 2556))
+IPAD_SIZES = ((2064, 2752), (2048, 2732))
+MAC_PREFERRED = (2880, 1800)
+MAC_ACCEPTED = ((2880, 1800), (2560, 1600), (1440, 900), (1280, 800))
 
 SHOTS = (
     ("01-home-connect", ("--skip-splash", "--tab=home")),
@@ -41,7 +44,7 @@ SHOTS = (
     ("05-sensors-linear", ("--skip-splash", "--tab=sensors", "--sensors-page=linear", "--demo-hardware")),
 )
 
-DEFAULT_BUNDLE = "com.nymble.trill"
+DEFAULT_BUNDLE = "net.nymbus.trillium"
 
 
 def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
@@ -111,10 +114,11 @@ def bundle_id_from_app(app: Path) -> str:
     return DEFAULT_BUNDLE
 
 
-def capture_ios(kind: str, expected: tuple[int, int], app: Path, out: Path) -> list[dict]:
+def capture_ios(kind: str, accepted: tuple[tuple[int, int], ...], app: Path, out: Path) -> list[dict]:
+    wanted = " or ".join(f"{w}x{h}" for w, h in accepted)
     chosen = ps.pick_or_create(kind)
     if not chosen:
-        raise SystemExit(f"no {kind} simulator available (need a device that renders {expected[0]}x{expected[1]})")
+        raise SystemExit(f"no {kind} simulator available (need a device that renders {wanted})")
     udid = chosen["udid"]
     name = str(chosen.get("name", kind))
     print(f"using {name} ({udid}) for {kind}", flush=True)
@@ -136,10 +140,10 @@ def capture_ios(kind: str, expected: tuple[int, int], app: Path, out: Path) -> l
         simctl("io", udid, "screenshot", str(dest))
         w, h = png_size(dest)
         print(f"{dest} {w}x{h}", flush=True)
-        if (w, h) != expected:
+        if (w, h) not in accepted:
             raise SystemExit(
-                f"{dest} is {w}x{h}, expected {expected[0]}x{expected[1]} "
-                f"from {name}. Pick or create the matching simulator."
+                f"{dest} is {w}x{h}, expected {wanted} from {name}. "
+                "Pick or create the matching simulator."
             )
         records.append({"file": str(dest), "name": shot_name, "platform": kind, "device": name, "width": w, "height": h})
     simctl("terminate", udid, bundle, check=False, capture_output=True)
@@ -193,73 +197,53 @@ def launch_mac(binary: Path, args: tuple[str, ...], point_size: tuple[int, int])
     return subprocess.Popen(cmd, start_new_session=True)
 
 
+
 def capture_mac(app: Path, out: Path) -> list[dict]:
     binary = app / "Contents" / "MacOS" / "Trillium"
     if not binary.is_file():
-        # Some builds may use a different executable name.
         exe = list((app / "Contents" / "MacOS").glob("*"))
         if not exe:
             raise SystemExit(f"no macOS executable in {app}")
         binary = exe[0]
-    scale = mac_scale()
+    scale = max(mac_scale(), 1.0)
     print(f"mac display scale {scale}", flush=True)
-    # Prefer 2880x1800 if the scaled window will fit; otherwise 2560x1600.
-    visible = (4096, 2160)
-    try:
-        vis = swift_eval(
-            "import AppKit; let f = NSScreen.main?.visibleFrame ?? .zero; print(\"\\(Int(f.width)) \\(Int(f.height))\")"
-        )
-        parts = [int(x) for x in vis.split()]
-        if len(parts) == 2:
-            visible = (parts[0], parts[1])
-            print(f"mac visible frame {visible[0]}x{visible[1]} points", flush=True)
-    except (subprocess.CalledProcessError, ValueError):
-        pass
-
-    pixel_target = None
-    point_size = None
-    for pw, ph in MAC_SIZES:
-        pt = (int(round(pw / scale)), int(round(ph / scale)))
-        if pt[0] <= visible[0] and pt[1] <= visible[1]:
-            pixel_target = (pw, ph)
-            point_size = pt
-            break
-    if pixel_target is None or point_size is None:
-        # Last resort: use 2560x1600 points if the display is 1x and large enough,
-        # or accept whatever 2560x1600 pixels would require.
-        pixel_target = MAC_SIZES[1]
-        point_size = (int(round(pixel_target[0] / max(scale, 1))), int(round(pixel_target[1] / max(scale, 1))))
-        print(f"warning: visible frame may be tight for {pixel_target}; trying window {point_size} pt", flush=True)
-
+    # Always request 2880x1800 pixels. The app writes the PNG itself
+    # (`--screenshot-out`) so a small CI display cannot clip the shot.
+    pixel_target = MAC_PREFERRED
+    point_size = (int(round(pixel_target[0] / scale)), int(round(pixel_target[1] / scale)))
     print(f"mac target {pixel_target[0]}x{pixel_target[1]} pixels, window {point_size[0]}x{point_size[1]} pt", flush=True)
     out.mkdir(parents=True, exist_ok=True)
     records = []
     for shot_name, args in SHOTS:
         dest = out / f"{shot_name}.png"
-        proc = launch_mac(binary, args, point_size)
+        if dest.exists():
+            dest.unlink()
+        cmd = [
+            str(binary),
+            *args,
+            f"--window-size={point_size[0]}x{point_size[1]}",
+            f"--screenshot-out={dest}",
+        ]
+        print("+", " ".join(cmd), flush=True)
+        proc = subprocess.Popen(cmd, start_new_session=True)
         try:
-            deadline = time.time() + 20
-            ids: list[int] = []
+            deadline = time.time() + 30
             while time.time() < deadline:
-                if proc.poll() is not None:
-                    raise SystemExit(f"Trillium exited early with code {proc.returncode}")
-                ids = mac_window_ids("Trillium")
-                if ids:
+                if dest.is_file() and dest.stat().st_size > 1000:
+                    # Wait for a complete write.
+                    time.sleep(0.2)
                     break
-                time.sleep(0.4)
-            if not ids:
-                raise SystemExit("could not find a Trillium window to screenshot")
-            time.sleep(1.6)
-            # Recapture window id in case the first was a splash/transient.
-            ids = mac_window_ids("Trillium") or ids
-            run_ok(["screencapture", "-x", "-o", "-l", str(ids[0]), str(dest)])
+                if proc.poll() is not None and not dest.is_file():
+                    raise SystemExit(f"Trillium exited with code {proc.returncode} without writing {dest}")
+                time.sleep(0.2)
+            if not dest.is_file():
+                raise SystemExit(f"timed out waiting for {dest}")
             w, h = png_size(dest)
-            print(f"{dest} {w}x{h} (window {ids[0]})", flush=True)
-            if (w, h) != pixel_target:
-                # Title bar / frame may add pixels; try once more by shrinking content.
+            print(f"{dest} {w}x{h}", flush=True)
+            if (w, h) not in MAC_ACCEPTED and (w, h) != pixel_target:
                 raise SystemExit(
-                    f"{dest} is {w}x{h}, expected {pixel_target[0]}x{pixel_target[1]}. "
-                    "The Mac display scale or window chrome did not match."
+                    f"{dest} is {w}x{h}, expected {pixel_target[0]}x{pixel_target[1]} "
+                    f"(or another 16:10 App Store size {MAC_ACCEPTED})."
                 )
             records.append({
                 "file": str(dest),
@@ -297,17 +281,30 @@ def main() -> int:
     out = args.out
     out.mkdir(parents=True, exist_ok=True)
     records: list[dict] = []
+    errors: list[str] = []
+
+    def try_capture(label: str, fn) -> None:
+        try:
+            records.extend(fn())
+        except Exception as e:
+            errors.append(f"{label}: {e}")
+            print(f"ERROR {label}: {e}", file=sys.stderr, flush=True)
+
     if not args.skip_ios:
         if not args.ios_app or not args.ios_app.is_dir():
             raise SystemExit("--ios-app is required unless --skip-ios")
-        records += capture_ios("iphone-69", IPHONE_SIZE, args.ios_app, out / "iphone-6.9")
-        records += capture_ios("ipad-13", IPAD_SIZE, args.ios_app, out / "ipad-13")
+        try_capture("iphone-6.9", lambda: capture_ios("iphone-69", IPHONE_69_SIZES, args.ios_app, out / "iphone-6.9"))
+        try_capture("iphone-6.3", lambda: capture_ios("iphone-63", IPHONE_63_SIZES, args.ios_app, out / "iphone-6.3"))
+        try_capture("ipad-13", lambda: capture_ios("ipad-13", IPAD_SIZES, args.ios_app, out / "ipad-13"))
     if not args.skip_mac:
         if not args.mac_app or not args.mac_app.is_dir():
             raise SystemExit("--mac-app is required unless --skip-mac")
-        records += capture_mac(args.mac_app, out / "mac")
+        try_capture("mac", lambda: capture_mac(args.mac_app, out / "mac"))
     write_manifest(out, records)
     print("all App Store screenshots:", ", ".join(r["name"] + f" {r['width']}x{r['height']}" for r in records), flush=True)
+    if errors:
+        print("failed platforms:\n" + "\n".join(errors), file=sys.stderr, flush=True)
+        return 1
     return 0
 
 
