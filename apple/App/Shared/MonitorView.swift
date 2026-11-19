@@ -86,7 +86,7 @@ struct ChannelPanel: View {
                 ForEach(state.notes.keys.sorted(), id: \.self) { n in
                     Text("\(NoteName.name(n)) v\(state.notes[n] ?? 0)")
                         .padding(.horizontal, 6).padding(.vertical, 2)
-                        .background(Color.accentColor.opacity(0.2), in: Capsule())
+                        .background(Color.Trillium.signal.opacity(0.2), in: Capsule())
                 }
             }
             let semis = state.bendSemitones(range: bendRange)
@@ -111,5 +111,6 @@ struct EventList: View {
             }
         }
         .listStyle(.plain)
+        .trilliumGround()
     }
 }

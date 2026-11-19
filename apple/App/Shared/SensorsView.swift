@@ -27,9 +27,9 @@ struct ChartSeries: Identifiable {
     let dash: [CGFloat]
     let value: (TelemetryFrame) -> Double?
 
-    static let x = (Color.red, [CGFloat]())
-    static let y = (Color.green, [CGFloat(6), 3])
-    static let z = (Color.blue, [CGFloat(2), 3])
+    static let x = (Color.Trillium.warmWhite, [CGFloat]())
+    static let y = (Color.Trillium.amber, [CGFloat(6), 3])
+    static let z = (Color.Trillium.ashLight, [CGFloat(2), 3])
 }
 
 struct LineChart: View {
@@ -72,7 +72,7 @@ struct LineChart: View {
                 .font(.caption2.monospacedDigit()).foregroundStyle(.secondary).padding(2)
             }
             .frame(minHeight: 110, idealHeight: 140)
-            .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 6))
+            .background(Color.Trillium.graphite, in: RoundedRectangle(cornerRadius: 10))
             HStack(spacing: 14) {
                 ForEach(series) { s in
                     HStack(spacing: 4) {
@@ -169,6 +169,7 @@ struct SensorsView: View {
                 }
                 .padding()
             }
+            .trilliumGround()
             .navigationTitle("Sensors")
             .onAppear { model.sensorsVisible = true }
             .onDisappear { model.sensorsVisible = false }
@@ -244,8 +245,8 @@ struct SensorsView: View {
     private func orientation(_ t: TelemetryModel, _ end: Double, _ brk: Double) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             LineChart(title: "Orientation", unit: "°", points: t.points, series: [
-                ChartSeries(id: "Pitch", color: .orange, dash: [], value: { $0.imuValid ? $0.pitch : nil }),
-                ChartSeries(id: "Roll", color: .purple, dash: [6, 3], value: { $0.imuValid ? $0.roll : nil }),
+                ChartSeries(id: "Pitch", color: Color.Trillium.warmWhite, dash: [], value: { $0.imuValid ? $0.pitch : nil }),
+                ChartSeries(id: "Roll", color: Color.Trillium.amber, dash: [6, 3], value: { $0.imuValid ? $0.roll : nil }),
             ], end: end, window: t.window, breakAfter: brk, fixed: -180...180)
             Text("Pitch = atan2(−ax, √(ay²+az²)), range ±90°; roll = atan2(ay, az), range ±180°; in the IMU's own axes, gyro-smoothed (complementary filter). No yaw/heading: the board has no magnetometer. Axis directions relative to the case are not yet verified.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
@@ -299,7 +300,7 @@ struct StatusBanner: View {
             let fw: String = s.hello?.firmwareString ?? "?"
             return Info(title: "Update the firmware to see sensors",
                         detail: "This Trillium runs firmware \(fw); live sensors need \(TrillProtocol.telemetryMinimumFirmware) or newer. See Settings › Firmware. Playing works on the current firmware.",
-                        icon: "exclamationmark.triangle", color: .orange)
+                        icon: "exclamationmark.triangle", color: Color.Trillium.amber)
         }
         if let e = s.telemetryError {
             return Info(title: "Trillium refused the sensor stream", detail: e, icon: "xmark.octagon", color: .red)
@@ -308,7 +309,7 @@ struct StatusBanner: View {
             let n: Int = model.liveTelemetry.framesReceived - model.framesAtPause
             return Info(title: "Display paused",
                         detail: "Trillium is still streaming: \(n) frames received since pausing. Resume to see them.",
-                        icon: "pause.circle", color: .blue)
+                        icon: "pause.circle", color: Color.Trillium.ashLight)
         }
         if !model.sensorsLive {
             return Info(title: "Stream off", detail: "Turn on Stream to request sensor data.", icon: "stop.circle", color: .secondary)
@@ -317,13 +318,13 @@ struct StatusBanner: View {
             if let age = t.age(now: model.clock) {
                 return Info(title: "Sensor data is stale",
                             detail: String(format: "No frame for %.1f s. Values shown are the last ones received.", age),
-                            icon: "hourglass", color: .orange)
+                            icon: "hourglass", color: Color.Trillium.amber)
             }
-            return Info(title: "Waiting for sensor data…", detail: "Requested \(requested) Hz.", icon: "hourglass", color: .orange)
+            return Info(title: "Waiting for sensor data…", detail: "Requested \(requested) Hz.", icon: "hourglass", color: Color.Trillium.amber)
         }
         let detail: String = String(format: "%ld Hz requested, %.0f frames/s arriving. The display samples the %.0f Hz motion sensor; it doesn't show every reading.",
                                     requested, t.frameRate, t.imuRate)
-        return Info(title: "Live", detail: detail, icon: "dot.radiowaves.left.and.right", color: .green)
+        return Info(title: "Live", detail: detail, icon: "dot.radiowaves.left.and.right", color: Color.Trillium.connected)
     }
 }
 
@@ -336,7 +337,7 @@ struct TouchPanel: View {
             if let f = frame {
                 if f.trillState != .running {
                     Label("Linear sensor not detected (\(f.trillState.title))", systemImage: "questionmark.circle")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Color.Trillium.amber)
                     Text("This is different from “no touch”: the firmware cannot talk to the sensor over I²C.").font(.caption).foregroundStyle(.secondary)
                 } else {
                     let touches = f.displayTouches
@@ -344,7 +345,7 @@ struct TouchPanel: View {
                         ZStack(alignment: .leading) {
                             RoundedRectangle(cornerRadius: 6).fill(Color.secondary.opacity(0.15))
                             ForEach(Array(touches.enumerated()), id: \.offset) { i, touch in
-                                Circle().fill(Color.accentColor.opacity(i == 0 ? 1 : 0.7))
+                                Circle().fill(Color.Trillium.signal.opacity(i == 0 ? 1 : 0.7))
                                     .frame(width: 10 + 30 * touch.size, height: 10 + 30 * touch.size)
                                     .position(x: CGFloat(touch.position) * g.size.width, y: g.size.height / 2)
                             }
@@ -461,7 +462,7 @@ struct MicTestPanel: View {
 #endif
                 MicWaveform(samples: mic.waveform, level: mic.level)
                     .frame(minHeight: 80, idealHeight: 100)
-                    .background(Color.secondary.opacity(0.06), in: RoundedRectangle(cornerRadius: 6))
+                    .background(Color.Trillium.graphite, in: RoundedRectangle(cornerRadius: 10))
                     .accessibilityLabel("Microphone level")
                     .accessibilityValue(mic.wanted ? String(format: "%.0f percent", Double(mic.level) * 100) : "off")
                 HStack {
@@ -496,9 +497,9 @@ struct MicWaveform: View {
                 let y = size.height * CGFloat(1 - min(max(s * 4, 0), 1)) * 0.9 + size.height * 0.05
                 if i == 0 { path.move(to: CGPoint(x: x, y: y)) } else { path.addLine(to: CGPoint(x: x, y: y)) }
             }
-            ctx.stroke(path, with: .color(.accentColor), lineWidth: 1.5)
+            ctx.stroke(path, with: .color(Color.Trillium.amber), lineWidth: 1.5)
             let h = size.height * CGFloat(min(max(level, 0), 1))
-            ctx.fill(Path(CGRect(x: size.width - 8, y: size.height - h, width: 6, height: h)), with: .color(.accentColor.opacity(0.7)))
+            ctx.fill(Path(CGRect(x: size.width - 8, y: size.height - h, width: 6, height: h)), with: .color(Color.Trillium.amber.opacity(0.7)))
         }
     }
 }

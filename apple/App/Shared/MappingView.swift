@@ -28,7 +28,7 @@ struct AckBadge: View {
 
     var body: some View {
         if let a = model.session.acknowledged, a[param] != model.draft[param] {
-            Text("device: \(format(a[param]))").font(.caption).foregroundStyle(.orange)
+            Text("device: \(format(a[param]))").font(.caption).foregroundStyle(Color.Trillium.amber)
         }
     }
 }
@@ -96,7 +96,7 @@ struct MappingView: View {
     @ViewBuilder private func needsUpdate(_ unsupported: Bool, _ version: String) -> some View {
         if connected && unsupported {
             Label("Update Trillium's firmware to \(version) to use these settings.", systemImage: "arrow.down.circle")
-                .font(.caption).foregroundStyle(.orange)
+                .font(.caption).foregroundStyle(Color.Trillium.amber)
         }
     }
 
@@ -114,14 +114,14 @@ struct MappingView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(model.editingName.map { "Editing: \($0)" } ?? "Current sound").font(.headline)
                         if model.editing != .new, model.editing != .current, model.hasUnsavedPresetEdits {
-                            Text("Unsaved changes").font(.caption).foregroundStyle(.orange)
+                            Text("Unsaved changes").font(.caption).foregroundStyle(Color.Trillium.amber)
                         }
                     }
                     Spacer()
                     switch model.editing {
                     case .saved, .builtIn:
                         Button("Save") { model.saveEdits() }
-                            .buttonStyle(.borderedProminent)
+                            .buttonStyle(.trilliumPrimary)
                             .disabled(!model.hasUnsavedPresetEdits)
                             .keyboardShortcut("s", modifiers: .command)
                     case .current, .new:
@@ -131,7 +131,7 @@ struct MappingView: View {
                         saveAsName = model.editing == .new ? "" : (model.editingName.map { $0 + " copy" } ?? "")
                         showSaveAs = true
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.trilliumSecondary)
                 }
                 if case let .builtIn(id) = model.editing, model.isEdited(builtIn: id) {
                     Button("Restore the original \(model.editingName ?? "preset")", role: .destructive) { model.restoreBuiltIn(id) }
@@ -155,7 +155,7 @@ struct MappingView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 } else if !model.liveApply, model.hasUnappliedEdits {
                     Text("Orange values show what Trillium is using now; press Apply to send your edits.")
-                        .font(.caption).foregroundStyle(.orange)
+                        .font(.caption).foregroundStyle(Color.Trillium.amber)
                 }
             } footer: {
                 Text("Built-in presets can be refined and saved in place (Restore brings back the original). Trillium keeps settings until it is unplugged; presets keep them on this \(PresetsView.deviceWord).")
@@ -301,6 +301,7 @@ struct MappingView: View {
             }
         }
         .formStyle(.grouped)
+        .trilliumGround()
         .navigationTitle(model.editingName ?? "Sound & mapping")
         .alert(model.editing == .new ? "Save preset" : "Save as new preset", isPresented: $showSaveAs) {
             TextField("Name", text: $saveAsName)

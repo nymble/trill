@@ -33,6 +33,7 @@ struct AboutView: View {
             }
         }
         .formStyle(.grouped)
+        .trilliumGround()
         .navigationTitle("About")
     }
 }

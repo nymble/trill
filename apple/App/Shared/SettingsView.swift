@@ -35,6 +35,7 @@ struct SettingsView: View {
                     row(.about, "About Trillium", "info.circle", nil)
                 }
             }
+            .trilliumGround()
             .navigationTitle("Settings")
             .onAppear { model.hardwareVisible = true }
             .onDisappear { model.hardwareVisible = false }
@@ -58,7 +59,7 @@ struct SettingsView: View {
                     Text(title)
                     if let detail { Text(detail).font(.caption).foregroundStyle(.secondary) }
                 }
-            } icon: { Image(systemName: symbol) }
+            } icon: { Image(systemName: symbol).foregroundStyle(TrilliumIconState.rest.color) }
         }
     }
 }
@@ -121,7 +122,7 @@ struct ConnectionView: View {
                 EndpointPicker(title: "Requests to", endpoints: model.destinations, selection: $model.configDestinationID)
                 if model.configDestinationID != nil, !model.destinationLooksLikeTrill {
                     Label("This destination doesn't look like Trillium. Settings messages use a development SysEx ID that other devices normally ignore.", systemImage: "exclamationmark.triangle")
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Color.Trillium.amber)
                 }
             } header: {
                 Text("Port 2: settings")
@@ -130,6 +131,7 @@ struct ConnectionView: View {
             }
         }
         .formStyle(.grouped)
+        .trilliumGround()
         .navigationTitle("Connection")
     }
 }
@@ -143,7 +145,7 @@ struct StatusRow: View {
             switch s.phase {
             case .disconnected: Label("Not connected", systemImage: "circle").foregroundStyle(.secondary)
             case .handshaking: Label("Connecting…", systemImage: "hourglass")
-            case .ready: Label("Connected", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+            case .ready: Label("Connected", systemImage: "checkmark.circle.fill").foregroundStyle(Color.Trillium.connected)
             case let .failed(why): Label(why, systemImage: "xmark.octagon").foregroundStyle(.red)
             }
             if let h = s.hello {
@@ -158,7 +160,7 @@ struct StatusRow: View {
             }
             if s.deviceRestarted {
                 Text("Trillium restarted since the last connection, so its settings went back to defaults.")
-                    .font(.caption).foregroundStyle(.orange)
+                    .font(.caption).foregroundStyle(Color.Trillium.amber)
             }
             if let p = s.pending { Text("Waiting for reply to request \(p.id)…").font(.caption).foregroundStyle(.secondary) }
         }
@@ -193,6 +195,7 @@ struct DeviceToolsView: View {
             }
         }
         .formStyle(.grouped)
+        .trilliumGround()
         .navigationTitle("Device")
         .confirmationDialog("Restore firmware defaults on Trillium?", isPresented: $confirmRestore) {
             Button("Restore defaults", role: .destructive) { model.perform(.restoreDefaults) }

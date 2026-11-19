@@ -59,13 +59,13 @@ struct BluetoothMIDIButton: View {
                 Button {
                     showPanel = true
                 } label: {
-                    Label("Bluetooth MIDI…", systemImage: "dot.radiowaves.left.and.right")
+                    Label { Text("Bluetooth MIDI…") } icon: { TrilliumIcon(name: "wireless") }
                 }
                 #else
                 Button {
                     BluetoothMIDIWindow.show()
                 } label: {
-                    Label("Bluetooth MIDI…", systemImage: "dot.radiowaves.left.and.right")
+                    Label { Text("Bluetooth MIDI…") } icon: { TrilliumIcon(name: "wireless") }
                 }
                 Button("Audio MIDI Setup") { BluetoothMIDIWindow.openAudioMIDISetup() }
                 #endif

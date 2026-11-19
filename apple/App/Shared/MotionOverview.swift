@@ -113,7 +113,7 @@ struct MotionOverview: View {
             Text("Every tap plays \(NoteName.name(UInt8(c[.percussionNote]))). Turn on strike directions (editor section 4) to give each direction its own note.")
                 .font(.caption).foregroundStyle(.secondary)
         } else if model.session.unsupported(.strikeDirections) {
-            Text("Strike directions need firmware \(TrillProtocol.strikesMinimumFirmware).").font(.caption).foregroundStyle(.orange)
+            Text("Strike directions need firmware \(TrillProtocol.strikesMinimumFirmware).").font(.caption).foregroundStyle(Color.Trillium.amber)
         } else {
             Text("The arrow shows the direction of the last strike, read from the note Trillium sent. A strike that wasn't clearly one way plays the \"unclear\" note and lights the centre.")
                 .font(.caption).foregroundStyle(.secondary)
@@ -137,12 +137,12 @@ struct BoardPose: View {
             ZStack {
                 RoundedRectangle(cornerRadius: 14)
                     .fill(LinearGradient(colors: [Color(white: 0.32), Color(white: 0.18)], startPoint: .top, endPoint: .bottom))
-                RoundedRectangle(cornerRadius: 6).fill(.purple.opacity(0.55))
+                RoundedRectangle(cornerRadius: 6).fill(Color.Trillium.graphite)
                     .frame(width: 150, height: 18)
                 if let touch {
-                    Circle().fill(.yellow).frame(width: 16, height: 16).offset(x: CGFloat(touch - 0.5) * 150)
+                    Circle().fill(Color.Trillium.signal).frame(width: 16, height: 16).offset(x: CGFloat(touch - 0.5) * 150)
                 }
-                Image(systemName: "arrow.up").font(.caption.bold()).foregroundStyle(.white.opacity(0.7)).offset(y: -34)
+                Image(systemName: "arrow.up").font(.caption.bold()).foregroundStyle(Color.Trillium.warmWhite.opacity(0.7)).offset(y: -34)
             }
             .frame(width: 190, height: 96)
             .rotation3DEffect(.degrees(pitch), axis: (x: 1, y: 0, z: 0), perspective: 0.5)
@@ -179,24 +179,24 @@ struct BubbleLevel: View {
                     .stroke(.secondary.opacity(0.3), lineWidth: 1)
                 if let gate {
                     // Notes sound above the gate line (forward tilt ≥ gate), between ±span roll.
-                    Rectangle().fill(.green.opacity(0.18))
+                    Rectangle().fill(Color.Trillium.amber.opacity(0.18))
                         .frame(width: 2 * span * s, height: max(0, (90 - gate) * s))
                         .position(x: c.x, y: c.y - (gate + (90 - gate) / 2) * s)
                         .clipShape(Circle().size(width: 2 * r, height: 2 * r).offset(x: c.x - r, y: c.y - r))
                     Path { p in p.move(to: CGPoint(x: c.x - span * s, y: c.y - gate * s)); p.addLine(to: CGPoint(x: c.x + span * s, y: c.y - gate * s)) }
-                        .stroke(.green, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                        .stroke(Color.Trillium.amber, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
                 }
                 if let o = octaveLines {
                     ForEach([o, -o], id: \.self) { d in
                         Path { p in p.move(to: CGPoint(x: c.x - r, y: c.y - d * s)); p.addLine(to: CGPoint(x: c.x + r, y: c.y - d * s)) }
-                            .stroke(.blue, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
-                        Text(d > 0 ? "octave up" : "octave down").font(.caption2).foregroundStyle(.blue)
+                            .stroke(Color.Trillium.ashLight, style: StrokeStyle(lineWidth: 1.5, dash: [4, 3]))
+                        Text(d > 0 ? "octave up" : "octave down").font(.caption2).foregroundStyle(Color.Trillium.ashLight)
                             .position(x: c.x, y: c.y - d * s + (d > 0 ? -8 : 8))
                     }
                 }
                 let x = max(-90, min(90, roll)) * s
                 let y = max(-90, min(90, pitch)) * s
-                Circle().fill(Color.accentColor).frame(width: 22, height: 22)
+                Circle().fill(Color.Trillium.signal).frame(width: 22, height: 22)
                     .shadow(radius: 2)
                     .position(x: c.x + x, y: c.y - y)
             }
@@ -221,7 +221,7 @@ struct MotionMeter: View {
                 let scale = full > 0 ? g.size.width / (full * 1.5) : 0
                 ZStack(alignment: .leading) {
                     Capsule().fill(.quaternary)
-                    Capsule().fill(value >= full ? Color.orange : Color.accentColor)
+                    Capsule().fill(value >= full ? Color.Trillium.signal : Color.Trillium.amber)
                         .frame(width: min(g.size.width, max(4, value * scale)))
                     if let mark {
                         Rectangle().fill(.primary).frame(width: 2).offset(x: mark * full * scale)
@@ -308,7 +308,7 @@ struct NoteRuler: View {
                         }
                     }
                     if let p = position {
-                        Circle().fill(sounding ? Color.green : Color.secondary)
+                        Circle().fill(sounding ? Color.Trillium.signal : Color.secondary)
                             .frame(width: 16, height: 16)
                             .offset(x: g.size.width * p - 8)
                     }
@@ -340,7 +340,7 @@ struct StrikeCompass: View {
             let c = CGPoint(x: g.size.width / 2, y: g.size.height / 2)
             let r = min(g.size.width, g.size.height) / 2 - 22
             ZStack {
-                Circle().fill(fresh && hit?.direction == nil ? Color.orange.opacity(max(0, 1 - age / 1.5)) : Color.secondary.opacity(0.15))
+                Circle().fill(fresh && hit?.direction == nil ? Color.Trillium.signal.opacity(max(0, 1 - age / 1.5)) : Color.secondary.opacity(0.15))
                     .frame(width: 44, height: 44).position(c)
                 Text(hit.map { NoteName.name(UInt8($0.note)) } ?? "–").font(.caption.monospacedDigit()).position(c)
                 ForEach(StrikeDirection.allCases, id: \.self) { d in
@@ -352,7 +352,7 @@ struct StrikeCompass: View {
                         Text(on ? "\(d.name) \(SensorMode(rawValue: config[.mode]) == .tiltStrike ? d.chordTone : NoteName.name(UInt8(config[d.param])))" : d.name)
                             .font(.caption2)
                     }
-                    .foregroundStyle(lit ? Color.orange : on ? Color.primary : Color.secondary.opacity(0.4))
+                    .foregroundStyle(lit ? Color.Trillium.signal : on ? Color.primary : Color.Trillium.unavailable)
                     .scaleEffect(lit ? 1.25 : 1)
                     .position(x: c.x + p.x, y: c.y + p.y)
                 }
@@ -394,7 +394,7 @@ struct ZoneStrip: View {
                         let x0 = x(t.edge(k)), x1 = x(t.edge(k + 1))
                         let on = sel == k
                         RoundedRectangle(cornerRadius: 4)
-                            .fill(on ? Color.green.opacity(0.75) : (k % 2 == 0 ? Color.secondary.opacity(0.18) : Color.secondary.opacity(0.10)))
+                            .fill(on ? Color.Trillium.signal.opacity(0.75) : (k % 2 == 0 ? Color.secondary.opacity(0.18) : Color.secondary.opacity(0.10)))
                             .frame(width: max(1, x1 - x0 - 2), height: 30)
                             .offset(x: x0 + 1)
                         Text(NoteName.name(UInt8(t.note(zone: k, octave: octave))))

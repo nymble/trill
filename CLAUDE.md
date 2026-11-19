@@ -12,3 +12,7 @@ Hard rules:
 - Say exactly what was tested on hardware versus only in CI or simulation.
 
 Before committing: `make ci` (Rust + firmware), `make apple-test` (TrillKit), and `make protocol-vectors` if the protocol changed.
+
+## Brand
+Anything visual (icons, UI colors, web, release notes, social) follows `brand/BRAND.md`.
+Use files in `brand/` and tokens in `brand/tokens/`; never hand-type hex values or redraw the mark.

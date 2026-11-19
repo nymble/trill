@@ -17,7 +17,7 @@ FW_ELF  := $(FW_DIR)/target/thumbv7em-none-eabihf/release/xiao-sense-fw
 FW_UF2  := $(DIST)/xiao-sense-fw-$(VERSION).uf2
 
 .PHONY: all ci fmt fmt-check clippy test tools-test check-thumb fw fw-check fw-uf2 fw-uf2-pcm fw-uf2-ble synth-demo build pi-zero pi-arm64 x86-musl dist clean \
-        protocol-vectors apple apple-project apple-test apple-test-ios-sim apple-test-ipad-sim apple-mac apple-ios-sim apple-ios-device apple-ipad-sim apple-ios-ipa apple-dist apple-dmg apple-icon apple-firmware test-kit
+        protocol-vectors apple apple-project apple-test apple-test-ios-sim apple-test-ipad-sim apple-mac apple-ios-sim apple-ios-device apple-ipad-sim apple-ios-ipa apple-dist apple-dmg apple-firmware test-kit
 
 all: ci
 
@@ -130,14 +130,10 @@ apple: apple-test apple-mac apple-ios-sim apple-ios-device apple-dist
 apple-project:
 	cd $(APPLE) && $(XCODEGEN) generate --spec project.yml
 
-# Regenerate the app icon PNGs (committed) from the CoreGraphics drawing.
 # Put this version's firmware (FW_UF2, from `make fw-uf2` or a CI artifact)
 # into apple/Firmware, which the app bundles and can install.
 apple-firmware:
 	python3 $(APPLE)/scripts/bundle_firmware.py $(FW_UF2) $(VERSION)
-
-apple-icon:
-	swift $(APPLE)/scripts/make_app_icon.swift $(APPLE)/App/Shared/Assets.xcassets/AppIcon.appiconset
 
 # TrillKit tests on the host (macOS: also the CoreMIDI loopback tests;
 # Linux: protocol/model/UF2 tests only).

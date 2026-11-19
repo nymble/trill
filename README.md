@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: light)" srcset="brand/wordmark/lockup-on-warm-white.svg">
+  <img alt="trillium" src="brand/wordmark/lockup-primary-on-black.svg" width="390">
+</picture>
+
 # Using the Trill
 
 Open hardware designs and Rust software for musical instruments that start with one inexpensive microcontroller and a free app.
