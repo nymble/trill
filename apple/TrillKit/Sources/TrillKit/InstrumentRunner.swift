@@ -20,6 +20,8 @@ public final class InstrumentRunner: @unchecked Sendable {
         public var history: [Double] = []
         public var historyTimes: [Double] = []
         public var strikeTimes: [Double] = []
+        /// The last few strikes, oldest first (for the ring's strike marks).
+        public var recentStrikes: [InstrumentStrike] = []
         public var strikes = 0
         public var framesSeen = 0
         public init() {}
@@ -116,6 +118,8 @@ public final class InstrumentRunner: @unchecked Sendable {
             snap.lastStrikeHostTime = hostTime
             snap.strikes += 1
             snap.strikeTimes.append(hostTime)
+            snap.recentStrikes.append(s)
+            if snap.recentStrikes.count > 12 { snap.recentStrikes.removeFirst(snap.recentStrikes.count - 12) }
             if sendStore != nil, (0...127).contains(note.midi) {
                 let ch = UInt8(channelStore)
                 if sounding[note.midi] != nil { messages.append([0x80 | ch, UInt8(note.midi), 0]) }

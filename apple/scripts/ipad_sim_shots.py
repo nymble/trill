@@ -30,7 +30,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import pick_simulator as ps
 
-TABS = ("home", "presets", "sensors", "settings")
+TABS = ("home", "presets", "sensors", "settings", "instrument")
 ORIENTATIONS = ("portrait", "landscape")
 EXPECTED = [f"{tab}-{orient}.png" for tab in TABS for orient in ORIENTATIONS]
 DEFAULT_BUNDLE = "com.nymble.trill"
@@ -254,7 +254,8 @@ def simctl_fallback(udid: str, app: Path, bundle: str, out: Path) -> None:
     for tab in TABS:
         simctl("terminate", udid, bundle, check=False)
         time.sleep(0.5)
-        simctl("launch", udid, bundle, "--skip-splash", f"--tab={tab}")
+        extra = ["--instrument-demo"] if tab == "instrument" else []
+        simctl("launch", udid, bundle, "--skip-splash", f"--tab={tab}", *extra)
         time.sleep(2.5)
         dest = out / f"{tab}-portrait.png"
         if dest.exists() and dest.stat().st_size >= 100:

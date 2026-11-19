@@ -42,6 +42,7 @@ struct PresetsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
                     statusLine
+                    InstrumentEntryCard()
                     Text("Built in").font(.headline)
                     LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
                         ForEach(model.builtIns) { p in
@@ -92,6 +93,7 @@ struct PresetsView: View {
             .trilliumGround()
             .navigationTitle("Presets")
             .navigationDestination(isPresented: $showEditor) { MappingView() }
+            .navigationDestination(isPresented: $model.showInstrument) { InstrumentView() }
             .confirmationDialog("Restore the original \(confirmRestore?.name ?? "")?", isPresented: Binding(
                 get: { confirmRestore != nil }, set: { if !$0 { confirmRestore = nil } })) {
                 Button("Restore original", role: .destructive) {
