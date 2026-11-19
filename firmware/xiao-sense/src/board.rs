@@ -12,6 +12,10 @@
 //! | Mic PDM CLK / DATA / power | P1.00 / P0.16 / P1.10 | test capture, off by default; power pin low when off |
 //! | LED red / green / blue | P0.26 / P0.30 / P0.06 | common-anode RGB to 3V3, active low; R7 2.2 k / R4 10 k / R3 2.2 k |
 //! | Charge LED (red, CHG0) | — | driven by the BQ25101 ~CHG output (net also on P0.17); not firmware-controlled |
+//! | Charger ~CHG status | P0.17 | input, no pull; LOW = charging (meaningful with USB power only) |
+//! | READ_BAT (divider enable) | P0.14 | **output LOW from boot, always** (Seeed: never HIGH while charging) |
+//! | Battery voltage | P0.31 / AIN7 | VBAT × 510 k / (1 M + 510 k), SAADC 12 bit, 1/6 gain, 0.6 V ref |
+//! | Charge current select | P0.13 | not driven (input = 50 mA; LOW would select 100 mA) |
 
 /// Microphone test capture (Hz). 16 kHz is the nRF52840 PDM rate with a
 /// 1.280 MHz clock and RATIO 80; it is also what this board's microphone

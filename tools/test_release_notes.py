@@ -40,6 +40,7 @@ class ReleaseNotesTests(unittest.TestCase):
     def test_downloads_name_the_version(self):
         notes = rn.DOWNLOADS.format(v="1.2.3")
         self.assertIn("xiao-sense-fw-1.2.3.uf2", notes)
+        self.assertIn("xiao-sense-fw-ble-midi-1.2.3.uf2", notes)
         self.assertIn("Trillium-iOS-Simulator-1.2.3.zip", notes)
         self.assertIn("Trillium-macOS-unsigned-dev-1.2.3.zip", notes)
         self.assertIn("Trillium-macOS-1.2.3.dmg", notes)

@@ -23,6 +23,7 @@ status-led = { path = "../../crates/status-led" }
 instrument-events = { path = "../../crates/instrument-events" }
 trill-usb = { path = "../../crates/trill-usb" }
 trill-config = { path = "../../crates/trill-config" }
+trill-board = { path = "../../crates/trill-board" }
 embassy-nrf = { version = "0.11.0", features = ["nrf52840", "time-driver-rtc1", "gpiote", "time", "unstable-pac"] }
 embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread", "executor-interrupt"] }
 embassy-time = "0.5.1"
@@ -38,6 +39,7 @@ critical-section = { version = "1.2", features = ["restore-state-bool"] }
 cortex-m-rt = { version = "0.7.5", features = ["set-vtor"] }
 heapless = "0.9"
 ble-midi = { path = "../../crates/ble-midi", optional = true }
+embedded-storage-async = { version = "0.4.1", optional = true }
 # Uses the S140 7.3.0 SoftDevice that the factory bootloader already keeps
 # in flash; nothing here writes it. Pinned to a reviewed commit.
 nrf-softdevice = { git = "https://github.com/embassy-rs/nrf-softdevice", rev = "b0ac850c0a5a05b8a5aef4f752b48115755b8542", default-features = false, features = ["nrf52840", "s140", "ble-peripheral", "ble-gatt-server", "critical-section-impl", "usable-from-interrupts"], optional = true }
@@ -56,7 +58,7 @@ timing-gpio = []
 # USB MIDI. Links with link/memory-ble.x (RAM below 0x20008000 is the
 # SoftDevice's). For battery boards (T1 and up); published as a separate
 # app-only UF2.
-ble-midi = ["dep:nrf-softdevice", "dep:ble-midi"]
+ble-midi = ["dep:nrf-softdevice", "dep:ble-midi", "dep:embedded-storage-async"]
 
 [profile.release]
 opt-level = 3

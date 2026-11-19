@@ -40,6 +40,7 @@ Trillium is the Apple app. Trill is the name of the firmware, this repository, a
 - [Protocol notes](docs/protocol.md): I²C memory map, commands, data formats, and scaling.
 - [Building](docs/build.md): host checks and cross-compiling (Pi Zero ARMv6, 64-bit Pi, Cortex-M4F).
 - [Releasing and deployment](docs/releasing.md): release workflow, artifacts, checksums, installing on a Pi or ZPOD.
+- [Battery detection and level](docs/battery.md) and [MIDI over Bluetooth LE](docs/ble-midi.md): battery voltage, charge and presence reported by every firmware; the Bluetooth build has separate Discoverable and Bluetooth MIDI switches and runs Bluetooth only when a battery is detected.
 - [Roadmap and design status](docs/roadmap.md): instrument pipeline, model lineup, planned UI terms, device identification, BLE-MIDI, microphone.
 - [Microphone research](docs/research/microphone.md): next-release test path for the Sense PDM mic (chart and Mac play-through), with rates, transports and constraints.
 - [Changelog](CHANGELOG.md)

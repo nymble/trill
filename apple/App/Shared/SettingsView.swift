@@ -17,9 +17,18 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack(path: $model.settingsPath) {
             List {
-                Section("Detected hardware") {
+                Section {
                     HardwareSummaryView()
-                    if model.hardware.bleMIDI { BluetoothMIDIButton() }
+                    if model.hardware.bleMIDI {
+                        BluetoothControls()
+                        BluetoothMIDIButton()
+                    }
+                } header: {
+                    HStack {
+                        Text("Detected hardware")
+                        Spacer()
+                        BatteryIndicator()
+                    }
                 }
                 Section {
                     row(.mapping, "Sound & mapping", "slider.horizontal.3",
@@ -105,6 +114,7 @@ struct ConnectionView: View {
                 }
             }
             Section {
+                if model.hardware.bleMIDI { BluetoothControls() }
                 BluetoothMIDIButton()
             } header: {
                 Text("Bluetooth MIDI")
@@ -219,5 +229,61 @@ struct HardwareSummaryView: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// Small battery indicator: symbol plus percent, shown when the board
+/// reports a battery. Nothing is shown otherwise.
+struct BatteryIndicator: View {
+    @EnvironmentObject var model: AppModel
+
+    var body: some View {
+        if let s = model.hardware.status, s.battery == .present {
+            Label {
+                Text(s.batteryPercent.map { "\($0) %" } ?? "battery")
+            } icon: {
+                Image(systemName: s.batterySymbol)
+            }
+            .labelStyle(.titleAndIcon)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .accessibilityLabel("Battery \(s.batteryText)")
+        }
+    }
+}
+
+/// The two Bluetooth switches, kept separate: Discoverable (advertising, so
+/// a host can find the board) and Bluetooth MIDI (the MIDI service). Both
+/// are stored on the board. Bluetooth needs a battery; without one the
+/// switches are disabled and say why.
+struct BluetoothControls: View {
+    @EnvironmentObject var model: AppModel
+
+    var body: some View {
+        let status = model.session.status
+        let ready = model.session.isReady && status != nil
+        let powered = status?.bluetoothPowered ?? false
+        VStack(alignment: .leading, spacing: 6) {
+            Toggle("Discoverable", isOn: Binding(
+                get: { status?.discoverable ?? false },
+                set: { model.setDiscoverable($0) }))
+            Toggle("Bluetooth MIDI", isOn: Binding(
+                get: { status?.bluetoothMIDI ?? false },
+                set: { model.setBluetoothMIDI($0) }))
+            if let s = status {
+                Text("\(s.discoverableText) · \(s.bluetoothMIDIText)")
+                    .font(.caption).foregroundStyle(.secondary)
+                if let why = s.offExplanation {
+                    Label(why, systemImage: s.offReason == .noBattery ? "battery.0" : "info.circle")
+                        .font(.caption)
+                        .foregroundStyle(s.offReason == .noBattery ? Color.orange : Color.secondary)
+                }
+            } else {
+                Text("Reading Bluetooth status…").font(.caption).foregroundStyle(.secondary)
+            }
+            Text("Settings are saved on Trillium. USB MIDI always works, whatever these are set to.")
+                .font(.caption2).foregroundStyle(.secondary)
+        }
+        .disabled(!ready || !powered)
     }
 }

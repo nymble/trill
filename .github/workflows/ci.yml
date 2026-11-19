@@ -33,7 +33,7 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       - name: no_std libraries for Cortex-M4F (nRF52840)
-        run: cargo build -p trill-driver -p lsm6ds3trc -p motion-synth -p status-led -p instrument-events -p trill-usb -p trill-config -p ble-midi --target thumbv7em-none-eabihf --locked
+        run: cargo build -p trill-driver -p lsm6ds3trc -p motion-synth -p status-led -p instrument-events -p trill-usb -p trill-config -p trill-board -p ble-midi --target thumbv7em-none-eabihf --locked
       - name: Protocol vectors are current (shared with the Swift tests)
         run: |
           cargo run -q --locked -p trill-config --example vectors > /tmp/vectors.txt

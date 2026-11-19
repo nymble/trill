@@ -402,6 +402,16 @@ final class AppModel: ObservableObject {
         if session.perform(a, now: now) { sessionRevision += 1 }
     }
 
+    /// Bluetooth discoverability (stored on the board; Bluetooth firmware only).
+    func setDiscoverable(_ on: Bool) {
+        if session.setDiscoverable(on, now: now) { sessionRevision += 1 }
+    }
+
+    /// Bluetooth MIDI service (stored on the board; Bluetooth firmware only).
+    func setBluetoothMIDI(_ on: Bool) {
+        if session.setBluetoothMIDI(on, now: now) { sessionRevision += 1 }
+    }
+
     /// Edits the connected firmware could take (page-1 edits on firmware
     /// 0.3.0 are not counted: they are never sent there).
     var hasUnappliedEdits: Bool { !session.unappliedChanges(draft).isEmpty }
@@ -429,6 +439,7 @@ final class AppModel: ObservableObject {
         let pending = session.pending
         session.tick(now: now)
         session.maintainTelemetry(desiredRate: sensorsVisible && sensorsLive ? telemetryRateHz : hardwareVisible ? 10 : nil, now: now)
+        session.maintainStatus(now: now)
         if now - lastUSBScan > 1 {
             lastUSBScan = now
             let scan = TrilliumUSB.scan()
@@ -483,7 +494,7 @@ final class AppModel: ObservableObject {
     var hardware: HardwareSummary {
         let fresh = (liveTelemetry.age(now: MIDIClient.now()) ?? .infinity) < 2 ? liveTelemetry.latest : nil
         return HardwareSummary(hello: session.isReady ? session.hello : nil, telemetry: fresh,
-                               usb: usb.info, microphoneOn: mic.wanted)
+                               usb: usb.info, microphoneOn: mic.wanted, status: session.status)
     }
 
     func resetSensors() {

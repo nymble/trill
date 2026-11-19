@@ -1010,6 +1010,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "trill-board"
+version = "0.7.0"
+dependencies = [
+ "trill-config",
+]
+
+[[package]]
 name = "trill-config"
 version = "0.7.0"
 dependencies = [
@@ -1159,6 +1166,7 @@ dependencies = [
  "embassy-time",
  "embassy-usb",
  "embedded-hal 1.0.0",
+ "embedded-storage-async",
  "heapless",
  "instrument-events",
  "lsm6ds3trc",
@@ -1166,6 +1174,7 @@ dependencies = [
  "nrf-softdevice",
  "static_cell",
  "status-led",
+ "trill-board",
  "trill-config",
  "trill-driver",
  "trill-usb",

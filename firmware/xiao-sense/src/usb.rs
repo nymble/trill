@@ -351,13 +351,15 @@ async fn config_request(msg: &[u8], truncated: bool) {
             trill_config::VARIANT_MIC
         } else {
             0
-        } | if ble_midi_running() {
+        } | if BLE_AVAILABLE.load(Ordering::Relaxed) {
             trill_config::VARIANT_BLE_MIDI
         } else {
             0
-        } | trill_config::VARIANT_MULTI_TOUCH,
+        } | trill_config::VARIANT_MULTI_TOUCH
+            | trill_config::VARIANT_STATUS,
         uptime_s: Instant::now().as_secs() as u32,
         boot_id: BOOT_ID.load(Ordering::Relaxed),
+        status: crate::shared::status(),
     };
     let outcome = with_engine(|e| {
         let gen = CONFIG_GEN.load(Ordering::Relaxed);
@@ -398,6 +400,11 @@ async fn config_request(msg: &[u8], truncated: bool) {
             }
         }
         Some(trill_config::Action::StopMic) => set_mic_enabled(false),
+        // Accepted by `trill-config` only when BLE_AVAILABLE (variant bit).
+        Some(trill_config::Action::BluetoothDiscoverableOn) => set_ble_setting(Some(true), None),
+        Some(trill_config::Action::BluetoothDiscoverableOff) => set_ble_setting(Some(false), None),
+        Some(trill_config::Action::BluetoothMidiOn) => set_ble_setting(None, Some(true)),
+        Some(trill_config::Action::BluetoothMidiOff) => set_ble_setting(None, Some(false)),
         None => {}
     }
     if let Some(rate) = o.telemetry {
@@ -888,8 +895,25 @@ fn imu_report(out: &mut String<OUT_LEN>) {
     );
 }
 
-/// BLE-MIDI line (`ble-midi` build only).
+/// Battery line (every build) and BLE-MIDI line (`ble-midi` build only).
 fn ble_report(out: &mut String<OUT_LEN>) {
+    let st = crate::shared::status();
+    let battery = match st.battery {
+        trill_config::Battery::Present => "present",
+        trill_config::Battery::Absent => "none detected",
+        trill_config::Battery::Unknown => "checking",
+    };
+    let _ = write!(
+        out,
+        "battery: {} {} mV{} usb={}\r\n",
+        battery,
+        st.battery_mv,
+        if st.charging { " charging" } else { "" },
+        u8::from(st.usb_power),
+    );
+    if let Some(p) = st.battery_percent {
+        let _ = write!(out, "battery: ~{} %\r\n", p);
+    }
     #[cfg(feature = "ble-midi")]
     {
         let state = match BLE_STATE.load(Ordering::Relaxed) {
@@ -901,8 +925,12 @@ fn ble_report(out: &mut String<OUT_LEN>) {
         };
         let _ = write!(
             out,
-            "ble-midi: {} name=\"{}\" packets={} dropped={}",
+            "ble-midi: {} discoverable={} midi={} stored={} reason={} name=\"{}\" packets={} dropped={}",
             state,
+            u8::from(st.discoverable),
+            u8::from(st.ble_midi),
+            u8::from(st.settings_stored),
+            st.off_reason as u8,
             crate::ble::device_name().as_str(),
             BLE_PACKETS.load(Ordering::Relaxed),
             BLE_DROPPED.load(Ordering::Relaxed),
@@ -920,8 +948,6 @@ fn ble_report(out: &mut String<OUT_LEN>) {
             None => write!(out, " | no softdevice in flash\r\n"),
         };
     }
-    #[cfg(not(feature = "ble-midi"))]
-    let _ = out;
 }
 
 fn banner(out: &mut String<OUT_LEN>, report: &BootReport) {

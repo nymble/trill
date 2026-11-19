@@ -55,7 +55,7 @@ Consequences for this GPL-3.0 + commercial project (engineering analysis, not le
 3. **Permissive upstream cannot be relicensed away.** Our GPL or commercial licence covers only our code. Omi's MIT notices, the Opus BSD notices and the battery Apache-2.0 notice stay with any copy of those files.
 4. **Copyleft upstream** (for example, GPL code in another project) could not be relicensed commercially without its authors' permission. No copyleft component was found in the DevKit firmware path.
 5. **Facts are not copyrightable.** UUIDs, the codec ID, packet header layout and pin assignments can be implemented independently in our own code (protocol compatibility) without copying Omi source.
-6. **This repository's firmware** links only crates under MIT, Apache-2.0, BSD (nrf-pac: BSD-3-Clause), Zlib or Unlicense (`cargo metadata` on `firmware/xiao-sense`). It contains no Nordic SDK code, and the SoftDevice already on the board is neither included nor enabled.
+6. **This repository's firmware** links only crates under MIT, Apache-2.0, BSD (nrf-pac: BSD-3-Clause), Zlib or Unlicense (`cargo metadata` on `firmware/xiao-sense`). It contains no Nordic SDK code. The USB builds never enable the SoftDevice already on the board; the `ble-midi` build enables it at run time but does not include or distribute it. **Decision 2026-11-19:** BLE-MIDI firmware is published in public releases; the image contains no Nordic code and uses the SoftDevice already on the board.
 
 ## Reuse matrix
 
