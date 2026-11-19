@@ -86,7 +86,9 @@ struct SplashView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var drawn: CGFloat = 0
     @State private var lockupShown = false
-    var skip: () -> Void = {}
+    var skip: () -> Void
+
+    init(skip: @escaping () -> Void = {}) { self.skip = skip }
 
     var body: some View {
         ZStack {

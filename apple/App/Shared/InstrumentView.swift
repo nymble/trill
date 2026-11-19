@@ -263,7 +263,7 @@ struct TiltStrip: View {
             HStack {
                 Text("Tilt").font(.caption.weight(.semibold)).foregroundStyle(Color.Trillium.ashLight)
                 Spacer()
-                Text(readout.gravityValid ? String(format: "%.0f° from %@", readout.tilt, readout.upsideDown ? "down" : "up") : "–")
+                Text(readout.gravityValid ? "\(Int(readout.tilt.rounded()))° from \(readout.upsideDown ? "down" : "up")" : "–")
                     .font(.caption.monospaced()).foregroundStyle(Color.Trillium.warmWhite)
             }
             Canvas { ctx, size in
@@ -293,7 +293,7 @@ struct TiltStrip: View {
             .frame(height: 36)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(String(format: "Tilt %.0f degrees, %@", readout.tilt, readout.ring.title))
+        .accessibilityLabel("Tilt \(Int(readout.tilt.rounded())) degrees, \(readout.ring.title)")
     }
 }
 
@@ -323,7 +323,7 @@ struct RollReadout: View {
                 .frame(width: 34, height: 34)
                 VStack(alignment: .leading, spacing: 0) {
                     Text(String(format: "%+.0f°", readout.roll)).font(.title3.monospaced())
-                    Text(String(format: "%+d turn%@ %+.0f°", t.turns, abs(t.turns) == 1 ? "" : "s", t.degrees))
+                    Text("\(t.turns >= 0 ? "+" : "")\(t.turns) turn\(abs(t.turns) == 1 ? "" : "s") \(String(format: "%+.0f°", t.degrees))")
                         .font(.caption.monospaced()).foregroundStyle(Color.Trillium.ash)
                 }
             }

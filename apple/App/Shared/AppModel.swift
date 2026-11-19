@@ -140,9 +140,10 @@ final class AppModel: ObservableObject {
         }
         let prefs = InstrumentPrefs.load()
         instrumentPrefs = prefs
-        instrument = InstrumentRunner(settings: prefs.settings, instrument: prefs.handpan)
-        instrument.channel = prefs.channel
-        instrument.gate = prefs.gate
+        let runner = InstrumentRunner(settings: prefs.settings, instrument: prefs.handpan)
+        runner.channel = prefs.channel
+        runner.gate = prefs.gate
+        instrument = runner
         presetStore = PresetStore(fileURL: dir.appendingPathComponent("Trill/presets.json"))
         presets = presetStore.presets
         // Refined built-ins: one Preset per built-in, its name is the built-in id.
@@ -157,7 +158,6 @@ final class AppModel: ObservableObject {
             c.onSetupChanged = { [weak self] in self?.refreshEndpoints() }
             c.onConfigMessage = { [weak self] bytes, _ in self?.configMessage(bytes) }
             // Strike detection runs on the CoreMIDI thread as frames arrive.
-            let runner = instrument
             telemetryBuffer.setListener { frame, host in runner.handle(frame, hostTime: host) }
             client = c
         } catch {
