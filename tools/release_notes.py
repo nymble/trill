@@ -36,7 +36,7 @@ python3 xiao_uf2.py flash --drive /Volumes/XIAO-SENSE --board-id <Board-ID> xiao
 python3 xiao_uf2.py flash --drive /Volumes/XIAO-SENSE --board-id <Board-ID> xiao-sense-fw-{v}.uf2 --write  # copy
 ```
 
-Development builds: the USB IDs (1209:0002) and SysEx ID (0x7D) are test identifiers. Licence: GPL-3.0-only; commercial terms in `COMMERCIAL-LICENSE.md`.
+Development builds: the USB IDs (1209:0003) and SysEx ID (0x7D) are test identifiers. Licence: GPL-3.0-only; commercial terms in `COMMERCIAL-LICENSE.md`.
 """
 
 
