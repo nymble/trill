@@ -2,8 +2,8 @@
 # cloud-managed signing and can upload a TestFlight build when the named
 # repository secrets are all present. It never tags, never merges, and
 # never submits for App Store review. The supported local path is
-# apple/scripts/archive_testflight.sh on a Mac with Xcode.
-# See docs/apple-app.md.
+# apple/scripts/archive_testflight.sh on a Mac with Xcode 26 or later
+# (App Store Connect requires the iOS 26 SDK). See docs/apple-app.md.
 #
 # Required secrets (job is skipped if any are missing):
 #   APPLE_TEAM_ID (or IOS_DEVELOPMENT_TEAM)
@@ -11,6 +11,11 @@
 #   ASC_ISSUER_ID
 #   ASC_KEY_P8   raw AuthKey_*.p8 PEM, or the same file base64-encoded
 # Optional: TRILL_BUNDLE_ID (overrides the committed net.nymbus.trillium)
+#
+# The archive job runs on macos-26 so the default Xcode is 26.x. Regular
+# CI Apple jobs stay on macos-15 / Xcode 16.4 (unsigned tests, no upload).
+# CURRENT_PROJECT_VERSION is set from github.run_number so a re-upload
+# cannot collide with a build already accepted for 0.8.0.
 name: TestFlight upload (opt-in)
 
 on:
@@ -60,7 +65,7 @@ jobs:
             echo "  ASC_KEY_P8 (raw AuthKey_*.p8 PEM, or base64 of that file)."
             echo "The bundle ID net.nymbus.trillium is already registered and linked"
             echo "to the Trillium Sense App Store Connect record (Apple ID 6836153137)."
-            echo "Add the secrets, then re-run. Until then, on a Mac with Xcode:"
+            echo "Add the secrets, then re-run. Until then, on a Mac with Xcode 26+:"
             echo "  make apple-firmware apple-project"
             echo "  TEAM_ID=<team> apple/scripts/archive_testflight.sh ios"
             echo "See docs/apple-app.md."
@@ -70,15 +75,39 @@ jobs:
     name: Archive and optionally upload
     needs: check
     if: needs.check.outputs.ready == 'true'
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 60
     env:
       XCODEGEN_VERSION: 2.45.4
       XCODEGEN_SHA256: 090ec29491aad50aec10631bf6e62253fed733c50f3aab0f5ffc86bc170bdbef
+      CURRENT_PROJECT_VERSION: ${{ github.run_number }}
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+      - name: Select Xcode 26 or later
+        run: |
+          set -euo pipefail
+          current() { xcodebuild -version | awk '/^Xcode / {print $2; exit}'; }
+          ver="$(current || true)"
+          major="${ver%%.*}"
+          if ! [[ "${major:-}" =~ ^[0-9]+$ ]] || [ "$major" -lt 26 ]; then
+            app="$(ls -d /Applications/Xcode_26*.app /Applications/Xcode_2[7-9]*.app /Applications/Xcode_[3-9]*.app 2>/dev/null | sort -V | tail -1 || true)"
+            if [ -n "$app" ]; then
+              echo "Switching Xcode from ${ver:-unknown} to $app"
+              sudo xcode-select -s "$app"
+            fi
+          fi
+          xcodebuild -version
+          echo "DEVELOPER_DIR=$(xcode-select -p)"
+          ver="$(current || true)"
+          major="${ver%%.*}"
+          if ! [[ "${major:-}" =~ ^[0-9]+$ ]] || [ "$major" -lt 26 ]; then
+            echo "Need Xcode 26 or later (iOS 26 SDK) for App Store Connect; found: ${ver:-unknown}" >&2
+            ls -d /Applications/Xcode*.app 2>/dev/null || true
+            exit 1
+          fi
+          echo "Using Xcode $ver"
       - name: Install Rust (firmware bundled in the app)
         run: |
           rustup toolchain install stable --profile minimal
@@ -103,9 +132,11 @@ jobs:
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
           TRILL_BUNDLE_ID: ${{ secrets.TRILL_BUNDLE_ID }}
+          CURRENT_PROJECT_VERSION: ${{ github.run_number }}
         run: |
           set -euo pipefail
           export TEAM_ID="${APPLE_TEAM_ID:-$IOS_DEVELOPMENT_TEAM}"
+          echo "CURRENT_PROJECT_VERSION=$CURRENT_PROJECT_VERSION (github.run_number)"
           if [ "${{ inputs.upload }}" = "true" ]; then
             export UPLOAD=1
           fi

@@ -7,11 +7,16 @@
 # App Store Connect API key (`-authenticationKeyPath`,
 # `-authenticationKeyID`, `-authenticationKeyIssuerID`). The export is
 # always written locally (method `app-store-connect`, destination
-# `export`). Upload, if requested, is a separate
+# `export`). For macOS the export must be a pkg signed with Mac
+# Installer Distribution (the app itself with Apple Distribution).
+# Upload, if requested, is a separate
 # `xcrun altool --upload-app --apiKey --apiIssuer` step. Nothing is
 # submitted for App Store review.
 #
-# Prerequisites (macOS with Xcode), unless DRY_RUN=1:
+# App Store Connect requires the iOS 26 SDK (Xcode 26 or later). The
+# GitHub workflow selects that toolchain and fails if it is older.
+#
+# Prerequisites (macOS with Xcode 26+), unless DRY_RUN=1:
 #   make apple-firmware apple-project
 #   TEAM_ID set to the Apple Developer Team ID
 #
@@ -33,7 +38,11 @@
 # Optional: TRILL_BUNDLE_ID overrides the committed ID (net.nymbus.trillium)
 # for this run by writing apple/Config/Local.xcconfig (git-ignored).
 # DEVELOPMENT_TEAM is also written there when TEAM_ID is set.
-# The script never commits that file.
+# CURRENT_PROJECT_VERSION, if set in the environment, overrides the
+# committed build number (the workflow passes github.run_number).
+# The script never commits that file. It also clears the committed
+# ad-hoc Mac identity (CODE_SIGN_IDENTITY[sdk=macosx*] = -) so archive
+# and export can use cloud-managed Apple Distribution signing.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -58,6 +67,9 @@ fi
 
 VERSION="$(sed -n 's/^MARKETING_VERSION = //p' apple/Config/Base.xcconfig | head -1)"
 BUILD="$(sed -n 's/^CURRENT_PROJECT_VERSION = //p' apple/Config/Base.xcconfig | head -1)"
+if [ -n "${CURRENT_PROJECT_VERSION:-}" ]; then
+  BUILD="$CURRENT_PROJECT_VERSION"
+fi
 OUT="${OUT_DIR:-$ROOT/dist/testflight}"
 mkdir -p "$OUT"
 
@@ -131,11 +143,20 @@ write_export_options() {
 PLIST
 }
 
-if [ -n "${TRILL_BUNDLE_ID:-}" ]; then
-  printf 'DEVELOPMENT_TEAM = %s\nTRILL_BUNDLE_ID = %s\n' "$TEAM_ID" "$TRILL_BUNDLE_ID" > apple/Config/Local.xcconfig
-else
-  printf 'DEVELOPMENT_TEAM = %s\n' "$TEAM_ID" > apple/Config/Local.xcconfig
-fi
+# Override Base.xcconfig for this run only (git-ignored). Clear the
+# committed ad-hoc Mac identity so cloud-managed Apple Distribution
+# (and, at export, Mac Installer Distribution) can be used.
+{
+  printf 'DEVELOPMENT_TEAM = %s\n' "$TEAM_ID"
+  printf 'CODE_SIGN_STYLE = Automatic\n'
+  printf 'CODE_SIGN_IDENTITY[sdk=macosx*] =\n'
+  if [ -n "${CURRENT_PROJECT_VERSION:-}" ]; then
+    printf 'CURRENT_PROJECT_VERSION = %s\n' "$CURRENT_PROJECT_VERSION"
+  fi
+  if [ -n "${TRILL_BUNDLE_ID:-}" ]; then
+    printf 'TRILL_BUNDLE_ID = %s\n' "$TRILL_BUNDLE_ID"
+  fi
+} > apple/Config/Local.xcconfig
 
 IOS_OPTS="$OUT/ExportOptions-ios.plist"
 MAC_OPTS="$OUT/ExportOptions-macos.plist"
@@ -199,6 +220,7 @@ archive_one() {
   xcodebuild -project "$PROJECT" -scheme "$scheme" -configuration Release \
     -destination "$destination" -archivePath "$archive" \
     CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM="$TEAM_ID" \
+    CURRENT_PROJECT_VERSION="$BUILD" \
     -allowProvisioningUpdates \
     ${AUTH[@]+"${AUTH[@]}"} \
     archive
@@ -206,6 +228,52 @@ archive_one() {
   xcodebuild -exportArchive -archivePath "$archive" -exportPath "$export_path" \
     -exportOptionsPlist "$opts" -allowProvisioningUpdates \
     ${AUTH[@]+"${AUTH[@]}"}
+}
+
+# Fail fast if the IPA was not built with the iOS 26 SDK or later.
+verify_ios_ipa() {
+  local ipa="$1"
+  local tmp app sdk
+  tmp="$(mktemp -d)"
+  unzip -q -o "$ipa" -d "$tmp"
+  app="$(find "$tmp/Payload" -name '*.app' -maxdepth 1 | head -1)"
+  if [ -z "$app" ]; then
+    echo "verify: no app in $ipa" >&2
+    rm -rf "$tmp"
+    return 1
+  fi
+  sdk="$(plutil -extract DTSDKName raw -- "$app/Info.plist" 2>/dev/null || true)"
+  echo "iOS IPA $(basename "$ipa"): DTSDKName=${sdk:-unknown}"
+  codesign -dv --verbose=2 "$app" 2>&1 | sed 's/^/  /' || true
+  case "$sdk" in
+    iphoneos26*|iphoneos2[7-9]*|iphoneos[3-9]*)
+      rm -rf "$tmp"
+      return 0
+      ;;
+    *)
+      echo "iOS IPA was built with SDK '${sdk:-unknown}'; App Store Connect requires the iOS 26 SDK or later (Xcode 26+)." >&2
+      rm -rf "$tmp"
+      return 1
+      ;;
+  esac
+}
+
+# Confirm the exported macOS product is a distribution-signed installer pkg,
+# not an ad-hoc "Sign to Run Locally" archive leftover.
+verify_macos_pkg() {
+  local pkg="$1"
+  local info
+  echo "macOS pkg $(basename "$pkg") signature:"
+  info="$(pkgutil --check-signature "$pkg" 2>&1)" || true
+  echo "$info" | sed 's/^/  /'
+  if echo "$info" | grep -qiE 'not signed|untrusted|Sign to Run Locally|ad-?hoc'; then
+    echo "macOS pkg is not distribution-signed." >&2
+    return 1
+  fi
+  if ! echo "$info" | grep -qiE 'Mac Installer Distribution|3rd Party Mac Developer Installer'; then
+    echo "macOS pkg is not signed with Mac Installer Distribution (or 3rd Party Mac Developer Installer)." >&2
+    return 1
+  fi
 }
 
 upload_one() {
@@ -224,27 +292,57 @@ if [ "$PLATFORM" = "ios" ] || [ "$PLATFORM" = "both" ]; then
   archive_one TrilliumIOS "generic/platform=iOS" \
     "$OUT/Trillium-iOS-$VERSION-$BUILD.xcarchive" \
     "$OUT/export-ios" "$IOS_OPTS"
-  ls "$OUT"/export-ios/*.ipa 2>/dev/null || true
+  ipa_out="$(ls "$OUT"/export-ios/*.ipa 2>/dev/null | head -1 || true)"
+  if [ -z "${ipa_out:-}" ]; then
+    echo "export produced no iOS IPA in $OUT/export-ios" >&2
+    exit 1
+  fi
+  ls "$ipa_out"
+  verify_ios_ipa "$ipa_out"
 fi
 if [ "$PLATFORM" = "macos" ] || [ "$PLATFORM" = "both" ]; then
   archive_one TrilliumMac "generic/platform=macOS" \
     "$OUT/Trillium-macOS-$VERSION-$BUILD.xcarchive" \
     "$OUT/export-macos" "$MAC_OPTS"
-  ls "$OUT"/export-macos/*.pkg "$OUT"/export-macos/*.ipa 2>/dev/null || true
+  pkg_out="$(ls "$OUT"/export-macos/*.pkg 2>/dev/null | head -1 || true)"
+  if [ -z "${pkg_out:-}" ]; then
+    pkg_out="$(ls "$OUT"/export-macos/*.ipa 2>/dev/null | head -1 || true)"
+  fi
+  if [ -z "${pkg_out:-}" ]; then
+    echo "export produced no macOS pkg (or IPA) in $OUT/export-macos" >&2
+    exit 1
+  fi
+  ls "$pkg_out"
+  case "$pkg_out" in
+    *.pkg) verify_macos_pkg "$pkg_out" ;;
+    *)
+      echo "macOS export is $(basename "$pkg_out"), not a Mac Installer Distribution pkg." >&2
+      exit 1
+      ;;
+  esac
 fi
 
 if [ "$UPLOAD" = 1 ]; then
   install_altool_key
+  upload_status=0
   if [ "$PLATFORM" = "ios" ] || [ "$PLATFORM" = "both" ]; then
     ipa=$(ls "$OUT"/export-ios/*.ipa 2>/dev/null | head -1)
-    upload_one "$ipa" ios
+    if ! upload_one "$ipa" ios; then
+      upload_status=1
+    fi
   fi
   if [ "$PLATFORM" = "macos" ] || [ "$PLATFORM" = "both" ]; then
     pkg=$(ls "$OUT"/export-macos/*.pkg 2>/dev/null | head -1)
     if [ -z "${pkg:-}" ]; then
       pkg=$(ls "$OUT"/export-macos/*.ipa 2>/dev/null | head -1)
     fi
-    upload_one "$pkg" macos
+    if ! upload_one "$pkg" macos; then
+      upload_status=1
+    fi
+  fi
+  if [ "$upload_status" -ne 0 ]; then
+    echo "One or more TestFlight uploads failed (not submitted for review)." >&2
+    exit "$upload_status"
   fi
 else
   echo "Not uploaded. Re-run with UPLOAD=1 and an API key to upload for TestFlight, or use Xcode Organizer / Transporter."
