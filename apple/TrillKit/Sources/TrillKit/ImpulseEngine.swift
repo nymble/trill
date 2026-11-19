@@ -13,7 +13,7 @@
 import Foundation
 
 /// Minimal 3-vector.
-public struct Vec3: Equatable, Sendable, Codable {
+public struct Vec3: Hashable, Sendable, Codable {
     public var x, y, z: Double
     public init(_ x: Double, _ y: Double, _ z: Double) { self.x = x; self.y = y; self.z = z }
     public init(_ a: [Double]) { self.init(a.count > 0 ? a[0] : 0, a.count > 1 ? a[1] : 0, a.count > 2 ? a[2] : 0) }

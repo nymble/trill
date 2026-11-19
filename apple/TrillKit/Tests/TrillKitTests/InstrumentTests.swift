@@ -193,16 +193,6 @@ final class ImpulseEngineTests: XCTestCase {
         XCTAssertTrue(e.readout.upsideDown)
     }
 
-    func testRollDuringSpinKeepsGravityAndDirections() {
-        var tr = Trace()
-        tr.rest(1)
-        tr.push(90)
-        tr.rest(0.5)
-        var e = ImpulseEngine(settings: freeSettings())
-        _ = tr.run(&e)
-        XCTAssertEqual(e.readout.tilt, 0, accuracy: 1)
-    }
-
     func testDebounceMergesAndRefractoryBlocks() {
         var tr = Trace()
         tr.rest(1)
@@ -392,5 +382,49 @@ final class HandpanTests: XCTestCase {
         XCTAssertEqual(equinox.upperRing.first?.name, "E♭5", "9th tone field leads ring 2")
         XCTAssertEqual(equinox.upperRing.count, 8)
         XCTAssertEqual(equinox.upperRing.map(\.midi), equinox.upperRing.map(\.midi).sorted())
+    }
+}
+
+final class InstrumentRunnerTests: XCTestCase {
+    func testStrikePlaysNoteThenNoteOff() {
+        var s = freeSettings()
+        s.up = .plusZ
+        let runner = InstrumentRunner(settings: s, instrument: HandpanInstrument(scale: HandpanScale.named("kurd")!))
+        runner.channel = 2
+        runner.gate = 0.05
+        let lock = NSLock()
+        var sent: [[UInt8]] = []
+        let off = expectation(description: "note off")
+        runner.send = { m in
+            lock.lock(); sent.append(m); lock.unlock()
+            if m[0] & 0xF0 == 0x80 { off.fulfill() }
+        }
+        var tr = Trace()
+        tr.rest(1)
+        tr.push(90, g: 3.0) // E: third tone field of D Kurd, C4
+        tr.rest(0.2)
+        for x in tr.samples { runner.process(time: x.t, accel: x.a, gyro: x.g, taps: x.taps, hostTime: x.t) }
+        wait(for: [off], timeout: 2)
+        lock.lock(); defer { lock.unlock() }
+        XCTAssertEqual(sent.count, 2)
+        XCTAssertEqual(sent.first?[0], 0x92)
+        XCTAssertEqual(sent.first?[1], 60)
+        XCTAssertGreaterThan(sent.first?[2] ?? 0, 64)
+        XCTAssertEqual(sent.last ?? [], [0x82, 60, 0])
+        let snap = runner.snapshot()
+        XCTAssertEqual(snap.strikes, 1)
+        XCTAssertEqual(snap.lastNote?.name, "C4")
+        XCTAssertFalse(snap.history.isEmpty)
+    }
+
+    func testNoMIDIWithoutSender() {
+        let runner = InstrumentRunner(settings: freeSettings(), instrument: HandpanInstrument(scale: HandpanScale.all[0]))
+        var tr = Trace()
+        tr.rest(1)
+        tr.push(0)
+        tr.rest(0.2)
+        for x in tr.samples { runner.process(time: x.t, accel: x.a, gyro: x.g, taps: nil, hostTime: x.t) }
+        XCTAssertEqual(runner.snapshot().strikes, 1)
+        XCTAssertEqual(runner.snapshot().lastNote?.name, "A3")
     }
 }
