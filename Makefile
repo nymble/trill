@@ -17,7 +17,7 @@ FW_ELF  := $(FW_DIR)/target/thumbv7em-none-eabihf/release/xiao-sense-fw
 FW_UF2  := $(DIST)/xiao-sense-fw-$(VERSION).uf2
 
 .PHONY: all ci fmt fmt-check clippy test tools-test check-thumb fw fw-check fw-uf2 fw-uf2-pcm fw-uf2-ble synth-demo build pi-zero pi-arm64 x86-musl dist clean \
-        protocol-vectors apple apple-project apple-test apple-test-ios-sim apple-test-ipad-sim apple-mac apple-ios-sim apple-ios-device apple-ipad-sim apple-ios-ipa apple-dist apple-dmg apple-firmware test-kit
+        protocol-vectors apple apple-project apple-test apple-test-ios-sim apple-test-ipad-sim apple-mac apple-ios-sim apple-ios-device apple-ipad-sim apple-ios-ipa apple-testflight apple-dist apple-dmg apple-firmware test-kit
 
 all: ci
 
@@ -170,6 +170,15 @@ apple-ipad-sim: apple-ios-sim
 # Never run in the unsigned CI jobs; does not use CODE_SIGNING_ALLOWED=NO.
 apple-ios-ipa: apple-project apple-firmware
 	python3 $(APPLE)/scripts/export_ipa.py
+
+# App Store Connect / TestFlight archive (macOS with Xcode). TEAM_ID is
+# required. UPLOAD=1 uploads for TestFlight; otherwise export only. Optional
+# ASC_KEY_ID, ASC_ISSUER_ID, and ASC_KEY_PATH or ASC_KEY_P8. Never submits for App Store review.
+# See docs/apple-app.md.
+TF_PLATFORM ?= ios
+apple-testflight: apple-project apple-firmware
+	@test -n "$(TEAM_ID)" || { echo "TEAM_ID is required (Apple Developer Team ID)"; exit 2; }
+	apple/scripts/archive_testflight.sh $(TF_PLATFORM)
 
 # Zip the built apps into dist/apple with SHA-256 sums.
 apple-dist:

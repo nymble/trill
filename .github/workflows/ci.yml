@@ -47,7 +47,7 @@ jobs:
       - name: Motion synth demo render
         run: cargo run --release --locked -p motion-synth --example render_wav -- /tmp/motion-synth-demo.wav
       - name: Makefile parses
-        run: make --dry-run ci pi-zero dist fw-uf2 synth-demo protocol-vectors apple apple-test-ipad-sim apple-ipad-sim apple-ios-ipa apple-dmg test-kit >/dev/null
+        run: make --dry-run ci pi-zero dist fw-uf2 synth-demo protocol-vectors apple apple-test-ipad-sim apple-ipad-sim apple-ios-ipa apple-testflight apple-dmg test-kit >/dev/null
 
   firmware:
     name: XIAO nRF52840 Sense firmware (link + UF2 check)

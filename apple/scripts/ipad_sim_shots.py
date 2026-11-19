@@ -33,10 +33,11 @@ import pick_simulator as ps
 TABS = ("home", "presets", "sensors", "settings", "instrument")
 ORIENTATIONS = ("portrait", "landscape")
 EXPECTED = [f"{tab}-{orient}.png" for tab in TABS for orient in ORIENTATIONS]
-DEFAULT_BUNDLE = "com.nymble.trill"
+DEFAULT_BUNDLE = "net.nymbus.trillium"
+TEST_BUNDLE = DEFAULT_BUNDLE + ".tests"
 RUNNER_BUNDLES = (
-    "com.nymble.trill.uitests.xctrunner",
-    "com.nymble.trill.uitests",
+    TEST_BUNDLE + ".xctrunner",
+    TEST_BUNDLE,
 )
 
 
@@ -163,7 +164,7 @@ def runner_documents(udid: str) -> list[Path]:
         except json.JSONDecodeError:
             apps = {}
         for bid, info in apps.items() if isinstance(apps, dict) else []:
-            if "uitest" in bid.lower() or "xctrunner" in bid.lower():
+            if "uitest" in bid.lower() or "xctrunner" in bid.lower() or bid.lower().endswith(".tests"):
                 r = simctl("get_app_container", udid, bid, "data", check=False, capture_output=True, text=True)
                 if r.returncode == 0 and r.stdout.strip():
                     path = Path(r.stdout.strip()) / "Documents" / "ipad-shots"

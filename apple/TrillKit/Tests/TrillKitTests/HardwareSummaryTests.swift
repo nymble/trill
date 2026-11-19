@@ -9,7 +9,7 @@ final class HardwareSummaryTests: XCTestCase {
 
     static func hello(variant: UInt8 = TrillProtocol.variantIMU | TrillProtocol.variantMic | TrillProtocol.variantMultiTouch,
                       bootID: Int = 7) -> TrillReply.Hello {
-        TrillReply.Hello(protocolVersion: 1, firmware: (0, 7, 0), variant: variant, capabilities: caps,
+        TrillReply.Hello(protocolVersion: 1, firmware: (0, 8, 0), variant: variant, capabilities: caps,
                          maxMessageLength: 64, paramCount: 38, uptimeSeconds: 5, bootID: bootID)
     }
 
@@ -40,7 +40,7 @@ final class HardwareSummaryTests: XCTestCase {
         XCTAssertEqual(rows["Battery"], "not reported by this firmware")
         XCTAssertEqual(rows["BLE"], "not in this firmware")
         XCTAssertEqual(rows["Serial ports"], "diagnostics /dev/cu.usbmodem21101 · PCM (microphone) /dev/cu.usbmodem21105")
-        XCTAssertTrue(rows["Firmware"]!.hasPrefix("0.7.0 · protocol v1 · standard build"))
+        XCTAssertTrue(rows["Firmware"]!.hasPrefix("0.8.0 · protocol v1 · standard build"))
         XCTAssertEqual(Self.usb.pcmPort?.path, "/dev/cu.usbmodem21105")
     }
 
