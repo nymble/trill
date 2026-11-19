@@ -1,0 +1,127 @@
+# Optional. Manual dispatch only. Archives the iOS app (and optionally the
+# macOS app) for App Store Connect and can upload a TestFlight build when
+# the named repository secrets are all present. The repository currently
+# has no App Store Connect API key, and this workflow has never uploaded
+# a build. It never tags, never merges, and never submits for App Store
+# review. The supported local path is apple/scripts/archive_testflight.sh
+# on a Mac with Xcode. See docs/apple-app.md.
+name: TestFlight upload (opt-in)
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: "Platform to archive (ios, macos, or both)"
+        type: choice
+        options:
+          - ios
+          - macos
+          - both
+        default: ios
+      upload:
+        description: "Upload to TestFlight (never submits for App Store review). Leave off to export only."
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: App Store Connect secrets check
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.c.outputs.ready }}
+    steps:
+      - id: c
+        name: Check that the API key and team secrets are set
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IOS_DEVELOPMENT_TEAM: ${{ secrets.IOS_DEVELOPMENT_TEAM }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY: ${{ secrets.ASC_KEY }}
+        run: |
+          TEAM="${APPLE_TEAM_ID:-$IOS_DEVELOPMENT_TEAM}"
+          if [ -n "$TEAM" ] && [ -n "$ASC_KEY_ID" ] && [ -n "$ASC_ISSUER_ID" ] && [ -n "$ASC_KEY" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "This optional workflow did not archive or upload a TestFlight build."
+            echo "The archive job runs only when all of these repository secrets are set:"
+            echo "  APPLE_TEAM_ID (or IOS_DEVELOPMENT_TEAM),"
+            echo "  ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY (the AuthKey_*.p8 contents)."
+            echo "Create an App Store Connect API key (Users and Access → Integrations,"
+            echo "role App Manager or Admin), add those secrets, register the bundle ID"
+            echo "and link it to the App Store Connect app record, then re-run."
+            echo "Until then, on a Mac with Xcode signed in to the team:"
+            echo "  make apple-firmware apple-project"
+            echo "  TEAM_ID=<team> apple/scripts/archive_testflight.sh ios"
+            echo "See docs/apple-app.md."
+          fi
+
+  testflight:
+    name: Archive and optionally upload
+    needs: check
+    if: needs.check.outputs.ready == 'true'
+    runs-on: macos-15
+    timeout-minutes: 60
+    env:
+      XCODEGEN_VERSION: 2.45.4
+      XCODEGEN_SHA256: 090ec29491aad50aec10631bf6e62253fed733c50f3aab0f5ffc86bc170bdbef
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Install Rust (firmware bundled in the app)
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustup target add thumbv7em-none-eabihf
+      - name: Install XcodeGen (pinned, checksum verified)
+        run: |
+          curl -fsSL --retry 5 --retry-delay 15 --retry-all-errors -o "$RUNNER_TEMP/xcodegen.zip" "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          echo "${XCODEGEN_SHA256}  $RUNNER_TEMP/xcodegen.zip" | shasum -a 256 -c -
+          unzip -q "$RUNNER_TEMP/xcodegen.zip" -d "$RUNNER_TEMP"
+          echo "$RUNNER_TEMP/xcodegen/bin" >> "$GITHUB_PATH"
+      - name: Build application-only firmware and generate the Xcode project
+        run: |
+          make fw-uf2
+          make apple-firmware
+          make apple-project
+      - name: Write the App Store Connect API key
+        env:
+          ASC_KEY: ${{ secrets.ASC_KEY }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/AuthKey_${ASC_KEY_ID}.p8"
+          printf '%s\n' "$ASC_KEY" > "$key"
+          chmod 600 "$key"
+          echo "ASC_KEY_PATH=$key" >> "$GITHUB_ENV"
+      - name: Archive (and upload if requested)
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          IOS_DEVELOPMENT_TEAM: ${{ secrets.IOS_DEVELOPMENT_TEAM }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          TRILL_BUNDLE_ID: ${{ secrets.TRILL_BUNDLE_ID }}
+        run: |
+          set -euo pipefail
+          export TEAM_ID="${APPLE_TEAM_ID:-$IOS_DEVELOPMENT_TEAM}"
+          if [ "${{ inputs.upload }}" = "true" ]; then
+            export UPLOAD=1
+          fi
+          apple/scripts/archive_testflight.sh "${{ inputs.platform }}"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trillium-testflight-export
+          path: dist/testflight/export-*/**
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Remove the API key and local signing config
+        if: always()
+        run: |
+          rm -f "$ASC_KEY_PATH" apple/Config/Local.xcconfig
+          rm -f "$RUNNER_TEMP"/AuthKey_*.p8

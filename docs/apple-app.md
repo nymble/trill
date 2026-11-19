@@ -142,7 +142,14 @@ No team, certificate or profile is committed. The regular CI and release jobs ne
 
 **Test kit:** the artifact `trillium-test-kit-unsigned-dev` holds `Trillium-<version>-<commit>.zip`: the macOS app zip, the iOS Simulator zip, and the application-only firmware UF2 from the same CI run, `tools/xiao_uf2.py`, docs, `MANIFEST.txt` and `SHA256SUMS` ([kit README](test-kit.md)). Locally on a Mac: `make apple-mac apple-ios-sim apple-dist fw-uf2 test-kit`.
 
-There is no App Store or TestFlight build. The code is GPL-3.0-only, and App Store distribution of GPL software has known licence conflicts, so any store release would need a decision under the commercial licence ([COMMERCIAL-LICENSE.md](../COMMERCIAL-LICENSE.md)).
+TestFlight and the App Store are not yet wired up. The iOS and macOS Info.plist files set `ITSAppUsesNonExemptEncryption` to NO (the apps use only OS-provided Bluetooth and include no custom cryptography). `apple/scripts/archive_testflight.sh` archives the **TrilliumIOS** scheme (and optionally **TrilliumMac**) for App Store Connect and can upload a TestFlight build; `.github/workflows/testflight.yml` is a manual-dispatch workflow that runs that script only when the repository secrets `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_KEY` are all set. Those secrets are not configured yet, and no build has been uploaded. The bundle ID in the project is still the placeholder `com.nymble.trill`; a unique ID must be registered and linked to the App Store Connect app record before an upload can succeed. The code is GPL-3.0-only, and App Store distribution of GPL software has known licence conflicts, so any store release would need a decision under the commercial licence ([COMMERCIAL-LICENSE.md](../COMMERCIAL-LICENSE.md)).
+
+To archive locally on a Mac with Xcode (export only, no upload):
+
+    make apple-firmware apple-project
+    TEAM_ID=<team> apple/scripts/archive_testflight.sh ios
+
+To upload as well, sign in to Xcode with the Apple Developer account or pass an App Store Connect API key, and add `UPLOAD=1`. The script never submits the build for App Store review.
 
 ## Using it
 
