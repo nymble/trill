@@ -404,3 +404,67 @@ pub fn bump_config_generation() {
     let g = CONFIG_GEN.load(Ordering::Relaxed);
     CONFIG_GEN.store(trill_config::next_generation(g), Ordering::Relaxed);
 }
+
+/// BLE-MIDI link state (`BLE_*`), for diagnostics and the LED. Stays
+/// [`BLE_OFF`] in builds without the `ble-midi` feature.
+pub static BLE_STATE: AtomicU8 = AtomicU8::new(BLE_OFF);
+/// Not built, or not started (safe mode).
+pub const BLE_OFF: u8 = 0;
+/// Advertising the BLE-MIDI service, no central connected.
+pub const BLE_ADVERTISING: u8 = 1;
+/// A central is connected but has not enabled MIDI notifications.
+pub const BLE_CONNECTED: u8 = 2;
+/// A central has enabled MIDI notifications: instrument MIDI is sent.
+pub const BLE_STREAMING: u8 = 3;
+/// The BLE stack could not be started; USB MIDI is unaffected.
+#[cfg_attr(not(feature = "ble-midi"), allow(dead_code))]
+pub const BLE_FAILED: u8 = 4;
+
+/// True while a BLE central listens for MIDI (the writer feeds it).
+pub fn ble_midi_streaming() -> bool {
+    BLE_STATE.load(Ordering::Relaxed) == BLE_STREAMING
+}
+
+/// True when the BLE-MIDI service is up (advertising or connected).
+pub fn ble_midi_running() -> bool {
+    matches!(
+        BLE_STATE.load(Ordering::Relaxed),
+        BLE_ADVERTISING | BLE_CONNECTED | BLE_STREAMING
+    )
+}
+
+/// One instrument MIDI message (wire bytes, `len` valid) for BLE.
+#[cfg_attr(not(feature = "ble-midi"), allow(dead_code))]
+#[derive(Clone, Copy)]
+pub struct BleMessage {
+    pub bytes: [u8; 3],
+    pub len: u8,
+}
+
+/// Instrument MIDI waiting for the BLE-MIDI notifier. Sized for a burst
+/// of several engine ticks; when full the oldest pending output is kept
+/// and the new message is dropped and counted (`ble_dropped`).
+pub const BLE_QUEUE: usize = 64;
+pub static BLE_TX: Channel<CriticalSectionRawMutex, BleMessage, BLE_QUEUE> = Channel::new();
+/// Messages dropped because [`BLE_TX`] was full.
+pub static BLE_DROPPED: AtomicU32 = AtomicU32::new(0);
+/// BLE-MIDI notifications sent.
+#[cfg_attr(not(feature = "ble-midi"), allow(dead_code))]
+pub static BLE_PACKETS: AtomicU32 = AtomicU32::new(0);
+
+/// Hand one instrument message to BLE-MIDI if a central is listening.
+pub fn ble_midi_send(m: &instrument_events::MidiMessage) {
+    if !ble_midi_streaming() {
+        return;
+    }
+    let (bytes, len) = m.to_bytes();
+    if BLE_TX
+        .try_send(BleMessage {
+            bytes,
+            len: len as u8,
+        })
+        .is_err()
+    {
+        BLE_DROPPED.fetch_add(1, Ordering::Relaxed);
+    }
+}

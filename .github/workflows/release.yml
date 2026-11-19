@@ -93,8 +93,8 @@ jobs:
           rustup toolchain install stable --profile minimal
           rustup default stable
           rustup target add thumbv7em-none-eabihf
-      - name: Application-only UF2 (validated)
-        run: make fw-uf2
+      - name: Application-only UF2s (validated; USB and BLE-MIDI builds)
+        run: make fw-uf2-ble fw-uf2
       - uses: actions/upload-artifact@v4
         with:
           name: rel-firmware

@@ -93,6 +93,8 @@ public struct HardwareSummary: Equatable, Sendable {
     public var motionCalibrated: Bool?
     public var linearSensor: Presence
     public var multiTouch: Bool
+    /// The firmware reports BLE-MIDI running (HELLO variant bit 4).
+    public var bleMIDI: Bool
     public var microphone: Bool
     public var microphoneOn: Bool
     public var usb: USBInfo?
@@ -108,6 +110,7 @@ public struct HardwareSummary: Equatable, Sendable {
         bootID = hello?.bootID
         debugSynthBuild = hello?.isPCMSynthBuild ?? false
         multiTouch = hello?.supportsMultiTouch ?? false
+        bleMIDI = hello?.hasBLEMIDI ?? false
         microphone = hello?.hasMicrophone ?? false
         self.microphoneOn = microphone && microphoneOn
         self.usb = usb
@@ -141,9 +144,12 @@ public struct HardwareSummary: Equatable, Sendable {
 
     public var hasLinearSensor: Bool { linearSensor == .present || linearSensor == .starting }
 
+    /// BLE confirmed: by the firmware (BLE-MIDI running) or another report.
+    public var hasBLE: Bool { bleMIDI || extras.ble == true }
+
     /// Highest lineup tier whose features are all confirmed.
     public var model: Model {
-        let t1 = extras.battery == true && extras.ble == true
+        let t1 = extras.battery == true && hasBLE
         let t2 = t1 && extras.ledAndButtons == true
         if t2 && hasLinearSensor { return .f1 }
         if t2 { return .t2 }
@@ -163,7 +169,7 @@ public struct HardwareSummary: Equatable, Sendable {
         if hasLinearSensor { c.append(multiTouch ? "linear sensor (\(Self.maxTouches) touches)" : "linear sensor") }
         if microphone { c.append("microphone (test)") }
         if extras.battery == true { c.append("battery") }
-        if extras.ble == true { c.append("BLE") }
+        if bleMIDI { c.append("BLE MIDI") } else if extras.ble == true { c.append("BLE") }
         if extras.ledAndButtons == true { c.append("LED and buttons") }
         return c
     }
@@ -222,8 +228,9 @@ public struct HardwareSummary: Equatable, Sendable {
         r.append(Row(label: "Linear sensor", value: linearText))
         r.append(Row(label: "Microphone", value: microphone ? (microphoneOn ? "test capture on" : "test capture available, off") : "not offered by this firmware"))
         r.append(Row(label: "Battery", value: extras.battery.map { $0 ? "fitted" : "none" } ?? "not reported by this firmware"))
-        r.append(Row(label: "BLE", value: extras.ble.map { $0 ? "available" : "none" } ?? "not in this firmware"))
-        r.append(Row(label: "Transport", value: "\(transport) · MIDI port 1 instrument, port 2 configuration"))
+        r.append(Row(label: "BLE", value: bleText))
+        r.append(Row(label: "Transport", value: "\(transport) · MIDI port 1 instrument, port 2 configuration"
+                     + (bleMIDI ? " · BLE MIDI instrument only" : "")))
         if let u = usb, !u.ports.isEmpty {
             let ports = u.ports.sorted { $0.interface < $1.interface }.map { p -> String in
                 let name: String
@@ -237,6 +244,11 @@ public struct HardwareSummary: Equatable, Sendable {
             r.append(Row(label: "Serial ports", value: ports.joined(separator: " · ")))
         }
         return r
+    }
+
+    private var bleText: String {
+        if bleMIDI { return "BLE MIDI on · advertises as \u{201C}Trillium\u{201D} plus a 4-character ID · pair in Bluetooth MIDI" }
+        return extras.ble.map { $0 ? "available" : "none" } ?? "not in this firmware"
     }
 
     private var motionText: String {

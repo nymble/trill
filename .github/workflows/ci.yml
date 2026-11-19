@@ -33,7 +33,7 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       - name: no_std libraries for Cortex-M4F (nRF52840)
-        run: cargo build -p trill-driver -p lsm6ds3trc -p motion-synth -p status-led -p instrument-events -p trill-usb -p trill-config --target thumbv7em-none-eabihf --locked
+        run: cargo build -p trill-driver -p lsm6ds3trc -p motion-synth -p status-led -p instrument-events -p trill-usb -p trill-config -p ble-midi --target thumbv7em-none-eabihf --locked
       - name: Protocol vectors are current (shared with the Swift tests)
         run: |
           cargo run -q --locked -p trill-config --example vectors > /tmp/vectors.txt
@@ -64,12 +64,13 @@ jobs:
       - name: fmt
         working-directory: firmware/xiao-sense
         run: cargo fmt -- --check
-      - name: clippy (default USB-MIDI, pcm-synth, timing-gpio)
+      - name: clippy (default USB-MIDI, pcm-synth, timing-gpio, ble-midi)
         working-directory: firmware/xiao-sense
         run: |
           cargo clippy --release --locked -- -D warnings
           cargo clippy --release --locked --features pcm-synth -- -D warnings
           cargo clippy --release --locked --features pcm-synth,timing-gpio -- -D warnings
+          cargo clippy --release --locked --features ble-midi -- -D warnings
       - name: Link release ELF (default USB-MIDI + diagnostics)
         working-directory: firmware/xiao-sense
         run: cargo build --release --locked
@@ -90,6 +91,17 @@ jobs:
           python3 tools/xiao_uf2.py convert firmware/xiao-sense/target/thumbv7em-none-eabihf/release/xiao-sense-fw -o dist/xiao-sense-fw-pcm-synth.uf2
           python3 tools/xiao_uf2.py inspect dist/xiao-sense-fw-pcm-synth.uf2
           cp firmware/xiao-sense/target/thumbv7em-none-eabihf/release/xiao-sense-fw dist/xiao-sense-fw-pcm-synth.elf
+      - name: Link release ELF (MIDI over Bluetooth LE build)
+        working-directory: firmware/xiao-sense
+        run: cargo build --release --locked --features ble-midi
+      - name: BLE-MIDI UF2 (validated, artifact only; RAM starts above the SoftDevice)
+        run: |
+          elf=firmware/xiao-sense/target/thumbv7em-none-eabihf/release/xiao-sense-fw
+          readelf -lW "$elf"
+          readelf -SW "$elf" | awk '$2==".data" { if ($4 != "20008000") { print "ble-midi .data at " $4 ", expected 20008000"; exit 1 } }'
+          python3 tools/xiao_uf2.py convert "$elf" -o dist/xiao-sense-fw-ble-midi.uf2
+          python3 tools/xiao_uf2.py inspect dist/xiao-sense-fw-ble-midi.uf2
+          cp "$elf" dist/xiao-sense-fw-ble-midi.elf
           (cd dist && sha256sum *.uf2 *.elf > SHA256SUMS)
       - uses: actions/upload-artifact@v4
         with:

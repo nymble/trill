@@ -3,8 +3,8 @@
 use instrument_events::Config;
 use trill_config::telemetry::{self, Frame, Sample, Schedule, TouchPoint, TouchesFrame};
 use trill_config::{
-    handle, msg, request, DeviceInfo, ErrorCode, CAP_TELEMETRY, MAX_MESSAGE_LEN,
-    VARIANT_MULTI_TOUCH,
+    handle, msg, request, DeviceInfo, ErrorCode, CAP_TELEMETRY, MAX_MESSAGE_LEN, VARIANT_BLE_MIDI,
+    VARIANT_IMU, VARIANT_MIC, VARIANT_MULTI_TOUCH, VARIANT_PCM_SYNTH,
 };
 
 const INFO: DeviceInfo = DeviceInfo {
@@ -41,6 +41,36 @@ fn hello_echoes_the_multi_touch_variant() {
     assert!(o.reply[1..o.reply.len() - 1].iter().all(|&b| b < 0x80));
 }
 const HELLO_CAPS: usize = 7 + 5;
+
+#[test]
+fn variant_bits_are_distinct_7_bit_flags() {
+    let bits = [
+        VARIANT_PCM_SYNTH,
+        VARIANT_IMU,
+        VARIANT_MIC,
+        VARIANT_MULTI_TOUCH,
+        VARIANT_BLE_MIDI,
+    ];
+    let mut seen = 0u8;
+    for b in bits {
+        assert_eq!(b.count_ones(), 1);
+        assert_eq!(b & 0x80, 0, "SysEx data bytes cannot carry bit 7");
+        assert_eq!(seen & b, 0, "variant bit 0x{b:02X} reused");
+        seen |= b;
+    }
+    assert_eq!(VARIANT_BLE_MIDI, 0x10);
+}
+
+#[test]
+fn hello_echoes_the_ble_midi_variant() {
+    let info = DeviceInfo {
+        variant: VARIANT_BLE_MIDI | VARIANT_IMU | VARIANT_MIC | VARIANT_MULTI_TOUCH,
+        ..INFO
+    };
+    let o = handle(&request::hello(1), false, &Config::default(), 0, &info).unwrap();
+    assert_eq!(o.reply[11], 0x1E);
+    assert!(o.reply[1..o.reply.len() - 1].iter().all(|&b| b < 0x80));
+}
 
 #[test]
 fn start_and_stop_report_rate_and_never_touch_config() {

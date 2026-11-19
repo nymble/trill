@@ -22,6 +22,9 @@ public struct MIDIEndpointInfo: Identifiable, Hashable, Sendable {
     /// destinations). For the Trill firmware: 0 = instrument, 1 = config.
     public let portIndex: Int?
     public let isOffline: Bool
+    /// Connected over Bluetooth LE MIDI (Apple's BLE-MIDI driver owns the
+    /// device). Such a source carries the instrument only: no settings port.
+    public var isBluetooth: Bool = false
 
     public var isTrill: Bool { (deviceName ?? name).localizedCaseInsensitiveContains("Trill") }
     public var title: String {
@@ -127,9 +130,11 @@ public final class MIDIClient {
         var device = MIDIDeviceRef()
         var deviceName: String?
         var portIndex: Int?
+        var driverOwner: String?
         if MIDIEndpointGetEntity(ep, &entity) == noErr, entity != 0,
            MIDIEntityGetDevice(entity, &device) == noErr, device != 0 {
             deviceName = string(device, kMIDIPropertyName)
+            driverOwner = string(device, kMIDIPropertyDriverOwner)
             var index = 0
             outer: for e in 0..<MIDIDeviceGetNumberOfEntities(device) {
                 let ent = MIDIDeviceGetEntity(device, e)
@@ -146,7 +151,14 @@ public final class MIDIClient {
             name: string(ep, kMIDIPropertyDisplayName) ?? string(ep, kMIDIPropertyName) ?? "Unnamed",
             deviceName: deviceName,
             portIndex: portIndex,
-            isOffline: (integer(ep, kMIDIPropertyOffline) ?? 0) != 0)
+            isOffline: (integer(ep, kMIDIPropertyOffline) ?? 0) != 0,
+            isBluetooth: isBluetoothDriver(driverOwner))
+    }
+
+    /// Apple's BLE-MIDI driver (its bundle ID names Bluetooth or BLE).
+    public static func isBluetoothDriver(_ owner: String?) -> Bool {
+        guard let o = owner else { return false }
+        return o.localizedCaseInsensitiveContains("bluetooth") || o.contains("BLE")
     }
 
     static func endpoint(_ id: MIDIUniqueID) -> MIDIEndpointRef? {

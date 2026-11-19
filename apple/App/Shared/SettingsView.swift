@@ -17,7 +17,10 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack(path: $model.settingsPath) {
             List {
-                Section("Detected hardware") { HardwareSummaryView() }
+                Section("Detected hardware") {
+                    HardwareSummaryView()
+                    if model.hardware.bleMIDI { BluetoothMIDIButton() }
+                }
                 Section {
                     row(.mapping, "Sound & mapping", "slider.horizontal.3",
                         "What plays the notes, controllers, taps, strikes and gestures")
@@ -69,7 +72,8 @@ struct EndpointPicker: View {
         Picker(title, selection: $selection) {
             Text("None").tag(MIDIUniqueID?.none)
             ForEach(endpoints) { e in
-                Text(e.title + (e.isOffline ? " (offline)" : "") + (e.portIndex.map { " · port \($0 + 1)" } ?? ""))
+                Text(e.title + (e.isOffline ? " (offline)" : "") + (e.isBluetooth ? " · Bluetooth" : "")
+                     + (e.portIndex.map { " · port \($0 + 1)" } ?? ""))
                     .tag(MIDIUniqueID?.some(e.id))
             }
         }
@@ -93,6 +97,11 @@ struct ConnectionView: View {
                     Button("Disconnect") { model.disconnectConfig() }
                         .disabled(model.session.phase == .disconnected)
                 }
+            }
+            Section {
+                BluetoothMIDIButton()
+            } header: {
+                Text("Bluetooth MIDI")
             }
             Section {
                 EndpointPicker(title: "Instrument (monitor)", endpoints: model.sources, selection: $model.monitorSourceID)

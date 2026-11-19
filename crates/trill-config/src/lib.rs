@@ -177,6 +177,12 @@ pub const VARIANT_MIC: u8 = 0x04;
 /// do not see this bit, and older hosts, ignore the companion; format 1
 /// still reports the first touch only.
 pub const VARIANT_MULTI_TOUCH: u8 = 0x08;
+/// Variant flag: MIDI over Bluetooth LE is running. The firmware was built
+/// with the `ble-midi` feature and the BLE stack started; the device
+/// advertises the standard BLE-MIDI service and sends the same instrument
+/// MIDI as USB (cable 0). USB stays the setup path: configuration and
+/// telemetry are USB only.
+pub const VARIANT_BLE_MIDI: u8 = 0x10;
 /// Capability bit: `SET_CONFIG` supported.
 pub const CAP_SET_CONFIG: u8 = 0x01;
 /// Capability bit: `ACTION` supported.
