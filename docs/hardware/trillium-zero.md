@@ -99,7 +99,7 @@ Fit **R1 = 4.7 kΩ from SDA (D4) to 3V3** and **R2 = 4.7 kΩ from SCL (D5) to 3V
 
 T0 runs from USB. The rest of this section is for builders who add a cell (toward T1).
 
-The XIAO nRF52840 Sense can run from USB, from one rechargeable lithium cell on its rear battery pads, or both. **Charging is done entirely by on-board hardware** (TI BQ25101) whenever USB VBUS is present. It needs no firmware, and this project's firmware does not control, measure, or report it. The table is transcribed from the Seeed **XIAO nRF52840 Sense schematic, Rev V1.1** (sheet 3, "Battery charge" and "System 3.3V"). Check the revision printed on your board's documentation; other revisions may differ.
+The XIAO nRF52840 Sense can run from USB, from one rechargeable lithium cell on its rear battery pads, or both. **Charging is done entirely by on-board hardware** (TI BQ25101) whenever USB VBUS is present. It needs no firmware, and this project's firmware does not control it. Since the battery-status change (see [battery.md](../battery.md)) the firmware **measures and reports** the battery voltage, charge status and presence, but does not change how the charger works. The table is transcribed from the Seeed **XIAO nRF52840 Sense schematic, Rev V1.1** (sheet 3, "Battery charge" and "System 3.3V"). Check the revision printed on your board's documentation; other revisions may differ.
 
 | Block | Part (schematic) | What it does |
 |---|---|---|
@@ -107,11 +107,11 @@ The XIAO nRF52840 Sense can run from USB, from one rechargeable lithium cell on 
 | Charge current | ISET: R18 2.7 kΩ to GND, plus R12 2.7 kΩ to **P0.13** (`HICHG`) | I = K<sub>ISET</sub> / R<sub>ISET</sub>, K<sub>ISET</sub> = 135 AΩ typ. (129–145). P0.13 high-impedance: 2.7 kΩ → **≈ 50 mA** (≈ 48–54 mA). P0.13 driven low: 1.35 kΩ → **≈ 100 mA** (≈ 96–107 mA). Seeed's wiki gives the same 50/100 mA figures. These are fast-charge (constant-current) values; current tapers near full |
 | Battery temperature | TS: R20 fixed 10 kΩ to GND | NTC monitoring **disabled** (schematic note). The board does not measure cell temperature |
 | Charge status | `~CHG` → **P0.17** and the red charge LED (R5 2.2 kΩ) | Low while charging (Seeed wiki). Hardware-driven; not a firmware status light |
-| Battery sense | R16 1 MΩ / R17 510 kΩ from VBAT to **P0.14** (`READ_BAT`), tap to **P0.31** (AIN7) | Not used by this firmware. Seeed warns that P0.14 driven **high** can push P0.31 past its 3.6 V limit |
+| Battery sense | R16 1 MΩ / R17 510 kΩ from VBAT to **P0.14** (`READ_BAT`), tap to **P0.31** (AIN7) | Read once a second (AIN7, 12 bit). The firmware drives P0.14 **low from boot and never releases it**: Seeed warns that P0.14 high (or floating) can push P0.31 past its 3.6 V limit while the battery charges |
 | Battery ↔ USB switch-over | Q1 P-MOSFET (VBAT → VIN, gate = VBUS) and D1 Schottky (VBUS → VIN) | With USB: the system runs from VBUS through D1, Q1 is off, and the charger charges the cell (if SW1 is closed). Without USB: Q1 conducts and the cell feeds VIN. This is a simple switch-over, not a charger with an integrated power path |
 | 3.3 V rail | U6 **SGM2040-3.3** LDO, VIN → 3V3 | Labelled 3.3 V / 250 mA on the schematic. 3V3 is pin 12, which powers the Trill and R1/R2 when those are fitted |
 
-The firmware never configures P0.13, P0.14, P0.17, or P0.31, so they stay in the nRF52840 reset state (input, disconnected). With P0.13 high-impedance the charger runs at the ≈ 50 mA setting.
+The firmware drives P0.14 low (battery-sense divider on, required for safety while charging), reads P0.31 with the SAADC and P0.17 as an input without pull, and never configures P0.13, which stays in the nRF52840 reset state (input, disconnected), so the charger runs at the ≈ 50 mA setting. Firmware 0.7.0 and earlier left P0.14 floating. Battery presence on USB power is a heuristic with known limits; see [battery.md](../battery.md#is-a-battery-present).
 
 **SW1** is not on the XIAO. It is a builder-fitted SPST switch **in the battery+ lead only**, between the cell's positive terminal and pad `BAT0`. The negative lead goes straight to `GND0`.
 
@@ -145,7 +145,7 @@ Work with power off. USB unplugged, SW1 open, cell disconnected, until a step sa
    - 3V3 is not shorted to GND.
    - **Flex:** continuity of GND, 3V3, SDA, and SCL from the Trill connector to the XIAO pins; D4→3V3 and D5→3V3 read about 4.7 kΩ with R1/R2 fitted, and high resistance without them.
    - **Battery:** SW1 opens and closes the + lead only; the − lead is continuous; polarity at the pad ends is correct *before* they touch the board.
-8. USB-only bring-up (no battery): connect USB-C and check that `3V3` on pin 12 is about 3.3 V. Note whether the red charge LED is on or flickering with no battery: absent-battery behaviour is not documented here.
+8. USB-only bring-up (no battery): connect USB-C and check that `3V3` on pin 12 is about 3.3 V. Note whether the red charge LED is on or flickering with no battery: the firmware's battery check treats a flickering charge status as "no battery" ([battery.md](../battery.md#is-a-battery-present)), and reports of what your board does help tune it.
 9. Prepare the cell, if you are fitting one: confirm it is a single protected 3.7 V class LiPo / Li-ion, measure its open-circuit voltage and polarity at the leads with USB unplugged, and keep SW1 open.
 10. Fit the leads to `BAT0` / `GND0` only after you have confirmed the silkscreen on **your** board. Then follow [Battery bring-up](#battery-bring-up).
 11. Load a published application-only firmware UF2 from a GitHub Release, using the backup-first procedure in [firmware-xiao-sense.md](../firmware-xiao-sense.md#loading-over-usb-explicit-steps-only). Never copy a full `CURRENT.UF2` or a bootloader image onto the board. Then follow [Verification](#verification). The Trillium app of the same version can also install the firmware.

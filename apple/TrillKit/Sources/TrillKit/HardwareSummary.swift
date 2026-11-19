@@ -3,7 +3,8 @@
 // What the app has detected about the connected board: model in the
 // T0/T1/T2/F1 lineup plus a capability list, firmware, USB identity and
 // ports, and which sensors are present. Built only from the HELLO reply,
-// the latest (fresh) telemetry frame and, on macOS, the I/O Registry.
+// the latest (fresh) telemetry frame, the battery and Bluetooth STATUS
+// and, on macOS, the I/O Registry.
 // The Sensors layout and the Settings summary both follow this value.
 
 import Foundation
@@ -93,8 +94,10 @@ public struct HardwareSummary: Equatable, Sendable {
     public var motionCalibrated: Bool?
     public var linearSensor: Presence
     public var multiTouch: Bool
-    /// The firmware reports BLE-MIDI running (HELLO variant bit 4).
+    /// The firmware reports BLE-MIDI available (HELLO variant bit 4).
     public var bleMIDI: Bool
+    /// Battery and Bluetooth status (firmware with HELLO variant bit 5).
+    public var status: DeviceStatus?
     public var microphone: Bool
     public var microphoneOn: Bool
     public var usb: USBInfo?
@@ -103,7 +106,8 @@ public struct HardwareSummary: Equatable, Sendable {
 
     /// `telemetry` should be the latest frame only while it is fresh.
     public init(hello: TrillReply.Hello?, telemetry: TelemetryFrame?, usb: USBInfo? = nil,
-                transport: String = "USB", microphoneOn: Bool = false, extras: Extras = Extras()) {
+                transport: String = "USB", microphoneOn: Bool = false, extras: Extras = Extras(),
+                status: DeviceStatus? = nil) {
         connected = hello != nil
         firmware = hello?.firmwareString
         protocolVersion = hello?.protocolVersion
@@ -116,6 +120,7 @@ public struct HardwareSummary: Equatable, Sendable {
         self.usb = usb
         self.transport = transport
         self.extras = extras
+        self.status = hello == nil ? nil : status
         if let h = hello, !h.hasMotionSensor {
             motionSensor = .absent
         } else if let f = telemetry {
@@ -144,12 +149,22 @@ public struct HardwareSummary: Equatable, Sendable {
 
     public var hasLinearSensor: Bool { linearSensor == .present || linearSensor == .starting }
 
-    /// BLE confirmed: by the firmware (BLE-MIDI running) or another report.
+    /// BLE confirmed: by the firmware (BLE-MIDI available) or another report.
     public var hasBLE: Bool { bleMIDI || extras.ble == true }
+
+    /// Battery fitted: from the firmware's status when it has one
+    /// (nil while it is still checking), otherwise another report.
+    public var batteryFitted: Bool? {
+        switch status?.battery {
+        case .present?: return true
+        case .absent?: return false
+        case .unknown?, nil: return extras.battery
+        }
+    }
 
     /// Highest lineup tier whose features are all confirmed.
     public var model: Model {
-        let t1 = extras.battery == true && hasBLE
+        let t1 = batteryFitted == true && hasBLE
         let t2 = t1 && extras.ledAndButtons == true
         if t2 && hasLinearSensor { return .f1 }
         if t2 { return .t2 }
@@ -168,7 +183,7 @@ public struct HardwareSummary: Equatable, Sendable {
         if motionSensor != .absent { c.append("motion sensor") }
         if hasLinearSensor { c.append(multiTouch ? "linear sensor (\(Self.maxTouches) touches)" : "linear sensor") }
         if microphone { c.append("microphone (test)") }
-        if extras.battery == true { c.append("battery") }
+        if batteryFitted == true { c.append("battery") }
         if bleMIDI { c.append("BLE MIDI") } else if extras.ble == true { c.append("BLE") }
         if extras.ledAndButtons == true { c.append("LED and buttons") }
         return c
@@ -227,7 +242,7 @@ public struct HardwareSummary: Equatable, Sendable {
         r.append(Row(label: "Motion sensor (IMU)", value: motionText))
         r.append(Row(label: "Linear sensor", value: linearText))
         r.append(Row(label: "Microphone", value: microphone ? (microphoneOn ? "test capture on" : "test capture available, off") : "not offered by this firmware"))
-        r.append(Row(label: "Battery", value: extras.battery.map { $0 ? "fitted" : "none" } ?? "not reported by this firmware"))
+        r.append(Row(label: "Battery", value: batteryText))
         r.append(Row(label: "BLE", value: bleText))
         r.append(Row(label: "Transport", value: "\(transport) · MIDI port 1 instrument, port 2 configuration"
                      + (bleMIDI ? " · BLE MIDI instrument only" : "")))
@@ -246,7 +261,18 @@ public struct HardwareSummary: Equatable, Sendable {
         return r
     }
 
+    private var batteryText: String {
+        if let s = status { return s.batteryText }
+        return extras.battery.map { $0 ? "fitted" : "none" } ?? "not reported by this firmware"
+    }
+
     private var bleText: String {
+        if bleMIDI, let s = status {
+            var t = "\(s.discoverableText) · \(s.bluetoothMIDIText)"
+            if s.offReason == .noBattery { t += " · Bluetooth needs a battery" }
+            else if s.offReason == .checkingBattery { t += " · checking for a battery" }
+            return t
+        }
         if bleMIDI { return "BLE MIDI on · advertises as \u{201C}Trillium\u{201D} plus a 4-character ID · pair in Bluetooth MIDI" }
         return extras.ble.map { $0 ? "available" : "none" } ?? "not in this firmware"
     }

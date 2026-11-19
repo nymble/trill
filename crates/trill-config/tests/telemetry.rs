@@ -12,6 +12,7 @@ const INFO: DeviceInfo = DeviceInfo {
     variant: 0,
     uptime_s: 1,
     boot_id: 1,
+    status: trill_config::Status::NONE,
 };
 
 fn run(m: &[u8]) -> Option<trill_config::Outcome> {

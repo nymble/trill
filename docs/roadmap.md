@@ -21,7 +21,7 @@
 | `trill-config` ([protocol](config-protocol.md)) | Implemented: SysEx configuration v1 on USB-MIDI cable 1; Rust and Swift codecs checked against shared vectors; firmware handler host-tested via the crate. Exercised from the Trillium app on macOS |
 | Apple app ([doc](apple-app.md)) | Implemented: Mac + iPhone/iPad SwiftUI app and `TrillKit`; built unsigned and tested in CI on macOS; run against hardware on a Mac. No signing, App Store, BLE or OTA. A physical iPhone or iPad install has not been tested |
 | Omi integration ([doc](omi-integration.md)) | Investigated. Decision: separate development image, Omi untouched |
-| I²S output, BLE-MIDI, MPE, multi-touch, mic, battery monitoring, settings persistence | Not started as product features. BLE-MIDI, device identification and a testing-only microphone path are planned below. Researched: [music-connectivity.md](music-connectivity.md) recommends host synth + USB-MIDI first, BLE-MIDI second; [microphone.md](research/microphone.md) recommends a USB PCM test path for the next release |
+| I²S output, MPE, instrument settings persistence | Not started as product features (BLE-MIDI with its two stored switches, multi-touch, the microphone test and battery monitoring are now in; see below and [battery.md](battery.md)). BLE-MIDI, device identification and a testing-only microphone path are planned below. Researched: [music-connectivity.md](music-connectivity.md) recommends host synth + USB-MIDI first, BLE-MIDI second; [microphone.md](research/microphone.md) recommends a USB PCM test path for the next release |
 
 ## Model lineup
 
@@ -54,7 +54,7 @@ Planned. The board should report what it is, rather than the app guessing.
 
 ## BLE-MIDI and discovery
 
-**Started:** the `ble-midi` firmware build and the app's Bluetooth MIDI pairing are in ([ble-midi.md](ble-midi.md)); hardware testing on a T1, a runtime switch and discovery are next. Publishing BLE builds still waits on the [licence decision](music-connectivity.md#licensing-notes-for-ble-engineering-analysis-not-legal-advice) recorded in the connectivity research.
+**Started:** the `ble-midi` firmware build and the app's Bluetooth MIDI pairing are in ([ble-midi.md](ble-midi.md)); separate Discoverable and Bluetooth MIDI switches (stored on the board) and battery detection are in, with Bluetooth running only when a battery is detected ([battery.md](battery.md)); hardware testing on a T1 and app-side discovery are next. Publishing BLE builds still waits on the [licence decision](music-connectivity.md#licensing-notes-for-ble-engineering-analysis-not-legal-advice) recorded in the connectivity research.
 
 - Use standard BLE-MIDI so a Mac, iPhone, iPad or DAW sees the board as a regular MIDI port.
 - **Initial configuration is over USB:** install firmware, name the board, set or confirm its model, and pair it with that Mac or iPhone.
