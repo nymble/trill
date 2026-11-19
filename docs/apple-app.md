@@ -111,13 +111,13 @@ The app follows the brand kit in [`brand/`](../brand/BRAND.md) (Stage palette). 
 **iPhone or iPad Simulator, from a downloaded zip or a local build:**
 1. Unzip `Trillium-iOS-Simulator-<version>.zip`, or run `make apple-ios-sim`.
 2. Boot a simulator (`xcrun simctl boot "iPad Pro 13-inch (M4)"` or an iPhone, then `open -a Simulator`).
-3. `xcrun simctl install booted Trillium.app && xcrun simctl launch booted com.nymble.trill`.
+3. `xcrun simctl install booted Trillium.app && xcrun simctl launch booted net.nymbus.trillium`.
 4. Home shows "Connect your Trillium": the Simulator has no USB MIDI device, so the instrument cannot be detected there.
 
 **iPhone/iPad, from Xcode (physical device):**
 1. Add your Apple ID in *Xcode › Settings › Accounts*.
 2. Copy `apple/Config/Local.xcconfig.example` to `apple/Config/Local.xcconfig`. That file is git-ignored.
-3. In it, set `DEVELOPMENT_TEAM` to your team ID. If `com.nymble.trill` is not available to your team, set `TRILL_BUNDLE_ID` to your own reverse-DNS ID. Run `make apple-project` again afterwards. Alternatively, choose the team in *Signing & Capabilities* for this session only.
+3. In it, set `DEVELOPMENT_TEAM` to your team ID. If `net.nymbus.trillium` is not available to your team, set `TRILL_BUNDLE_ID` to your own reverse-DNS ID. Run `make apple-project` again afterwards. Alternatively, choose the team in *Signing & Capabilities* for this session only.
 4. Connect the device (USB-C, or a Lightning iPad/iPhone with Apple's Lightning to USB 3 Camera Adapter and power — see [USB MIDI](usb-midi.md#hardware-acceptance-procedure)). Enable *Settings › Privacy & Security › Developer Mode*, trust the computer, and register the device with the team if Xcode asks. iPadOS or iOS 16 or newer is required.
 5. Select the **TrilliumIOS** scheme and the device, then press Run.
 6. With a free Personal Team the provisioning profile expires after about a week, and Apple limits how many apps and devices it can be used with. Re-run from Xcode to renew it. A paid membership removes these limits but is not needed for development.
@@ -142,14 +142,14 @@ No team, certificate or profile is committed. The regular CI and release jobs ne
 
 **Test kit:** the artifact `trillium-test-kit-unsigned-dev` holds `Trillium-<version>-<commit>.zip`: the macOS app zip, the iOS Simulator zip, and the application-only firmware UF2 from the same CI run, `tools/xiao_uf2.py`, docs, `MANIFEST.txt` and `SHA256SUMS` ([kit README](test-kit.md)). Locally on a Mac: `make apple-mac apple-ios-sim apple-dist fw-uf2 test-kit`.
 
-TestFlight and the App Store are not yet wired up. The iOS and macOS Info.plist files set `ITSAppUsesNonExemptEncryption` to NO (the apps use only OS-provided Bluetooth and include no custom cryptography). `apple/scripts/archive_testflight.sh` archives the **TrilliumIOS** scheme (and optionally **TrilliumMac**) for App Store Connect and can upload a TestFlight build; `.github/workflows/testflight.yml` is a manual-dispatch workflow that runs that script only when the repository secrets `APPLE_TEAM_ID`, `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_KEY` are all set. Those secrets are not configured yet, and no build has been uploaded. The bundle ID in the project is still the placeholder `com.nymble.trill`; a unique ID must be registered and linked to the App Store Connect app record before an upload can succeed. The code is GPL-3.0-only, and App Store distribution of GPL software has known licence conflicts, so any store release would need a decision under the commercial licence ([COMMERCIAL-LICENSE.md](../COMMERCIAL-LICENSE.md)).
+TestFlight and the App Store are not yet wired up. The iOS and macOS Info.plist files set `ITSAppUsesNonExemptEncryption` to NO (the apps use only OS-provided Bluetooth and include no custom cryptography). `apple/scripts/archive_testflight.sh` archives the **TrilliumIOS** and **TrilliumMac** schemes with cloud-managed signing (`xcodebuild -allowProvisioningUpdates` and an App Store Connect API key) and, when asked, uploads with `xcrun altool --upload-app`. `.github/workflows/testflight.yml` is a manual-dispatch workflow that runs that script only when the repository secrets `APPLE_TEAM_ID` (or `IOS_DEVELOPMENT_TEAM`), `ASC_KEY_ID`, `ASC_ISSUER_ID` and `ASC_KEY_P8` (raw `.p8` PEM or base64) are all set. Those secrets are not configured in this repository yet, and no build has been uploaded. The macOS and iOS/iPadOS apps are separate Xcode targets that share the bundle ID `net.nymbus.trillium` (UI tests: `net.nymbus.trillium.tests`) so they can use one App Store Connect record (Apple ID 6836153137). That ID is already registered and linked; iOS 1.0 and macOS 1.0 versions exist, with no builds uploaded yet. The code is GPL-3.0-only, and App Store distribution of GPL software has known licence conflicts, so any store release would need a decision under the commercial licence ([COMMERCIAL-LICENSE.md](../COMMERCIAL-LICENSE.md)).
 
 To archive locally on a Mac with Xcode (export only, no upload):
 
     make apple-firmware apple-project
     TEAM_ID=<team> apple/scripts/archive_testflight.sh ios
 
-To upload as well, sign in to Xcode with the Apple Developer account or pass an App Store Connect API key, and add `UPLOAD=1`. The script never submits the build for App Store review.
+To upload as well, set `UPLOAD=1` and provide `ASC_KEY_ID`, `ASC_ISSUER_ID`, and `ASC_KEY_PATH` or `ASC_KEY_P8`. The script never submits the build for App Store review.
 
 ## Using it
 

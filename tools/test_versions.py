@@ -37,6 +37,14 @@ class VersionAgreementTests(unittest.TestCase):
         self.assertEqual(workspace, app)
         self.assertRegex(workspace, r"^\d+\.\d+\.\d+$")
 
+    def test_bundle_id_is_net_nymbus_trillium(self) -> None:
+        bundle = xcconfig_value(ROOT / "apple" / "Config" / "Base.xcconfig", "TRILL_BUNDLE_ID")
+        self.assertEqual(bundle, "net.nymbus.trillium")
+        yml = (ROOT / "apple" / "project.yml").read_text(encoding="utf-8")
+        self.assertIn("PRODUCT_BUNDLE_IDENTIFIER: $(TRILL_BUNDLE_ID)", yml)
+        self.assertIn("PRODUCT_BUNDLE_IDENTIFIER: $(TRILL_BUNDLE_ID).tests", yml)
+        self.assertNotIn("$(TRILL_BUNDLE_ID).uitests", yml)
+
     def test_build_number_is_a_positive_integer(self) -> None:
         build = xcconfig_value(ROOT / "apple" / "Config" / "Base.xcconfig", "CURRENT_PROJECT_VERSION")
         self.assertGreater(int(build), 0)
@@ -81,7 +89,7 @@ class TestFlightScriptTests(unittest.TestCase):
         finally:
             shutil.rmtree(out, ignore_errors=True)
 
-    def test_upload_dry_run_sets_destination_upload(self) -> None:
+    def test_upload_dry_run_keeps_export_and_mentions_altool(self) -> None:
         import os
         import shutil
         import subprocess
@@ -91,16 +99,50 @@ class TestFlightScriptTests(unittest.TestCase):
         try:
             env = os.environ.copy()
             env.update({"TEAM_ID": "ABCD123456", "DRY_RUN": "1", "UPLOAD": "1", "OUT_DIR": str(out)})
-            subprocess.run(
+            proc = subprocess.run(
                 [str(ROOT / "apple" / "scripts" / "archive_testflight.sh"), "both"],
                 cwd=ROOT,
                 env=env,
                 check=True,
+                capture_output=True,
+                text=True,
             )
+            self.assertIn("altool", proc.stdout)
             for name in ("ExportOptions-ios.plist", "ExportOptions-macos.plist"):
                 opts = plistlib.loads((out / name).read_bytes())
-                self.assertEqual(opts["destination"], "upload")
+                self.assertEqual(opts["destination"], "export")
                 self.assertEqual(opts["method"], "app-store-connect")
+        finally:
+            shutil.rmtree(out, ignore_errors=True)
+
+    def test_asc_key_p8_accepts_pem_and_base64(self) -> None:
+        import base64
+        import os
+        import shutil
+        import subprocess
+        import tempfile
+
+        pem = "-----BEGIN PRIVATE KEY-----\nTESTKEY\n-----END PRIVATE KEY-----"
+        out = Path(tempfile.mkdtemp(prefix="tf-key-"))
+        script = ROOT / "apple" / "scripts" / "archive_testflight.sh"
+        try:
+            for label, value in (("pem", pem), ("b64", base64.b64encode(pem.encode()).decode())):
+                dest_dir = out / label
+                dest_dir.mkdir()
+                env = os.environ.copy()
+                env.update({
+                    "TEAM_ID": "ABCD123456",
+                    "DRY_RUN": "1",
+                    "KEEP_ASC_KEY": "1",
+                    "OUT_DIR": str(dest_dir),
+                    "ASC_KEY_ID": "TESTID12",
+                    "ASC_ISSUER_ID": "00000000-0000-0000-0000-000000000000",
+                    "ASC_KEY_P8": value,
+                })
+                subprocess.run([str(script), "ios"], cwd=ROOT, env=env, check=True, capture_output=True, text=True)
+                written = (dest_dir / "AuthKey_TESTID12.p8").read_text()
+                self.assertIn("BEGIN PRIVATE KEY", written)
+                self.assertIn("TESTKEY", written)
         finally:
             shutil.rmtree(out, ignore_errors=True)
 

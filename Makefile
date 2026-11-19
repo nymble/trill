@@ -173,7 +173,7 @@ apple-ios-ipa: apple-project apple-firmware
 
 # App Store Connect / TestFlight archive (macOS with Xcode). TEAM_ID is
 # required. UPLOAD=1 uploads for TestFlight; otherwise export only. Optional
-# ASC_KEY_PATH, ASC_KEY_ID, ASC_ISSUER_ID. Never submits for App Store review.
+# ASC_KEY_ID, ASC_ISSUER_ID, and ASC_KEY_PATH or ASC_KEY_P8. Never submits for App Store review.
 # See docs/apple-app.md.
 TF_PLATFORM ?= ios
 apple-testflight: apple-project apple-firmware

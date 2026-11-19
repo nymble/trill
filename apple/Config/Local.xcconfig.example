@@ -1,6 +1,8 @@
 // Copy to Config/Local.xcconfig (git-ignored) to build for your own device.
 // Your team ID is shown in Xcode > Settings > Accounts (a free "Personal
-// Team" works for your own devices). Bundle IDs must be unique per team; if
-// com.nymble.trill is unavailable, choose your own reverse-DNS prefix.
+// Team" works for your own devices). The committed bundle ID is
+// net.nymbus.trillium, shared by the macOS, iOS and iPadOS app targets.
+// Bundle IDs must be unique per team; only set TRILL_BUNDLE_ID if you need
+// a different ID for your own team.
 DEVELOPMENT_TEAM = ABCDE12345
-TRILL_BUNDLE_ID = com.example.trill
+// TRILL_BUNDLE_ID = com.example.trill

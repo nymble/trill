@@ -24,7 +24,7 @@ Open hardware designs and Rust software for a motion and touch musical instrumen
 
 **One supported board: the XIAO nRF52840 Sense** (the model with microphone and motion sensor). The plain XIAO nRF52840 has no IMU; firmware 0.6.0 reports `imu=absent` on it and the app says the board is not supported (decided by Paul, 2026-11-14).
 
-**Naming:** the app is **Trillium**. **Trill** is the Bela sensor, and also stays for the firmware (`xiao-sense-fw`), USB product string, protocol, Rust crates, `TrillKit`, internal Swift types, the preset format id and the repository. Bundle ID still `com.nymble.trill` (an open App Store decision, section 9).
+**Naming:** the app is **Trillium**. **Trill** is the Bela sensor, and also stays for the firmware (`xiao-sense-fw`), USB product string, protocol, Rust crates, `TrillKit`, internal Swift types, the preset format id and the repository. Bundle ID is `net.nymbus.trillium` (macOS, iOS and iPadOS; decided 2026-11-19; registered and linked to the Trillium Sense App Store Connect record).
 
 Licence: **GPL-3.0-only**, plus a separate commercial licence offer (`LICENSE`, `COMMERCIAL-LICENSE.md`, `NOTICE.md`). Keep that model; do not import incompatible or ambiguously licensed code.
 
@@ -160,7 +160,7 @@ Backups under `~/Downloads/Trill-hwtest-20261107/backup/` (plus the app's folder
 **Today:** there is **no App Store, TestFlight or notarized build**. CI produces unsigned / ad-hoc-signed development builds only, for Mac and the iOS Simulator. "A new version on the App Store" therefore means a **first submission**. All of the following are unverified and need the user (or their organisation) to confirm or provide them. Do not assume any from memory:
 
 1. **Apple Developer Program:** enrolment (individual or organisation), team ID, and the user's App Store Connect role (Account Holder/Admin/App Manager).
-2. **Bundle ID:** still `com.nymble.trill` after the rename to Trillium. Whether to keep it or move to e.g. a `…trillium` ID is Paul's decision before the first App Store record (it cannot change after publishing). It is configured (`apple/Config/Base.xcconfig`, `TRILL_BUNDLE_ID`); whether it is registered to the user's team is unknown. There is no team in the repo; `Config/Local.xcconfig` is git-ignored.
+2. **Bundle ID:** `net.nymbus.trillium` (decided 2026-11-19), set in `apple/Config/Base.xcconfig` (`TRILL_BUNDLE_ID`) and used by both the **TrilliumMac** and **TrilliumIOS** targets so they can share one App Store record. The iOS UI test target is `net.nymbus.trillium.tests`. It is already registered in the developer account and linked to the Trillium Sense App Store Connect record (Apple ID 6836153137); iOS 1.0 and macOS 1.0 versions exist, with no builds uploaded yet. It cannot change after the first published build. There is no team in the repo; `Config/Local.xcconfig` is git-ignored.
 3. **App Store Connect app record(s):** macOS and iOS (or one universal purchase), name availability, SKU, pricing/free.
 4. **Signing and provisioning:**
    - Distribution certificates and profiles.
