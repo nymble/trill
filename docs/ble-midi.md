@@ -102,8 +102,11 @@ it costs only the idle SoftDevice.
 The BLE image contains only this project's code and permissively
 licensed Rust crates; the SoftDevice it calls is the Nordic-licensed
 binary already in the board's flash and is not distributed by this
-project. Whether that is enough for distributing BLE builds under
-GPL-3.0-only is an open decision for the copyright holder (see
+project.
+
+**Decision 2026-11-19:** BLE-MIDI firmware is published in public releases; the image contains no Nordic code and uses the SoftDevice already on the board. Releases attach
+`xiao-sense-fw-ble-midi-<version>.uf2` next to the USB-only
+`xiao-sense-fw-<version>.uf2` (see
 [music-connectivity.md](music-connectivity.md#licensing-notes-for-ble-engineering-analysis-not-legal-advice)).
 
 ## Not yet measured
