@@ -121,3 +121,6 @@ body.ambient.trillium .site-footer a:hover { color: var(--tr-warm-white); }
   body.ambient.trillium .downloads li:first-child > a { background: none; color: var(--tr-rust); padding: 0; }
   body.ambient.trillium .tr-lockup { display: none; }
 }
+
+/* Links inside download notes read as text links, not as download names. */
+body.ambient.trillium .downloads p a { font-weight: inherit; font-size: inherit; text-decoration: underline; text-decoration-color: var(--tr-signal); }

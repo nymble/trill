@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <title>Trillium — Ambient Lab — M-of-N</title>
-  <meta name="description" content="Trillium is a companion app for motion- and touch-sensing musical instruments that play as class-compliant USB MIDI.">
+  <meta name="description" content="Trillium is an emerging music company: an app for new ways to create, play and interact through music, starting with one small board on a USB cable.">
   <link rel="canonical" href="https://m-of-n.com/ambient-lab/trillium/">
   <link rel="icon" href="/ambient-lab/trillium/assets/icons/rhodonea-32.png" type="image/png" sizes="32x32">
   <link rel="icon" href="/ambient-lab/trillium/assets/icons/rhodonea-192.png" type="image/png" sizes="192x192">
@@ -13,10 +13,10 @@
   <link rel="apple-touch-icon" href="/ambient-lab/trillium/assets/icons/rhodonea-180.png" sizes="180x180">
   <link rel="stylesheet" href="/style.css?v=9">
   <link rel="stylesheet" href="/ambient-lab/trillium/assets/tokens.css?v=1">
-  <link rel="stylesheet" href="/ambient-lab/trillium/assets/trillium.css?v=1">
+  <link rel="stylesheet" href="/ambient-lab/trillium/assets/trillium.css?v=2">
   <meta name="color-scheme" content="dark">
   <meta property="og:title" content="Trillium — Ambient Lab — M-of-N">
-  <meta property="og:description" content="A companion app for motion- and touch-sensing musical instruments.">
+  <meta property="og:description" content="New ways to make music, together.">
   <meta property="og:url" content="https://m-of-n.com/ambient-lab/trillium/">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://m-of-n.com/ambient-lab/trillium/assets/og-image-1200x630.jpg">
@@ -53,10 +53,11 @@
         <p class="back"><a href="/ambient-lab/">Ambient Lab</a></p>
         <div class="hero hero-page">
           <h1>Trillium</h1>
-          <p class="tagline">A companion app for motion- and touch-sensing musical instruments.</p>
+          <p class="tagline">New ways to make music, together.</p>
         </div>
-        <p class="lead">Trillium monitors and configures instruments built around a Seeed Studio XIAO nRF52840 Sense and its onboard IMU. Several hardware models are planned, from a motion-only board to one with a Bela Trill Flex touch sensor; see Hardware below. The instruments play as class-compliant USB MIDI devices into GarageBand, Logic, AUM, or any MIDI app. The app provides presets and sensor modes such as touch, tilt scale, and theremin.</p>
-        <p class="status"><strong>Status:</strong> early and experimental. Trillium 0.6.0 carries firmware 0.6.0 and installs it on a Trillium Zero from the macOS app. The iPhone app has not yet run on hardware.</p>
+        <p class="lead">Trillium is an emerging music company. We are building an app that opens new ways for people to create, play and interact through music.</p>
+        <p class="lead">It starts simply. Trillium Zero is one small microcontroller board with a built-in motion sensor on a USB cable. Move, tilt or tap it, and it plays GarageBand, Logic, AUM or any MIDI app as a standard USB MIDI instrument. The Trillium app chooses the instrument, shows the sensors live and installs the firmware.</p>
+        <p class="status"><strong>Status:</strong> early and experimental. Trillium 0.7.0 carries firmware 0.7.0 and installs it on a Trillium Zero from the macOS app. The iPhone app has not yet run on hardware.</p>
       </div>
     </div>
 
@@ -66,22 +67,24 @@
         <table class="models">
           <thead><tr><th>Model</th><th>What it is</th><th>Status</th><th>Design</th></tr></thead>
           <tbody>
-            <tr><td><strong>T0</strong> Trillium Zero</td><td>One Seeed Studio XIAO nRF52840 Sense on USB</td><td>Showcase; runs today</td><td><a href="/ambient-lab/trillium/zero/">Trillium Zero build</a></td></tr>
-            <tr><td><strong>T1</strong></td><td>T0 plus battery and BLE</td><td>Tested on an early prototype</td><td><a href="https://github.com/nymble/trillium/blob/main/docs/hardware/trillium-zero.md#optional-battery-toward-t1">Battery wiring</a></td></tr>
-            <tr><td><strong>T2</strong></td><td>T1 plus LED and buttons</td><td>Planned</td><td><a href="https://github.com/nymble/trillium/tree/main/hardware/t2">T2 design files</a></td></tr>
-            <tr><td><strong>F1</strong></td><td>T2 plus the <a href="https://bela.io/products/trill/">Bela Trill Flex</a></td><td>Planned</td><td><a href="https://github.com/nymble/trillium/tree/main/hardware/f1">F1 design files</a></td></tr>
+            <tr><td><strong>T0</strong> Trillium Zero</td><td>One Seeed Studio XIAO nRF52840 Sense on a USB cable. Nothing to wire or solder.</td><td>Runs today</td><td><a href="/ambient-lab/trillium/zero/">Trillium Zero build</a></td></tr>
           </tbody>
         </table>
-        <p>The hardware designs are open source. Firmware is bundled with the Trillium app, which installs and updates it. Schematics, layouts, parts lists and enclosures are in the <a href="https://github.com/nymble/trillium/tree/main/hardware">hardware folder</a> of the repository.</p>
+        <p>More configurations are coming. The hardware designs are open source, and the firmware is bundled with the Trillium app, which installs and updates it. Designs are in the <a href="https://github.com/nymble/trillium/tree/main/hardware">hardware folder</a> of the repository.</p>
       </section>
 
       <section aria-labelledby="downloads-title">
         <h2 id="downloads-title">Downloads</h2>
         <ul class="downloads">
           <li>
-            <a href="https://github.com/nymble/trillium/releases/download/v0.6.0/Trillium-macOS-0.6.0.dmg">macOS</a>
-            <p class="meta">Trillium 0.6.0, macOS 13 or later, universal · 2.27 MB · SHA-256 b7ad779cbf3e037bc43b755a2cf59e18753d1acd5b33579008af7bdc9e5fd288</p>
+            <a href="https://github.com/nymble/trillium/releases/download/v0.7.0/Trillium-macOS-0.7.0.dmg">macOS</a>
+            <p class="meta">Trillium 0.7.0, macOS 13 or later, universal · 2.36 MB · SHA-256 eb8b8c93dafb5cbadd6079eed1a416c107a6b896a8ea31c052f6788229f0193c</p>
             <p>The app is unsigned. After dragging it to Applications, open it once, then use System Settings › Privacy &amp; Security › Open Anyway (macOS 15 or later), or right-click the app and choose Open (macOS 13 or 14).</p>
+          </li>
+          <li>
+            <a href="https://github.com/nymble/trillium/releases/download/v0.7.0/xiao-sense-fw-0.7.0.uf2">Firmware</a>
+            <p class="meta">xiao-sense-fw-0.7.0.uf2, application only · 280 KB · SHA-256 0d8f673e70c91ff560ad400eb5dbe14730d80ebdf18ac238819844afdcd94adc</p>
+            <p>The Trillium app carries this firmware and installs it for you. The file is for installing by hand; it replaces only the application and leaves the bootloader untouched. All files and checksums are on the <a href="https://github.com/nymble/trillium/releases/tag/v0.7.0">0.7.0 release page</a>.</p>
           </li>
           <li>
             <span class="dl-name">iPhone and iPad</span> <span class="soon">Coming soon</span>
@@ -100,7 +103,7 @@
 
   <footer class="site-footer">
     <div class="wrap">
-      <p>&copy; 2026 M-of-N. Trill is a trademark of Bela.</p>
+      <p>&copy; 2026 M-of-N.</p>
       <nav aria-label="Legal">
         <ul>
           <li><a href="/ambient-lab/trillium/privacy/">Trillium privacy</a></li>

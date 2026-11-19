@@ -1,5 +1,7 @@
 # Roadmap and design status
 
+Longer-range ideas, not yet prioritized, are collected in [vision.md](vision.md).
+
 ## Design status
 
 | Item | State |

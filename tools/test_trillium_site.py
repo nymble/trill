@@ -53,6 +53,30 @@ class TrilliumSiteTests(unittest.TestCase):
                         "og-image-1200x630.jpg", "lockup.svg"):
                 self.assertIn(rel, html, f"{p}: {rel}")
 
+    def test_pages_name_no_third_party_sensor(self):
+        # Current pages speak only about the board on a cable; sensor brands stay out.
+        for p in PAGES:
+            html = read(p)
+            self.assertNotRegex(html, r"\bTrill\b|\bBela\b|Trill Flex", p)
+            self.assertNotRegex(html, r"\bF1\b|\bT2\b|\bT1\b", p)
+
+    def test_downloads_point_at_the_current_release(self):
+        html = read("index.html")
+        base = "https://github.com/nymble/trillium/releases/download/v0.7.0/"
+        self.assertIn(base + "Trillium-macOS-0.7.0.dmg", html)
+        self.assertIn(base + "xiao-sense-fw-0.7.0.uf2", html)
+        for p in PAGES:
+            self.assertNotRegex(read(p), r"v0\.[0-6]\.|\b0\.[0-6]\.0\b", p)
+
+    def test_assets_carry_no_provenance_metadata(self):
+        for d, _, names in os.walk(ts.ASSETS):
+            for n in names:
+                if n.endswith((".svg", ".png", ".jpg", ".webp", ".css")):
+                    with open(os.path.join(d, n), "rb") as f:
+                        data = f.read()
+                    for marker in (b"c2pa", b"Claude", b"Anthropic"):
+                        self.assertNotIn(marker, data, f"{n}: {marker!r}")
+
     def test_css_is_self_contained(self):
         for name in ("trillium.css", "tokens.css"):
             css = read(f"assets/{name}")
