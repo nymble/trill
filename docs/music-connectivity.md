@@ -21,7 +21,7 @@ Sources were checked on **2026-11-07** and are listed at the end as [S1]…[S22]
 3. **BLE-MIDI second**, after USB is measured:
    - It gives wireless freedom with standard Audio MIDI Setup / CoreAudioKit pairing [S3][S4].
    - New events wait for the next connection event: a scheduling window of 0 up to one negotiated connection interval (CI), about CI/2 on average for randomly timed events. Queuing and retries add to that, and the PHY rate does not remove the wait [S8][S9][S10]. The interval actually granted must be measured.
-   - Before starting, resolve the GPL vs Nordic-controller licensing question (below).
+   - The GPL vs Nordic-controller licensing question (below) was decided on 2026-11-19: BLE-MIDI builds are published.
 4. **For this project, we recommend against a custom BLE protocol as the music path.** It needs our own iOS/macOS app (Safari has no Web Bluetooth [S18]) and gives up DAW interoperability. Its only use would be an *optional* diagnostics/raw-sensor characteristic later.
 5. **We recommend against a custom USB protocol or USB Audio as the first step.** CDC stays for diagnostics only. USB Audio class output only helps if on-device synthesis becomes a product goal.
 6. **Fix the sensor path before any transport work:**
@@ -129,7 +129,7 @@ Streaming MCU audio to the phone over BLE is not a viable monitoring path:
 - **Firmware cost on nRF52840.**
   - A BLE controller (Nordic SoftDevice Controller via `nrf-sdc` + `trouble-host`, or the S140 SoftDevice already on the board via `nrf-softdevice`) reserves the highest interrupt priority for radio timing [S21]. Our P5 audio executor would be preempted by radio events, so check the audio late/resync counters under BLE load.
   - Use the IMU and Trill paths unchanged. Only the transport changes.
-- **Licensing.** See the licensing section below; decide before writing BLE code.
+- **Licensing.** See the licensing section below (decided 2026-11-19: BLE-MIDI builds are published).
 
 ## 4. Custom BLE messages (GATT)
 
@@ -235,6 +235,7 @@ Clocks: never subtract a device timestamp from a host timestamp. Use one of:
   - (b) distribute BLE builds under the commercial licence;
   - (c) use an open-source controller.
 - Get advice before shipping BLE binaries. [omi-integration.md](omi-integration.md) has been reworded to match.
+- **Decision 2026-11-19:** BLE-MIDI firmware is published in public releases; the image contains no Nordic code and uses the SoftDevice already on the board. The build uses `nrf-softdevice` (the second option above): the UF2 holds only this project's code and permissively licensed crates, and it reaches the separately flashed, Nordic-licensed S140 binary below `0x27000` through supervisor calls. That binary is neither included in nor distributed with any release.
 
 ## Research gaps
 

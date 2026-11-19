@@ -42,11 +42,12 @@ The device **never answers a reply-typed message** (`type & 0x40`), anything wit
 | `01` HELLO | host's highest version (1 byte) | `41` HELLO_REPLY |
 | `02` GET_CONFIG | none (page 0), or page number (1 byte, firmware 0.4.0+) | `42` CONFIG for that page; an unknown page gets ERROR OutOfRange (detail = page) |
 | `03` SET_CONFIG | 1–16 × `(param, hi, lo)` | `42` CONFIG (the page of the **first** parameter) with the values now in effect, or `7F` ERROR |
-| `04` ACTION | action code (1 byte) | `44` ACTION_ACK `<code>`. Restore-defaults answers with `42` CONFIG page 0 |
+| `04` ACTION | action code (1 byte) | `44` ACTION_ACK `<code>`. Restore-defaults answers with `42` CONFIG page 0; the Bluetooth setting actions 10–13 answer with `47` STATUS |
 | `05` TELEMETRY_START | rate in Hz, 1–100 (1 byte) | `45` TELEMETRY_ACK, then `50` TELEMETRY frames (firmware 0.3.0+, [below](#sensor-telemetry-firmware-030)); firmware that sets variant bit 3 also sends a `51` touches companion with each frame |
 | `06` TELEMETRY_STOP | none | `45` TELEMETRY_ACK with rate 0 |
+| `07` GET_STATUS | none | `47` STATUS (variant bit 5, [below](#battery-and-bluetooth-status-variant-bit-5)); firmware without bit 5 answers ERROR UnknownType |
 
-**HELLO_REPLY payload** (13 bytes): protocol version, firmware major, minor, patch, variant (bit 0 = `pcm-synth` build; with capability bit 6: bit 1 = IMU fitted, bit 2 = microphone test capture available, bit 3 = multi-touch telemetry companion `51`, bit 4 = BLE-MIDI running: `ble-midi` build, [ble-midi.md](ble-midi.md)), capabilities (bit 0 SET_CONFIG, bit 1 ACTION, bit 2 persistent settings: **never set by this firmware**, bit 3 sensor telemetry: firmware 0.3.0+, bit 4 paged configuration: firmware 0.4.0+, bit 5 directional strikes: firmware 0.5.0+, bit 6 board report and action 6: firmware 0.6.0+), max message length (64), parameter count (13 before 0.4.0, 30 in 0.4.0, 37 in 0.5.0), uptime in seconds (3 bytes, 21 bits, saturating), boot ID (2 bytes, 14 bits). The capability byte is 7-bit MIDI data, so it has no bit 7; multi-touch is advertised in the variant byte. The boot ID is drawn from the nRF52840 hardware RNG at reset. A changed boot ID means the device restarted and its settings went back to defaults.
+**HELLO_REPLY payload** (13 bytes): protocol version, firmware major, minor, patch, variant (bit 0 = `pcm-synth` build; with capability bit 6: bit 1 = IMU fitted, bit 2 = microphone test capture available, bit 3 = multi-touch telemetry companion `51`, bit 4 = BLE-MIDI available: `ble-midi` build with the Bluetooth stack started, [ble-midi.md](ble-midi.md); bit 5 = GET_STATUS supported), capabilities (bit 0 SET_CONFIG, bit 1 ACTION, bit 2 persistent settings: **never set by this firmware**, bit 3 sensor telemetry: firmware 0.3.0+, bit 4 paged configuration: firmware 0.4.0+, bit 5 directional strikes: firmware 0.5.0+, bit 6 board report and action 6: firmware 0.6.0+), max message length (64), parameter count (13 before 0.4.0, 30 in 0.4.0, 37 in 0.5.0), uptime in seconds (3 bytes, 21 bits, saturating), boot ID (2 bytes, 14 bits). The capability byte is 7-bit MIDI data, so it has no bit 7; multi-touch is advertised in the variant byte. The boot ID is drawn from the nRF52840 hardware RNG at reset. A changed boot ID means the device restarted and its settings went back to defaults.
 
 **CONFIG payload:** generation (2 bytes, 14 bits, wraps), persistent flag (`00`: RAM only), then `(param, hi, lo)` for every parameter of one page in ID order. The page is implied by the IDs.
 
@@ -143,10 +144,38 @@ Controller sources: 0 off, 1 rotation speed (full scale = param 9), 2 pitch forw
 | 6 | Enter bootloader (0.6.0+, capability bit 6) | Sends All Notes Off and the ACK, then about 250 ms later resets into the UF2 bootloader (GPREGRET `0x57`), so the `XIAO-SENSE` drive appears without a double-press of RESET. Writes no flash; a plain reset returns to the application. Firmware 0.5.0 and older answer UnknownAction |
 | 7 | Start microphone test (variant bit 2) | Powers the onboard PDM microphone and starts 16 kHz 16-bit mono capture on the USB PCM port. Not part of any instrument or configuration. Firmware that does not set variant bit 2 answers UnknownAction |
 | 8 | Stop microphone test (variant bit 2) | Stops capture and drives the microphone power pin low. The same happens on USB disconnect and at reset |
+| 9 | (not assigned) | Answers UnknownAction; kept free as the "unknown action" test vector |
+| 10 | Discoverable on (variant bit 4) | Advertise so hosts can find the board (while a battery is detected). Stored on the board. Replies `47` STATUS with the new setting |
+| 11 | Discoverable off (variant bit 4) | Stop advertising. A host that is already connected stays connected. Stored on the board. Replies `47` STATUS |
+| 12 | Bluetooth MIDI on (variant bit 4) | The BLE-MIDI service is active: MIDI service UUID in the advertisement, instrument MIDI to a connected host. Stored on the board. Replies `47` STATUS |
+| 13 | Bluetooth MIDI off (variant bit 4) | Disconnects a connected host and sends no MIDI over Bluetooth; the board can still advertise (name and Battery Service only). USB MIDI is unaffected. Stored on the board. Replies `47` STATUS |
+
+Actions 10–13 need variant bit 4; other firmware (and the USB-only build) answers UnknownAction.
+
+## Battery and Bluetooth status (variant bit 5)
+
+`GET_STATUS` (`07`, no payload) returns `47` STATUS with a 7-byte payload:
+
+| Byte | Meaning |
+|---|---|
+| 0 | Format, `01` |
+| 1 | Bits 0–1 battery: 0 unknown (still checking), 1 absent, 2 present. Bit 2 charging. Bit 3 USB power present |
+| 2, 3 | Battery voltage in mV, 14 bits (high 7, low 7); 0 = not measured |
+| 4 | Approximate charge 0–100 %, `7F` = unknown |
+| 5 | Bluetooth settings: bit 0 discoverable, bit 1 Bluetooth MIDI on, bit 2 settings stored on the board |
+| 6 | Bits 0–2 link: 0 off, 1 advertising, 2 connected, 3 streaming MIDI. Bits 3–5 why Bluetooth is off: 0 running, 1 firmware without Bluetooth, 2 no battery, 3 turned off (not discoverable, not connected), 4 Bluetooth stack unavailable (no SoftDevice, safe mode or start failure), 5 still checking for a battery |
+
+Every firmware with bit 5 reports the battery; only the `ble-midi` build
+reports Bluetooth (the USB-only build reports reason 1 and settings 0).
+The battery heuristic and its limits are in [battery.md](battery.md); the
+Bluetooth behaviour in [ble-midi.md](ble-midi.md). Hosts poll about every
+2 s while connected (`ConfigSession.maintainStatus`). Vectors:
+`get_status`, `action_discoverable_*`, `action_ble_midi_*` in
+`protocol/config-v1-vectors.txt`.
 
 ## Persistence
 
-**Settings live in RAM only.** A reset, power cycle or firmware update restores the defaults, and the device reports this (persistent flag `00`, capability bit 2 clear). Nothing is written to flash. Saving settings on the device would need a flash region that is verified not to collide with the Omi/bootloader storage partition (`0xEC000`–`0xF4000`) and a power-loss-safe write scheme. Neither exists yet. Keep settings as host presets instead ([Apple app](apple-app.md#presets)).
+**Instrument settings live in RAM only.** (The two Bluetooth settings of the `ble-midi` build, actions 10–13, are the exception: they are stored in one flash page at `0xEC000`, see [ble-midi.md](ble-midi.md#settings-and-defaults).) A reset, power cycle or firmware update restores the defaults, and the device reports this (persistent flag `00`, capability bit 2 clear). Nothing is written to flash. Saving settings on the device would need a flash region that is verified not to collide with the Omi/bootloader storage partition (`0xEC000`–`0xF4000`) and a power-loss-safe write scheme. Neither exists yet. Keep settings as host presets instead ([Apple app](apple-app.md#presets)).
 
 ## Sensor telemetry (firmware 0.3.0+)
 
@@ -211,7 +240,7 @@ when there are five). Shared fixtures: `protocol/telemetry-touches-v1-frames.txt
 
 ## Safety properties
 
-- A message can only read or change the listed parameters and trigger the listed actions. No message addresses memory or flash. Actions 7 and 8 only switch the onboard microphone power pin and PDM capture; they do not change the instrument mapping.
+- A message can only read or change the listed parameters and trigger the listed actions. No message addresses memory or flash. Actions 7 and 8 only switch the onboard microphone power pin and PDM capture; they do not change the instrument mapping. Actions 10–13 only change the two Bluetooth settings; the firmware stores them in its own fixed page (`0xEC000`), never at an address taken from a message.
 - Parsing is bounded: fixed 64-byte buffers, no allocation, and work proportional to the message length. It runs on the USB executor, and engine access is a short critical section, the same as the diagnostics keys. It never waits on sensors.
 - A fuzz test pushes 200 000 random packets through reassembly and handling. It checks that nothing panics, that every reply is a well-formed SysEx of at most 64 bytes, and that every applied config is already sanitized.
 

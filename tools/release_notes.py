@@ -26,7 +26,8 @@ DOWNLOADS = """\
 | `Trillium-macOS-{v}.dmg` | Trillium app for macOS 13+ (Apple Silicon and Intel). Drag Trillium to Applications. |
 | `Trillium-macOS-unsigned-dev-{v}.zip` | The same macOS app as a zip (Apple Silicon and Intel) |
 | `Trillium-iOS-Simulator-{v}.zip` | Trillium app for the iPhone and iPad Simulator (iOS/iPadOS 16+). It cannot be installed on a physical device. The Simulator has no USB MIDI device, so Home shows the plug-in prompt. |
-| `xiao-sense-fw-{v}.uf2` | Instrument firmware for the Seeed XIAO nRF52840 Sense (application only; bootloader and SoftDevice untouched) |
+| `xiao-sense-fw-{v}.uf2` | Instrument firmware for the Seeed XIAO nRF52840 Sense, USB MIDI (application only; bootloader and SoftDevice untouched) |
+| `xiao-sense-fw-ble-midi-{v}.uf2` | The same firmware plus MIDI over Bluetooth LE for boards with a battery. Uses the S140 SoftDevice already on the board; application only, bootloader and SoftDevice untouched. Install it by hand as below |
 | `xiao_uf2.py` | Checks the firmware file and copies it to the board only when asked |
 | `Trillium-{v}-<commit>.zip` | Everything above from one commit, with docs and a manifest |
 | `trill-{v}-<target>.tar.gz` | `trill` command-line tool for Raspberry Pi and Linux |

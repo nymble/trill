@@ -3,7 +3,8 @@
  *
  *   0x00000000  MBR + SoftDevice S140 v7      (156 KiB, never written)
  *   0x00027000  Application (this image)      (788 KiB)
- *   0x000EC000  Storage (reserved, unused)    (32 KiB)
+ *   0x000EC000  Storage                       (32 KiB; the ble-midi build keeps
+ *               its Bluetooth settings in the first 4 KiB page, 0xEC000)
  *   0x000F4000  UF2 bootloader + settings     (48 KiB, never written)
  *
  * Source: Zephyr dts/vendor/nordic/nrf52840_partition_uf2_sdv7.dtsi used by

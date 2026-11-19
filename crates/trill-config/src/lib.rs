@@ -33,12 +33,14 @@
 
 pub mod param;
 pub mod request;
+pub mod status;
 pub mod telemetry;
 pub mod usb;
 
 use heapless::Vec;
 use instrument_events::Config;
 pub use param::Param;
+pub use status::{Battery, BluetoothOff, Link, Status};
 
 /// MIDI manufacturer ID for non-commercial / educational use (development only).
 pub const MANUFACTURER_ID: u8 = 0x7D;
@@ -70,6 +72,8 @@ pub mod msg {
     pub const TELEMETRY_START: u8 = 0x05;
     /// Stop sensor telemetry: no payload.
     pub const TELEMETRY_STOP: u8 = 0x06;
+    /// Read battery and Bluetooth status (`VARIANT_STATUS`): no payload.
+    pub const GET_STATUS: u8 = 0x07;
     /// Reply bit.
     pub const REPLY: u8 = 0x40;
     /// Reply to `HELLO`.
@@ -82,6 +86,9 @@ pub mod msg {
     /// Reply to `TELEMETRY_START` / `TELEMETRY_STOP`: rate (0 = off),
     /// lease seconds, frame length, frame format.
     pub const TELEMETRY_ACK: u8 = 0x45;
+    /// Battery and Bluetooth status (reply to `GET_STATUS` and to the
+    /// Bluetooth setting actions 10..=13), see [`crate::status`].
+    pub const STATUS: u8 = 0x47;
     /// Unsolicited sensor frame (request id 0), see [`crate::telemetry`].
     pub const TELEMETRY: u8 = 0x50;
     /// Unsolicited companion to [`TELEMETRY`]: up to five 1-axis touches,
@@ -142,6 +149,23 @@ pub enum Action {
     /// Stop microphone test capture and drive the microphone power pin
     /// low. Older firmware answers `UnknownAction`.
     StopMic = 8,
+    // Code 9 is intentionally unassigned (it stays the "unknown action"
+    // test vector).
+    /// Make the board discoverable over Bluetooth (advertising). Needs
+    /// [`VARIANT_BLE_MIDI`]; stored on the board. Replies with `STATUS`.
+    BluetoothDiscoverableOn = 10,
+    /// Stop advertising. A central that is already connected stays
+    /// connected; turn Bluetooth MIDI off to end the link. Stored on the
+    /// board. Replies with `STATUS`.
+    BluetoothDiscoverableOff = 11,
+    /// Turn the BLE-MIDI service on (instrument MIDI to a connected
+    /// central, MIDI service UUID in the advertisement). Stored on the
+    /// board. Replies with `STATUS`.
+    BluetoothMidiOn = 12,
+    /// Turn the BLE-MIDI service off: a connected central is disconnected
+    /// and no MIDI is sent over Bluetooth. USB MIDI is unaffected. Stored
+    /// on the board. Replies with `STATUS`.
+    BluetoothMidiOff = 13,
 }
 
 impl Action {
@@ -156,8 +180,23 @@ impl Action {
             6 => Self::EnterBootloader,
             7 => Self::StartMic,
             8 => Self::StopMic,
+            10 => Self::BluetoothDiscoverableOn,
+            11 => Self::BluetoothDiscoverableOff,
+            12 => Self::BluetoothMidiOn,
+            13 => Self::BluetoothMidiOff,
             _ => return None,
         })
+    }
+
+    /// The four Bluetooth setting actions (need [`VARIANT_BLE_MIDI`]).
+    pub fn is_bluetooth_setting(self) -> bool {
+        matches!(
+            self,
+            Self::BluetoothDiscoverableOn
+                | Self::BluetoothDiscoverableOff
+                | Self::BluetoothMidiOn
+                | Self::BluetoothMidiOff
+        )
     }
 }
 
@@ -177,12 +216,16 @@ pub const VARIANT_MIC: u8 = 0x04;
 /// do not see this bit, and older hosts, ignore the companion; format 1
 /// still reports the first touch only.
 pub const VARIANT_MULTI_TOUCH: u8 = 0x08;
-/// Variant flag: MIDI over Bluetooth LE is running. The firmware was built
-/// with the `ble-midi` feature and the BLE stack started; the device
-/// advertises the standard BLE-MIDI service and sends the same instrument
-/// MIDI as USB (cable 0). USB stays the setup path: configuration and
-/// telemetry are USB only.
+/// Variant flag: MIDI over Bluetooth LE is available. The firmware was
+/// built with the `ble-midi` feature and the BLE stack started. Whether the
+/// board is advertising or connected right now (it needs a battery, and
+/// both Bluetooth settings can be off) is reported by `STATUS`
+/// ([`VARIANT_STATUS`]). Actions 10..=13 need this bit. USB stays the setup
+/// path: configuration and telemetry are USB only.
 pub const VARIANT_BLE_MIDI: u8 = 0x10;
+/// Variant flag: `GET_STATUS` is supported (battery presence, voltage,
+/// charge and the Bluetooth settings and link, see [`status`]).
+pub const VARIANT_STATUS: u8 = 0x20;
 /// Capability bit: `SET_CONFIG` supported.
 pub const CAP_SET_CONFIG: u8 = 0x01;
 /// Capability bit: `ACTION` supported.
@@ -206,7 +249,7 @@ pub const CAP_STRIKES: u8 = 0x20;
 /// only on the Sense board) and ask the user to double-press RESET.
 pub const CAP_BOARD: u8 = 0x40;
 
-/// Facts reported by `HELLO_REPLY`.
+/// Facts reported by `HELLO_REPLY` and `STATUS`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct DeviceInfo {
     /// Firmware version (major, minor, patch), each `0..=127`.
@@ -217,6 +260,9 @@ pub struct DeviceInfo {
     pub uptime_s: u32,
     /// Random 14-bit value chosen at boot; changes when the device restarts.
     pub boot_id: u16,
+    /// Battery and Bluetooth status for `GET_STATUS` (only answered when
+    /// `variant` has [`VARIANT_STATUS`]).
+    pub status: Status,
 }
 
 /// Reply buffer.
@@ -450,6 +496,26 @@ pub fn handle(
                     payload[0],
                 )));
             };
+            if a.is_bluetooth_setting() {
+                if info.variant & VARIANT_BLE_MIDI == 0 {
+                    return Some(plain(error_reply(
+                        req,
+                        ErrorCode::UnknownAction,
+                        payload[0],
+                    )));
+                }
+                let mut s = info.status;
+                match a {
+                    Action::BluetoothDiscoverableOn => s.discoverable = true,
+                    Action::BluetoothDiscoverableOff => s.discoverable = false,
+                    Action::BluetoothMidiOn => s.ble_midi = true,
+                    _ => s.ble_midi = false,
+                }
+                return Some(Outcome {
+                    action: Some(a),
+                    ..plain(status::status_reply(req, &s))
+                });
+            }
             if a == Action::RestoreDefaults {
                 let new = Config::default();
                 let changed = new != *cfg;
@@ -488,6 +554,15 @@ pub fn handle(
                 telemetry: Some(rate),
                 ..plain(telemetry::ack(req, rate))
             })
+        }
+        msg::GET_STATUS => {
+            if info.variant & VARIANT_STATUS == 0 {
+                return Some(plain(error_reply(req, ErrorCode::UnknownType, ty)));
+            }
+            if !payload.is_empty() {
+                return bad_len();
+            }
+            Some(plain(status::status_reply(req, &info.status)))
         }
         msg::TELEMETRY_STOP => {
             if !payload.is_empty() {

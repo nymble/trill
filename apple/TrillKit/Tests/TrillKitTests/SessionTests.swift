@@ -20,6 +20,11 @@ final class FakeTrill {
     var board = false
     /// Variant bit 2: microphone test capture.
     var mic = false
+    /// Variant bits 4 and 5: Bluetooth firmware with battery/Bluetooth status.
+    var bluetooth = false
+    var status = DeviceStatus(battery: .present, usbPower: true, batteryMillivolts: 4000, batteryPercent: 73,
+                              discoverable: true, bluetoothMIDI: true, settingsStored: true,
+                              link: .advertising, offReason: .running)
 
     func known(_ p: TrillParam) -> Bool { p.page == 0 || (pages && p.page == 1) || (strikes && p.page == 2) }
 
@@ -31,7 +36,7 @@ final class FakeTrill {
         case 0x01:
             let minor: UInt8 = board ? 6 : strikes ? 5 : pages ? 4 : telemetry ? 3 : 2
             let caps: UInt8 = (telemetry ? 0x0B : 3) | (pages ? 0x10 : 0) | (strikes ? 0x20 : 0) | (board ? 0x40 : 0)
-            let variant: UInt8 = (board ? 0x02 : 0) | (mic ? 0x04 : 0)
+            let variant: UInt8 = (board ? 0x02 : 0) | (mic ? 0x04 : 0) | (bluetooth ? 0x30 : 0)
             let count: UInt8 = strikes ? 37 : pages ? 30 : 13
             return hdr(0x41) + [1, 0, minor, 0, variant, caps, 64, count, 0, 0, 5, UInt8(bootID >> 7), UInt8(bootID & 0x7F), 0xF7]
         case 0x02:
@@ -52,14 +57,24 @@ final class FakeTrill {
             return configReply(hdr, page: TrillParam(rawValue: m[7])!.page)
         case 0x04:
             guard let a = TrillAction(rawValue: m[7]), !a.needsConfigPages || pages,
-                  !a.needsMicrophone || mic else { return hdr(0x7F) + [7, m[7], 0xF7] }
+                  !a.needsMicrophone || mic, !a.needsBluetooth || bluetooth else { return hdr(0x7F) + [7, m[7], 0xF7] }
             actions.append(a)
+            switch a {
+            case .bluetoothDiscoverableOn: status.discoverable = true
+            case .bluetoothDiscoverableOff: status.discoverable = false
+            case .bluetoothMIDIOn: status.bluetoothMIDI = true
+            case .bluetoothMIDIOff: status.bluetoothMIDI = false
+            default: break
+            }
+            if a.needsBluetooth { return hdr(0x47) + status.payload + [0xF7] }
             if a == .restoreDefaults { config = .firmwareDefaults; return configReply(hdr, page: 0) }
             return hdr(0x44) + [a.rawValue, 0xF7]
         case 0x05 where telemetry:
             guard (1...100).contains(Int(m[7])) else { return hdr(0x7F) + [5, m[7], 0xF7] }
             telemetryRate = Int(m[7])
             return hdr(0x45) + [m[7], 5, 54, 1, 0xF7]
+        case 0x07 where bluetooth:
+            return hdr(0x47) + status.payload + [0xF7]
         case 0x06 where telemetry:
             telemetryRate = 0
             return hdr(0x45) + [0, 5, 54, 1, 0xF7]

@@ -24,10 +24,13 @@ public enum TrillProtocol {
         case action = 0x04
         case telemetryStart = 0x05
         case telemetryStop = 0x06
+        /// Battery and Bluetooth status (needs `variantStatus`).
+        case getStatus = 0x07
         case helloReply = 0x41
         case config = 0x42
         case actionAck = 0x44
         case telemetryAck = 0x45
+        case status = 0x47
         case telemetry = 0x50
         case telemetryTouches = 0x51
         case error = 0x7F
@@ -40,10 +43,14 @@ public enum TrillProtocol {
     public static let variantMic: UInt8 = 0x04
     /// Companion `0x51` multi-touch telemetry is sent with each format-1 frame.
     public static let variantMultiTouch: UInt8 = 0x08
-    /// MIDI over Bluetooth LE is running (firmware built with `ble-midi`):
-    /// the board advertises the standard BLE-MIDI service and sends the
-    /// same instrument MIDI as USB. Configuration stays on USB.
+    /// MIDI over Bluetooth LE is available (firmware built with `ble-midi`
+    /// and the Bluetooth stack started). Whether it is advertising or
+    /// connected, and why not, comes from `STATUS`. Actions 10...13 need
+    /// it. Configuration stays on USB.
     public static let variantBLEMIDI: UInt8 = 0x10
+    /// `GET_STATUS` is supported: battery presence, voltage, charge and the
+    /// Bluetooth settings and link.
+    public static let variantStatus: UInt8 = 0x20
     public static let capSetConfig: UInt8 = 0x01
     public static let capActions: UInt8 = 0x02
     public static let capPersistent: UInt8 = 0x04
@@ -95,6 +102,15 @@ public enum TrillAction: UInt8, CaseIterable, Sendable {
     case startMic
     /// Stop microphone test capture and power the microphone down.
     case stopMic
+    // Code 9 is not assigned.
+    /// Advertise so hosts can find the board (stored on the board).
+    case bluetoothDiscoverableOn = 10
+    /// Stop advertising; a current Bluetooth link stays up.
+    case bluetoothDiscoverableOff = 11
+    /// Turn the Bluetooth MIDI service on (stored on the board).
+    case bluetoothMIDIOn = 12
+    /// Turn Bluetooth MIDI off: a connected host is disconnected. USB MIDI is unaffected.
+    case bluetoothMIDIOff = 13
 
     public var title: String {
         switch self {
@@ -106,6 +122,10 @@ public enum TrillAction: UInt8, CaseIterable, Sendable {
         case .enterBootloader: return "Restart for a firmware update"
         case .startMic: return "Start microphone test"
         case .stopMic: return "Stop microphone test"
+        case .bluetoothDiscoverableOn: return "Discoverable on"
+        case .bluetoothDiscoverableOff: return "Discoverable off"
+        case .bluetoothMIDIOn: return "Bluetooth MIDI on"
+        case .bluetoothMIDIOff: return "Bluetooth MIDI off"
         }
     }
 
@@ -115,6 +135,13 @@ public enum TrillAction: UInt8, CaseIterable, Sendable {
     public var needsBoard: Bool { self == .enterBootloader }
     /// Needs a HELLO that reports `hasMicrophone`.
     public var needsMicrophone: Bool { self == .startMic || self == .stopMic }
+    /// Needs a HELLO that reports `hasBLEMIDI`. The device replies with `STATUS`.
+    public var needsBluetooth: Bool {
+        switch self {
+        case .bluetoothDiscoverableOn, .bluetoothDiscoverableOff, .bluetoothMIDIOn, .bluetoothMIDIOff: return true
+        default: return false
+        }
+    }
 }
 
 /// Values of `TrillParam.mode`.
@@ -387,8 +414,10 @@ public enum TrillReply: Equatable, Sendable {
         public var supportsTelemetry: Bool { capabilities & TrillProtocol.capTelemetry != 0 }
         /// Up to five touches in a companion SysEx (variant bit 3).
         public var supportsMultiTouch: Bool { variant & TrillProtocol.variantMultiTouch != 0 }
-        /// BLE-MIDI is running on the board (variant bit 4).
+        /// BLE-MIDI is available on the board (variant bit 4).
         public var hasBLEMIDI: Bool { variant & TrillProtocol.variantBLEMIDI != 0 }
+        /// Battery and Bluetooth status can be read (variant bit 5).
+        public var supportsStatus: Bool { variant & TrillProtocol.variantStatus != 0 }
         /// Parameters 14...30 and action 5 (firmware 0.4.0+).
         public var supportsConfigPages: Bool { capabilities & TrillProtocol.capConfigPages != 0 }
         /// Parameters 31...37, directional strikes (firmware 0.5.0+).
@@ -419,11 +448,13 @@ public enum TrillReply: Equatable, Sendable {
     /// Telemetry subscription state: rate (0 = stopped), lease, frame length, format.
     case telemetryAck(requestID: UInt8, rateHz: Int, leaseSeconds: Int, frameLength: Int, format: Int)
     case error(requestID: UInt8, code: UInt8, detail: UInt8)
+    /// Battery and Bluetooth status (reply to `GET_STATUS` and to the Bluetooth setting actions).
+    case status(requestID: UInt8, DeviceStatus)
 
     public var requestID: UInt8 {
         switch self {
         case let .hello(id, _), let .config(id, _, _, _, _), let .actionAck(id, _), let .error(id, _, _),
-             let .telemetryAck(id, _, _, _, _): return id
+             let .telemetryAck(id, _, _, _, _), let .status(id, _): return id
         }
     }
 }
@@ -446,6 +477,8 @@ public enum TrillCodec {
         return header(.telemetryStart, id) + [UInt8(rateHz), 0xF7]
     }
     public static func telemetryStop(_ id: UInt8) -> [UInt8] { header(.telemetryStop, id) + [0xF7] }
+    /// Needs `variantStatus`.
+    public static func getStatus(_ id: UInt8) -> [UInt8] { header(.getStatus, id) + [0xF7] }
 
     /// `nil` if empty, too many values, or a value is out of range (the app
     /// never sends a request the device would reject for range).
@@ -499,6 +532,9 @@ public enum TrillCodec {
         case .telemetryAck:
             guard p.count == 4 else { return nil }
             return .telemetryAck(requestID: id, rateHz: Int(p[0]), leaseSeconds: Int(p[1]), frameLength: Int(p[2]), format: Int(p[3]))
+        case .status:
+            guard let s = DeviceStatus(payload: p) else { return nil }
+            return .status(requestID: id, s)
         case .error:
             guard p.count == 2 else { return nil }
             return .error(requestID: id, code: p[0], detail: p[1])

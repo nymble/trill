@@ -408,9 +408,10 @@ pub fn bump_config_generation() {
 /// BLE-MIDI link state (`BLE_*`), for diagnostics and the LED. Stays
 /// [`BLE_OFF`] in builds without the `ble-midi` feature.
 pub static BLE_STATE: AtomicU8 = AtomicU8::new(BLE_OFF);
-/// Not built, or not started (safe mode).
+/// Not built, not started (safe mode), or idle: not discoverable, no
+/// battery, and no central connected.
 pub const BLE_OFF: u8 = 0;
-/// Advertising the BLE-MIDI service, no central connected.
+/// Advertising (with the BLE-MIDI service when it is on), no central.
 pub const BLE_ADVERTISING: u8 = 1;
 /// A central is connected but has not enabled MIDI notifications.
 pub const BLE_CONNECTED: u8 = 2;
@@ -423,14 +424,6 @@ pub const BLE_FAILED: u8 = 4;
 /// True while a BLE central listens for MIDI (the writer feeds it).
 pub fn ble_midi_streaming() -> bool {
     BLE_STATE.load(Ordering::Relaxed) == BLE_STREAMING
-}
-
-/// True when the BLE-MIDI service is up (advertising or connected).
-pub fn ble_midi_running() -> bool {
-    matches!(
-        BLE_STATE.load(Ordering::Relaxed),
-        BLE_ADVERTISING | BLE_CONNECTED | BLE_STREAMING
-    )
 }
 
 /// One instrument MIDI message (wire bytes, `len` valid) for BLE.
@@ -466,5 +459,113 @@ pub fn ble_midi_send(m: &instrument_events::MidiMessage) {
         .is_err()
     {
         BLE_DROPPED.fetch_add(1, Ordering::Relaxed);
+    }
+}
+
+// ---- Battery (every build) ----
+
+/// Battery presence (`trill_config::Battery as u8`), from the battery task.
+pub static BATTERY_STATE: AtomicU8 = AtomicU8::new(0);
+/// Battery voltage in mV (0 = not measured yet).
+pub static BATTERY_MV: AtomicU16 = AtomicU16::new(0);
+/// The charger reports charging (~CHG low with USB power).
+pub static BATTERY_CHARGING: AtomicBool = AtomicBool::new(false);
+/// USB power (VBUS) as last seen by the battery task.
+pub static USB_POWER: AtomicBool = AtomicBool::new(false);
+
+/// Current battery judgement.
+pub fn battery_state() -> trill_config::Battery {
+    trill_config::Battery::from_bits(BATTERY_STATE.load(Ordering::Relaxed))
+}
+
+/// Approximate state of charge, `None` without a battery or reading.
+pub fn battery_percent() -> Option<u8> {
+    let mv = BATTERY_MV.load(Ordering::Relaxed);
+    (battery_state() == trill_config::Battery::Present && mv > 0)
+        .then(|| trill_board::battery::percent_from_mv(mv))
+}
+
+// ---- Bluetooth settings and state (`ble-midi` build) ----
+
+/// The BLE stack is running (SoftDevice enabled, GATT services
+/// registered). Reported as `VARIANT_BLE_MIDI`.
+pub static BLE_AVAILABLE: AtomicBool = AtomicBool::new(false);
+/// Setting: discoverable (advertising). Loaded from flash at boot.
+pub static BLE_DISCOVERABLE: AtomicBool =
+    AtomicBool::new(trill_board::settings::BleSettings::DEFAULT.discoverable);
+/// Setting: BLE-MIDI service on. Loaded from flash at boot.
+pub static BLE_MIDI_ENABLED: AtomicBool =
+    AtomicBool::new(trill_board::settings::BleSettings::DEFAULT.ble_midi);
+/// The current settings are stored in flash (false until loaded or
+/// written, and after a failed write).
+pub static BLE_SETTINGS_STORED: AtomicBool = AtomicBool::new(false);
+/// Wakes the Bluetooth task: a setting or the battery judgement changed.
+#[cfg_attr(not(feature = "ble-midi"), allow(dead_code))]
+pub static BLE_WAKE: Signal<CriticalSectionRawMutex, ()> = Signal::new();
+/// Wakes the settings writer after a Bluetooth setting changed.
+#[cfg_attr(not(feature = "ble-midi"), allow(dead_code))]
+pub static BLE_SETTINGS_DIRTY: Signal<CriticalSectionRawMutex, ()> = Signal::new();
+
+/// Bluetooth may run: the stack is up and a battery is detected.
+#[cfg_attr(not(feature = "ble-midi"), allow(dead_code))]
+pub fn ble_power_ok() -> bool {
+    BLE_AVAILABLE.load(Ordering::Relaxed) && battery_state() == trill_config::Battery::Present
+}
+
+/// Change a Bluetooth setting from the configuration protocol: applied at
+/// once (the Bluetooth task re-evaluates) and stored in flash shortly after.
+pub fn set_ble_setting(discoverable: Option<bool>, midi: Option<bool>) {
+    let mut changed = false;
+    if let Some(d) = discoverable {
+        changed |= BLE_DISCOVERABLE.swap(d, Ordering::Relaxed) != d;
+    }
+    if let Some(m) = midi {
+        changed |= BLE_MIDI_ENABLED.swap(m, Ordering::Relaxed) != m;
+    }
+    if changed {
+        BLE_SETTINGS_STORED.store(false, Ordering::Relaxed);
+        BLE_WAKE.signal(());
+        BLE_SETTINGS_DIRTY.signal(());
+    }
+}
+
+/// Battery and Bluetooth snapshot for `GET_STATUS`.
+pub fn status() -> trill_config::Status {
+    use trill_config::{Battery, BluetoothOff, Link, Status};
+    let battery = battery_state();
+    let link = match BLE_STATE.load(Ordering::Relaxed) {
+        BLE_ADVERTISING => Link::Advertising,
+        BLE_CONNECTED => Link::Connected,
+        BLE_STREAMING => Link::Streaming,
+        _ => Link::Off,
+    };
+    let discoverable = BLE_DISCOVERABLE.load(Ordering::Relaxed);
+    let off_reason = if !cfg!(feature = "ble-midi") {
+        BluetoothOff::NotBuilt
+    } else if !BLE_AVAILABLE.load(Ordering::Relaxed) {
+        BluetoothOff::Unavailable
+    } else if link != Link::Off {
+        BluetoothOff::Running
+    } else {
+        match battery {
+            Battery::Unknown => BluetoothOff::CheckingBattery,
+            Battery::Absent => BluetoothOff::NoBattery,
+            Battery::Present if !discoverable => BluetoothOff::TurnedOff,
+            // Between two advertising sets (a setting just changed).
+            Battery::Present => BluetoothOff::Running,
+        }
+    };
+    let ble = cfg!(feature = "ble-midi");
+    Status {
+        battery,
+        charging: BATTERY_CHARGING.load(Ordering::Relaxed),
+        usb_power: USB_POWER.load(Ordering::Relaxed),
+        battery_mv: BATTERY_MV.load(Ordering::Relaxed),
+        battery_percent: battery_percent(),
+        discoverable: ble && discoverable,
+        ble_midi: ble && BLE_MIDI_ENABLED.load(Ordering::Relaxed),
+        settings_stored: ble && BLE_SETTINGS_STORED.load(Ordering::Relaxed),
+        link,
+        off_reason,
     }
 }

@@ -42,7 +42,7 @@ tools-test:
 
 # no_std libraries for Cortex-M4F (nRF52840).
 check-thumb:
-	$(CARGO) build -p trill-driver -p lsm6ds3trc -p motion-synth -p status-led -p instrument-events -p trill-usb -p trill-config --target thumbv7em-none-eabihf
+	$(CARGO) build -p trill-driver -p lsm6ds3trc -p motion-synth -p status-led -p instrument-events -p trill-usb -p trill-config -p trill-board --target thumbv7em-none-eabihf
 
 # Regenerate the configuration-protocol test vectors shared with the Swift tests.
 protocol-vectors:

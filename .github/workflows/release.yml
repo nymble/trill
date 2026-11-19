@@ -168,6 +168,9 @@ jobs:
         run: |
           v=${{ needs.check.outputs.version }}
           make test-kit KIT_SHA="${GITHUB_SHA::7}" KIT_APP="in/Trillium-macOS-unsigned-dev-$v.zip" KIT_IOS="in/Trillium-iOS-Simulator-$v.zip" KIT_UF2="in/xiao-sense-fw-$v.uf2"
+          # Both firmware images are release downloads (BLE licence decision 2026-11-19).
+          test -f "in/xiao-sense-fw-$v.uf2"
+          test -f "in/xiao-sense-fw-ble-midi-$v.uf2"
           mkdir -p out
           cp in/*.zip in/*.uf2 in/*.tar.gz in/*.dmg dist/Trillium-*.zip tools/xiao_uf2.py out/
           (cd out && sha256sum * > SHA256SUMS && cat SHA256SUMS)

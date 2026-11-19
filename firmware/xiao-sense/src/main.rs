@@ -35,6 +35,7 @@
 
 #[cfg(feature = "pcm-synth")]
 mod audio;
+mod battery;
 #[cfg(feature = "ble-midi")]
 mod ble;
 mod board;
@@ -78,6 +79,7 @@ bind_interrupts!(pub struct Irqs {
     TWISPI0 => twim::InterruptHandler<peripherals::TWISPI0>;
     TWISPI1 => twim::InterruptHandler<peripherals::TWISPI1>;
     PDM => embassy_nrf::pdm::InterruptHandler<peripherals::PDM>;
+    SAADC => embassy_nrf::saadc::InterruptHandler;
 });
 
 #[cfg(feature = "pcm-synth")]
@@ -197,11 +199,18 @@ fn main() -> ! {
     cfg.gpiote_interrupt_priority = Priority::P2;
     cfg.time_interrupt_priority = Priority::P2;
     let p = embassy_nrf::init(cfg);
+    // Battery safety (Seeed XIAO nRF52840 FAQ): P0.14 READ_BAT must be LOW
+    // whenever the battery may be charging; HIGH or floating lets P0.31
+    // reach its 3.6 V limit. Driven LOW here, before anything else, in
+    // every mode, and held for the life of the firmware (battery task, or
+    // forgotten in safe mode so it is never released).
+    let read_bat = Output::new(p.P0_14, Level::Low, OutputDrive::Standard);
     // Peripheral interrupts the drivers enable later: never P0 (default).
     interrupt::USBD.set_priority(Priority::P3);
     interrupt::TWISPI0.set_priority(Priority::P3);
     interrupt::TWISPI1.set_priority(Priority::P3);
     interrupt::PDM.set_priority(Priority::P3);
+    interrupt::SAADC.set_priority(Priority::P3);
 
     // Cycle counter for render-time measurement.
     let mut cp = cortex_m::Peripherals::take().unwrap();
@@ -234,6 +243,7 @@ fn main() -> ! {
         None
     } else {
         interrupt::EGU2_SWI2.set_priority(Priority::P6);
+        ble::load_settings();
         Some(ble::start())
     };
 
@@ -266,6 +276,8 @@ fn main() -> ! {
 
     let executor = EXECUTOR_LOW.init(Executor::new());
     if safe_mode {
+        // Keep P0.14 LOW for good (never dropped, so never released).
+        core::mem::forget(read_bat);
         set_state(&STATS.imu_state, SensorState::Disabled);
         set_state(&STATS.trill_state, SensorState::Disabled);
         executor.run(|spawner| {
@@ -329,7 +341,24 @@ fn main() -> ! {
     let imu_exec = EXECUTOR_IMU.start(interrupt::EGU3_SWI3);
     imu_exec.spawn(imu::imu_task(imu_twim, imu_power, imu_int1).unwrap());
 
+    // Battery: AIN7 divider (P0.31) and charger status (P0.17), 1 Hz.
+    let mut saadc_cfg = embassy_nrf::saadc::Config::default();
+    saadc_cfg.oversample = embassy_nrf::saadc::Oversample::Over8x;
+    let mut vbat_ch = embassy_nrf::saadc::ChannelConfig::single_ended(p.P0_31);
+    // ~340 kΩ source (1 M || 510 k): 40 µs acquisition (datasheet: up to 800 kΩ).
+    vbat_ch.time = embassy_nrf::saadc::Time::_40US;
+    let saadc = embassy_nrf::saadc::Saadc::new(p.SAADC, Irqs, saadc_cfg, [vbat_ch]);
+    let chg = Input::new(p.P0_17, Pull::None);
+
+    #[cfg(feature = "ble-midi")]
+    let store_settings = matches!(&ble, Some(b) if b.server.is_some());
+
     executor.run(|spawner| {
+        spawner.spawn(battery::battery_task(saadc, chg, read_bat).unwrap());
+        #[cfg(feature = "ble-midi")]
+        if store_settings {
+            spawner.spawn(ble::settings_task().unwrap());
+        }
         spawner.spawn(trill::trill_task(trill_twim).unwrap());
         spawner.spawn(led_task(led, previous_crash).unwrap());
         spawner.spawn(health_task().unwrap());
