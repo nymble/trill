@@ -171,9 +171,11 @@ apple-ipad-sim: apple-ios-sim
 apple-ios-ipa: apple-project apple-firmware
 	python3 $(APPLE)/scripts/export_ipa.py
 
-# App Store Connect / TestFlight archive (macOS with Xcode). TEAM_ID is
-# required. UPLOAD=1 uploads for TestFlight; otherwise export only. Optional
-# ASC_KEY_ID, ASC_ISSUER_ID, and ASC_KEY_PATH or ASC_KEY_P8. Never submits for App Store review.
+# App Store Connect / TestFlight archive (macOS with Xcode 26 or later;
+# App Store Connect requires the iOS 26 SDK). TEAM_ID is required.
+# UPLOAD=1 uploads for TestFlight; otherwise export only. Optional
+# ASC_KEY_ID, ASC_ISSUER_ID, and ASC_KEY_PATH or ASC_KEY_P8, and
+# CURRENT_PROJECT_VERSION. Never submits for App Store review.
 # See docs/apple-app.md.
 TF_PLATFORM ?= ios
 apple-testflight: apple-project apple-firmware
