@@ -119,14 +119,19 @@ body.ambient.trillium.sense h2 { font-family: var(--tr-font-display); font-weigh
 body.ambient.trillium.sense section { padding: 1.75rem 0; }
 
 /* Trillium Zero: picture and fact list. */
-body.ambient.trillium figure.product-shot { margin: 1.5rem 0 1.75rem; width: min(260px, 60vw); }
+body.ambient.trillium .zero-spec { display: grid; grid-template-columns: 240px 1fr; gap: 1.5rem; align-items: start; margin: .5rem 0 2rem; }
+body.ambient.trillium figure.product-shot { margin: 0; width: 100%; }
 body.ambient.trillium figure.product-shot img { display: block; width: 100%; height: auto; border-radius: var(--tr-radius-control); }
-body.ambient.trillium .facts { display: grid; grid-template-columns: 7rem 1fr; gap: .6rem 1rem; margin: 0 0 2.5rem; }
-body.ambient.trillium .facts dt { font-family: var(--tr-font-mono); font-size: .85rem; color: var(--tr-ash); padding-top: .15rem; }
+body.ambient.trillium .facts { display: grid; grid-template-columns: 5.5rem 1fr; gap: .35rem .75rem; margin: 0; font-size: .875rem; line-height: 1.4; }
+body.ambient.trillium .facts dt { font-family: var(--tr-font-mono); font-size: .75rem; color: var(--tr-ash); padding-top: .1rem; }
 body.ambient.trillium .facts dd { margin: 0; color: var(--tr-warm-white); }
-@media (max-width: 560px) {
-  body.ambient.trillium .facts { grid-template-columns: 1fr; gap: .1rem; }
-  body.ambient.trillium .facts dd { margin-bottom: .7rem; }
+/* Tighter Trillium Zero page. */
+body.ambient.trillium.zero .page-banner { padding-bottom: 1rem; }
+body.ambient.trillium.zero .hero-page { padding: .75rem 0 1rem; }
+body.ambient.trillium.zero .lead { margin-bottom: .5rem; }
+@media (max-width: 640px) {
+  body.ambient.trillium .zero-spec { grid-template-columns: 1fr; gap: 1rem; }
+  body.ambient.trillium figure.product-shot { width: min(240px, 70vw); }
 }
 
 /* Trillium Sense: downloads note, features, cheatsheet. */
