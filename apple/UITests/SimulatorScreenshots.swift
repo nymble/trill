@@ -10,12 +10,15 @@ import XCTest
 final class SimulatorScreenshots: XCTestCase {
     func testCaptureMainScreens() throws {
         let out = try Self.outputDirectory()
-        let tabs = ["home", "presets", "sensors", "settings"]
+        // "instrument" opens the instrument view from Presets with synthetic
+        // motion (--instrument-demo), since the Simulator has no board.
+        let tabs = ["home", "presets", "sensors", "settings", "instrument"]
         let device = XCUIDevice.shared
 
         for tab in tabs {
             let app = XCUIApplication()
             app.launchArguments = ["--skip-splash", "--tab=\(tab)", "-AppleInterfaceStyle", "Light"]
+                + (tab == "instrument" ? ["--instrument-demo"] : [])
             app.launch()
             XCTAssertTrue(app.wait(for: .runningForeground, timeout: 10))
             // Allow the first frame (and any tab change) to settle.

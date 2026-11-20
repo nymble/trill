@@ -199,11 +199,20 @@ apple-dmg:
 	mkdir -p $(DIST)/dmg-stage
 	ditto $(APPLE_DD)/Build/Products/Release/Trillium.app $(DIST)/dmg-stage/Trillium.app
 	ln -s /Applications $(DIST)/dmg-stage/Applications
-	rm -f $(DIST)/Trillium-macOS-$(VERSION).dmg
+	rm -f $(DIST)/Trillium-macOS-$(VERSION).dmg $(DIST)/Trillium-macOS-$(VERSION).rw.dmg
+	# Direct `hdiutil create -format UDZO` has printed "created:" and then
+	# made imageinfo fail with "corrupt image" on macos-15 runners, even
+	# after retries. Build an uncompressed image and convert it instead.
+	# The real check is that the image attaches with the app and the
+	# Applications symlink; imageinfo is best-effort and is allowed to fail.
 	hdiutil create -volname "Trillium $(VERSION)" -srcfolder $(DIST)/dmg-stage \
-		-ov -format UDZO -fs HFS+ $(DIST)/Trillium-macOS-$(VERSION).dmg
+		-ov -format UDRW -fs HFS+ $(DIST)/Trillium-macOS-$(VERSION).rw.dmg
+	hdiutil convert $(DIST)/Trillium-macOS-$(VERSION).rw.dmg -format UDZO \
+		-o $(DIST)/Trillium-macOS-$(VERSION).dmg
+	rm -f $(DIST)/Trillium-macOS-$(VERSION).rw.dmg
 	rm -rf $(DIST)/dmg-stage
-	hdiutil imageinfo $(DIST)/Trillium-macOS-$(VERSION).dmg
+	-hdiutil imageinfo $(DIST)/Trillium-macOS-$(VERSION).dmg
+	ls -l $(DIST)/Trillium-macOS-$(VERSION).dmg
 	mnt=$$(mktemp -d $(DIST)/dmg-mnt.XXXXXX); \
 	hdiutil attach -nobrowse -readonly -mountpoint "$$mnt" $(DIST)/Trillium-macOS-$(VERSION).dmg; \
 	ok=1; \
@@ -213,7 +222,6 @@ apple-dmg:
 	hdiutil detach "$$mnt"; \
 	rmdir "$$mnt"; \
 	test $$ok -eq 1
-	ls -l $(DIST)/Trillium-macOS-$(VERSION).dmg
 	shasum -a 256 $(DIST)/Trillium-macOS-$(VERSION).dmg
 
 # ---- Test kit: Mac app + iOS Simulator app + matching firmware -----------

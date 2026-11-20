@@ -4,6 +4,11 @@ All notable changes to this project are documented here. Versions follow [Semant
 
 ## [Unreleased]
 
+### Added
+- **Instrument view (prototype, Mac, iPhone and iPad):** a handpan you play by striking the sensor on a stick or hanging from a string. Open it from Presets › Open instrument view. Strikes are detected in 8 horizontal directions, each playing one tone field. Tilt past 30° plays ring 2 and past 60° the ding; both are adjustable. Velocity comes from strike strength. Eight handpan scales can be picked by name, with sources: Kurd, Celtic Minor, Integral, Hijaz, Pygmy, Amara, Equinox and La Sirena. Any ding from E2 to A3 can be chosen, with a clockwise or alternating layout. **Up** is adjustable: pick ±X/±Y/±Z or use Set current pose as up. Directions come from measured gravity, so they stay right upside down (shown as INVERTED). Roll about the up axis is counted over several turns instead of wrapping at 360°. One screen holds a compass ring with note labels, the live push against the threshold circles, last-hit and recent-strike marks, tilt zones, a roll readout and a 3 s strength trace, plus compact controls (threshold, swing, sensitivity, debounce, refractory, tap assist, ring tilts, up, N). Detection runs in the app from telemetry: the new TrillKit `ImpulseEngine`, `Handpan` and `InstrumentRunner` have unit tests on synthetic IMU traces (upright, upside down, all 8 directions, tilt rings, multi-turn roll, debounce and refractory, stick and string swing, tap assist). **App-generated MIDI** plays through the app's own CoreMIDI source "Trillium Instrument". No firmware change is needed. Telemetry runs at 100 Hz while it's on; latency is about 10–40 ms (see `docs/instrument-view.md`). The iPad screenshot job captures the view with synthetic motion.
+- **Startup intro:** the Light trails rose curves (r = cos 3θ) draw themselves, then the lockup appears, in 1.2 s or less. Tap to skip. With Reduce Motion the intro appears without drawing. The Rhodonea mark itself is not animated.
+- `docs/design-themes.md`: a design note on alternate accents for people who dislike orange, and on clarity in dark venues (not implemented).
+
 ## [0.8.0] - 2026-11-19
 
 ### Added

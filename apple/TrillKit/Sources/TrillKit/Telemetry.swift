@@ -150,9 +150,22 @@ public final class TelemetryBuffer: @unchecked Sendable {
     private var pendingTouches: [Int: [TouchContact]] = [:]
     private let lock = NSLock()
 
+    private var listener: ((TelemetryFrame, Double) -> Void)?
+
     public init(capacity: Int = 512) { self.capacity = max(capacity, 1) }
 
+    /// Called for every format-1 frame on the receiving (CoreMIDI) thread,
+    /// before the UI drains it; used by the instrument view to play with the
+    /// least delay. Keep it short and thread-safe. `nil` removes it.
+    public func setListener(_ body: ((TelemetryFrame, Double) -> Void)?) {
+        lock.lock(); listener = body; lock.unlock()
+    }
+
     public func append(_ f: TelemetryFrame, hostTime: Double) {
+        lock.lock()
+        let l = listener
+        lock.unlock()
+        l?(f, hostTime)
         lock.lock(); defer { lock.unlock() }
         var frame = f
         if let t = pendingTouches.removeValue(forKey: f.seq) {

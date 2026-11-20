@@ -81,6 +81,18 @@ final class AppModel: ObservableObject {
     }
     @Published private(set) var lastHit: Hit?
 
+    // Instrument view (AppModel+Instrument.swift): strikes detected in the app
+    // from telemetry, played through the app's own MIDI source.
+    let instrument: InstrumentRunner
+    @Published var instrumentPrefs: InstrumentPrefs { didSet { instrumentPrefsChanged(from: oldValue) } }
+    @Published var instrumentSnapshot = InstrumentRunner.Snapshot()
+    @Published var showInstrument = false
+    /// The instrument view is on screen (telemetry at the instrument rate).
+    @Published var instrumentVisible = false
+    @Published var instrumentMIDIError: String?
+    var appMIDISource: AppMIDISource?
+    var instrumentDemo: InstrumentDemo?
+
     // Navigation
     @Published var tab: AppTab = .home
     @Published var settingsPath: [SettingsPage] = []
@@ -126,6 +138,12 @@ final class AppModel: ObservableObject {
             bundledFirmware = nil
             bundledFirmwareError = error.localizedDescription
         }
+        let prefs = InstrumentPrefs.load()
+        instrumentPrefs = prefs
+        let runner = InstrumentRunner(settings: prefs.settings, instrument: prefs.handpan)
+        runner.channel = prefs.channel
+        runner.gate = prefs.gate
+        instrument = runner
         presetStore = PresetStore(fileURL: dir.appendingPathComponent("Trill/presets.json"))
         presets = presetStore.presets
         // Refined built-ins: one Preset per built-in, its name is the built-in id.
@@ -139,6 +157,8 @@ final class AppModel: ObservableObject {
             let c = try MIDIClient(name: "Trillium", events: events, telemetry: telemetryBuffer)
             c.onSetupChanged = { [weak self] in self?.refreshEndpoints() }
             c.onConfigMessage = { [weak self] bytes, _ in self?.configMessage(bytes) }
+            // Strike detection runs on the CoreMIDI thread as frames arrive.
+            telemetryBuffer.setListener { frame, host in runner.handle(frame, hostTime: host) }
             client = c
         } catch {
             midiError = error.localizedDescription
@@ -157,7 +177,9 @@ final class AppModel: ObservableObject {
 
     func refreshEndpoints() {
         guard let c = client else { return }
-        sources = c.sources()
+        // Never offer the app's own instrument source as an input (no loops).
+        let own = appMIDISource?.uniqueID
+        sources = c.sources().filter { $0.id != own }
         destinations = c.destinations()
         // Suggest the Trill ports once, without sending anything: port 1 =
         // instrument output, port 2 = configuration. The user still has to
@@ -438,7 +460,9 @@ final class AppModel: ObservableObject {
         if sensorsVisible { clock = MIDIClient.now() }
         let pending = session.pending
         session.tick(now: now)
-        session.maintainTelemetry(desiredRate: sensorsVisible && sensorsLive ? telemetryRateHz : hardwareVisible ? 10 : nil, now: now)
+        session.maintainTelemetry(desiredRate: instrumentNeedsTelemetry ? InstrumentPrefs.telemetryRateHz
+                                  : sensorsVisible && sensorsLive ? telemetryRateHz : hardwareVisible ? 10 : nil, now: now)
+        instrumentTick()
         session.maintainStatus(now: now)
         if now - lastUSBScan > 1 {
             lastUSBScan = now
