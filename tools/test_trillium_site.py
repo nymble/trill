@@ -66,7 +66,15 @@ class TrilliumSiteTests(unittest.TestCase):
         # and the privacy page still names who operates the app.
         for p in PAGES:
             html = read(p)
-            header = re.search(r'<header class="site-header">.*?</header>', html, re.S).group(0)
+            # Exactly one trefoil mark per page: the lockup (mark left of the name).
+            self.assertEqual(len(re.findall(r'<img[^>]*lockup\.svg', html)), 1, p)
+            if p == "index.html":
+                # The top page has no header; its one lockup is the hero h1.
+                self.assertNotIn('class="site-header"', html)
+                self.assertRegex(html, r'<h1><img class="hero-lockup"[^>]*alt="Trillium"></h1>')
+                header = '<a class="tr-lockup">'
+            else:
+                header = re.search(r'<header class="site-header">.*?</header>', html, re.S).group(0)
             footer = re.search(r'<footer class="site-footer">.*?</footer>', html, re.S).group(0)
             title = re.search(r"<title>([^<]+)</title>", html).group(1)
             og = re.search(r'property="og:title" content="([^"]+)"', html).group(1)
@@ -81,7 +89,7 @@ class TrilliumSiteTests(unittest.TestCase):
             self.assertIn("&copy; 2026", footer, p)
             self.assertIn("M-of-N", footer, p)
             self.assertIn('href="/"', footer, p)
-            self.assertIn("trillium.css?v=5", html, p)
+            self.assertIn("trillium.css?v=6", html, p)
             self.assertIn("Trillium privacy", footer, p)
         privacy = read("privacy/index.html")
         self.assertIn("a project of M-of-N", privacy)
