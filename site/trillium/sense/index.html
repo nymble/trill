@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Trillium Sense</title>
+  <meta name="description" content="Trillium Sense: the free companion app for Trillium instruments. Choose an instrument, map motion to MIDI, update the firmware.">
+  <link rel="canonical" href="https://m-of-n.com/ambient-lab/trillium/sense/">
+  <link rel="icon" href="../assets/icons/rhodonea-32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="../assets/icons/rhodonea-192.png" type="image/png" sizes="192x192">
+  <link rel="icon" href="../assets/icons/rhodonea-512.png" type="image/png" sizes="512x512">
+  <link rel="apple-touch-icon" href="../assets/icons/rhodonea-180.png" sizes="180x180">
+  <link rel="stylesheet" href="/style.css?v=9">
+  <link rel="stylesheet" href="../assets/tokens.css?v=1">
+  <link rel="stylesheet" href="../assets/trillium.css?v=5">
+  <meta name="color-scheme" content="dark">
+  <meta property="og:title" content="Trillium Sense">
+  <meta property="og:description" content="The companion app for Trillium instruments.">
+  <meta property="og:url" content="https://m-of-n.com/ambient-lab/trillium/sense/">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://m-of-n.com/ambient-lab/trillium/assets/og-image-1200x630.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Trillium">
+</head>
+<body class="ambient trillium sense">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="tr-lockup" href="../"><img src="../assets/lockup.svg" width="390" height="112" alt="Trillium"></a>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="page-banner">
+      <div class="wrap">
+        <p class="back"><a href="../">Trillium</a></p>
+        <div class="hero hero-page">
+          <h1>Trillium Sense</h1>
+          <p class="tagline">The companion app. Free.</p>
+        </div>
+        <p class="lead">Choose an instrument, map motion to MIDI and keep the firmware current on <a href="../zero/">Trillium Zero</a>. Works with any MIDI app or synth.</p>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <section aria-labelledby="downloads-title">
+        <h2 id="downloads-title">Download</h2>
+        <ul class="downloads">
+          <li>
+            <a href="https://github.com/nymble/trillium/releases/download/v0.7.0/Trillium-macOS-0.7.0.dmg">macOS</a>
+            <p class="meta">0.7.0 · macOS 13 or later · universal · 2.36 MB</p>
+            <p>Unsigned. Open once, then System Settings › Privacy &amp; Security › Open Anyway (macOS 15+), or right-click › Open (macOS 13–14).</p>
+          </li>
+          <li>
+            <span class="dl-name">iPhone and iPad</span> <span class="soon">Coming soon</span>
+            <p class="meta">iOS and iPadOS 16 or later</p>
+          </li>
+          <li>
+            <a href="https://github.com/nymble/trillium/releases/download/v0.7.0/xiao-sense-fw-0.7.0.uf2">Firmware</a>
+            <p class="meta">xiao-sense-fw-0.7.0.uf2 · application only · 280 KB</p>
+            <p>The app installs it for you. Files and SHA-256 checksums: <a href="https://github.com/nymble/trillium/releases/tag/v0.7.0">0.7.0 release</a>.</p>
+          </li>
+          <li>
+            <a href="https://github.com/nymble/trillium">Source code</a>
+            <p class="meta">GPL-3.0, or a <a href="https://github.com/nymble/trillium/blob/main/COMMERCIAL-LICENSE.md">commercial license</a></p>
+          </li>
+        </ul>
+        <p class="disclaimer">Prerelease software, provided as is, without warranty of any kind. See the <a href="https://github.com/nymble/trillium/blob/main/LICENSE">license</a>.</p>
+      </section>
+
+      <section aria-labelledby="features-title">
+        <h2 id="features-title">Features</h2>
+        <ul class="features">
+          <li><strong>Presets</strong> Ten built-in instruments. Edit, save, duplicate, export.</li>
+          <li><strong>Mapping</strong> Notes, scale, range, controllers, taps, strikes, gestures. Edits play live.</li>
+          <li><strong>Sensors</strong> Live motion charts, board pose, tilt zones, strike compass, Linear sensor touches.</li>
+          <li><strong>MIDI monitor</strong> Every message the instrument sends.</li>
+          <li><strong>Firmware</strong> Install and update from the app, with a backup first (macOS).</li>
+        </ul>
+      </section>
+
+      <!--
+        Cheatsheet: keep in step with each release (see docs/releasing.md).
+        Describes release v0.7.0, the one linked under Download. Mirrors:
+          apple/TrillKit/Sources/TrillKit/BuiltInPresets.swift  (presets)
+          apple/TrillKit/Sources/TrillKit/ConfigProtocol.swift  (SensorMode, CCSource, ScaleKind, parameter ranges)
+          apple/TrillKit/Sources/TrillKit/MappingSummary.swift  (input -> MIDI wording, strike chord tones)
+          crates/instrument-events/src/engine.rs                (Mode, MIDI behaviour)
+          CHANGELOG.md                                          (release section)
+        List only what the linked release ships.
+      -->
+      <section class="cheatsheet" aria-labelledby="modes-title">
+        <h2 id="modes-title">Cheatsheet</h2>
+
+        <h3>Playing modes</h3>
+        <div class="table-scroll">
+        <table>
+          <thead><tr><th>Mode</th><th>Motion in</th><th>MIDI out</th></tr></thead>
+          <tbody>
+            <tr><td>Tilt + strike</td><td>Roll picks 1 of 5–8 notes · tilt fwd/back = octave · strike or tap plays</td><td>Note, velocity from impact, set length · strike direction adds octave, 3rd or 5th</td></tr>
+            <tr><td>Tilt notes</td><td>Tilt fwd = on · roll steps the scale · tilt back = off</td><td>Scale notes, velocity and pressure from depth</td></tr>
+            <tr><td>Theremin</td><td>Tilt fwd = on · roll glides · tilt back = off</td><td>Note + pitch bend (range set by RPN 0) · depth → expression CC</td></tr>
+            <tr><td>Touch strip <span class="req">Linear sensor</span></td><td>Position = pitch · contact size = pressure</td><td>Notes, glide (bend ±24) or scale steps · channel pressure</td></tr>
+          </tbody>
+        </table>
+        </div>
+
+        <h3>In any mode</h3>
+        <div class="table-scroll">
+        <table>
+          <thead><tr><th>Control</th><th>Motion in</th><th>MIDI out</th></tr></thead>
+          <tbody>
+            <tr><td>Controllers A, B</td><td>Rotation speed · pitch fwd/back · roll left/right · centred pitch/roll</td><td>Any CC 1–119 · deadzone, smoothing · default CC74 turn, CC1 tilt</td></tr>
+            <tr><td>Tap</td><td>Tap or strike</td><td>Percussion note, ch 10 by default</td></tr>
+            <tr><td>Directional strikes</td><td>Strike in 2, 4 or 6 directions</td><td>One percussion note per direction</td></tr>
+            <tr><td>Flick, zig-zag</td><td>Wrist flick either way · back-and-forth</td><td>3 notes (base, +1, +2), percussion channel</td></tr>
+          </tbody>
+        </table>
+        </div>
+        <p class="note">Scales: chromatic, pentatonic, major, minor.</p>
+
+        <h3>Presets</h3>
+        <div class="table-scroll">
+        <table>
+          <thead><tr><th>Preset</th><th>Mode</th><th>Plays</th></tr></thead>
+          <tbody>
+            <tr><td>Tilt melody</td><td>Tilt + strike</td><td>C pentatonic, one octave · tilt for octave</td></tr>
+            <tr><td>Strum chords</td><td>Tilt + strike</td><td>C major · ↓ root ← 3rd → 5th ↑ octave</td></tr>
+            <tr><td>Minor bass</td><td>Tilt + strike</td><td>A minor, short notes · ↓ note ↑ octave</td></tr>
+            <tr><td>Drum strikes</td><td>Strikes</td><td>↓ snare ↑ crash ← kick → hi-hat · ch 10</td></tr>
+            <tr><td>Tap drum</td><td>Tap</td><td>Hand clap · ch 10</td></tr>
+            <tr><td>Tilt scale</td><td>Tilt notes</td><td>C pentatonic, one octave</td></tr>
+            <tr><td>Theremin</td><td>Theremin</td><td>Two-octave glide, bend ±24 · depth CC11 · turn CC74</td></tr>
+            <tr><td>Flick gestures</td><td>Flick, zig-zag</td><td>Three drum notes</td></tr>
+            <tr><td>Touch strip <span class="req">Linear sensor</span></td><td>Touch strip</td><td>Strip notes · turn CC74 · tilt CC1</td></tr>
+            <tr><td>Touch + expression <span class="req">Linear sensor</span></td><td>Touch strip</td><td>Strip notes · roll CC74 · tilt CC1, smoothed</td></tr>
+          </tbody>
+        </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>&copy; 2026 <a href="/">M-of-N</a>.</p>
+      <nav aria-label="Legal">
+        <ul>
+          <li><a href="../privacy/">Trillium privacy</a></li>
+          <li><a href="/privacy">Privacy</a></li>
+          <li><a href="/terms">Terms</a></li>
+        </ul>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

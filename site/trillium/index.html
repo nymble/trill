@@ -5,15 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <title>Trillium</title>
-  <meta name="description" content="Music from motion. Trillium builds instruments and new ways to make music: Trillium Zero, an open hardware, open source instrument, and its companion app, Trillium Sense.">
+  <meta name="description" content="Music from motion. Trillium builds instruments and new ways to make music.">
   <link rel="canonical" href="https://m-of-n.com/ambient-lab/trillium/">
-  <link rel="icon" href="/ambient-lab/trillium/assets/icons/rhodonea-32.png" type="image/png" sizes="32x32">
-  <link rel="icon" href="/ambient-lab/trillium/assets/icons/rhodonea-192.png" type="image/png" sizes="192x192">
-  <link rel="icon" href="/ambient-lab/trillium/assets/icons/rhodonea-512.png" type="image/png" sizes="512x512">
-  <link rel="apple-touch-icon" href="/ambient-lab/trillium/assets/icons/rhodonea-180.png" sizes="180x180">
+  <link rel="icon" href="assets/icons/rhodonea-32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="assets/icons/rhodonea-192.png" type="image/png" sizes="192x192">
+  <link rel="icon" href="assets/icons/rhodonea-512.png" type="image/png" sizes="512x512">
+  <link rel="apple-touch-icon" href="assets/icons/rhodonea-180.png" sizes="180x180">
   <link rel="stylesheet" href="/style.css?v=9">
-  <link rel="stylesheet" href="/ambient-lab/trillium/assets/tokens.css?v=1">
-  <link rel="stylesheet" href="/ambient-lab/trillium/assets/trillium.css?v=4">
+  <link rel="stylesheet" href="assets/tokens.css?v=1">
+  <link rel="stylesheet" href="assets/trillium.css?v=5">
   <meta name="color-scheme" content="dark">
   <meta property="og:title" content="Trillium">
   <meta property="og:description" content="Music from motion.">
@@ -24,71 +24,37 @@
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Trillium">
 </head>
-<body class="ambient trillium">
+<body class="ambient trillium home">
   <a class="skip" href="#main">Skip to content</a>
   <header class="site-header">
     <div class="wrap">
-      <a class="tr-lockup" href="/ambient-lab/trillium/"><img src="/ambient-lab/trillium/assets/lockup.svg" width="390" height="112" alt="Trillium"></a>
+      <a class="tr-lockup" href="./"><img src="assets/lockup.svg" width="390" height="112" alt="Trillium"></a>
     </div>
   </header>
 
   <main id="main">
     <div class="page-banner">
       <div class="wrap">
-        <p class="back"><a href="/ambient-lab/">Ambient Lab</a></p>
-        <div class="hero hero-page">
-          <h1>Trillium</h1>
+        <div class="hero hero-home">
+          <h1><img class="hero-lockup" src="assets/lockup.svg" width="390" height="112" alt="Trillium"></h1>
           <p class="tagline">Music from motion.</p>
+          <p class="lead">Trillium builds instruments and new ways to make music.</p>
         </div>
-        <p class="lead">Trillium builds instruments and new ways to make music.</p>
-        <p class="lead">Trillium Zero is an open hardware, open source instrument based on a single Seeed Studio XIAO nRF52840 Sense board, with a companion app, Trillium Sense.</p>
-        <ul class="goals">
-          <li><strong>Playable.</strong> Responds like an instrument: strike, tilt, turn.</li>
-          <li><strong>Easy.</strong> Plug it in, pick an instrument, play.</li>
-          <li><strong>Mappable.</strong> Any movement to notes and controls.</li>
-          <li><strong>Works with your music apps.</strong> Any MIDI app or synth.</li>
-          <li><strong>Open.</strong> Source code and hardware designs for current models are published.</li>
-        </ul>
-        <p class="status"><strong>Status:</strong> early and experimental. Trillium 0.7.0 carries firmware 0.7.0 and installs it on a Trillium Zero from the macOS app. The iPhone app has not yet run on hardware.</p>
       </div>
     </div>
 
     <div class="wrap">
-      <section class="hardware" aria-labelledby="hardware-title">
-        <h2 id="hardware-title">Hardware</h2>
-        <table class="models">
-          <thead><tr><th>Model</th><th>What it is</th><th>Status</th><th>Design</th></tr></thead>
-          <tbody>
-            <tr><td><strong>T0</strong> Trillium Zero</td><td>One Seeed Studio XIAO nRF52840 Sense on a USB cable. Nothing to wire or solder.</td><td>Runs today</td><td><a href="/ambient-lab/trillium/zero/">Trillium Zero build</a></td></tr>
-          </tbody>
-        </table>
-        <p>More configurations are coming. The hardware designs are open source, and the firmware is bundled with the Trillium app, which installs and updates it. Designs are in the <a href="https://github.com/nymble/trillium/tree/main/hardware">hardware folder</a> of the repository.</p>
-      </section>
-
-      <section aria-labelledby="downloads-title">
-        <h2 id="downloads-title">Downloads</h2>
-        <ul class="downloads">
-          <li>
-            <a href="https://github.com/nymble/trillium/releases/download/v0.7.0/Trillium-macOS-0.7.0.dmg">macOS</a>
-            <p class="meta">Trillium 0.7.0, macOS 13 or later, universal · 2.36 MB · SHA-256 eb8b8c93dafb5cbadd6079eed1a416c107a6b896a8ea31c052f6788229f0193c</p>
-            <p>The app is unsigned. After dragging it to Applications, open it once, then use System Settings › Privacy &amp; Security › Open Anyway (macOS 15 or later), or right-click the app and choose Open (macOS 13 or 14).</p>
-          </li>
-          <li>
-            <a href="https://github.com/nymble/trillium/releases/download/v0.7.0/xiao-sense-fw-0.7.0.uf2">Firmware</a>
-            <p class="meta">xiao-sense-fw-0.7.0.uf2, application only · 280 KB · SHA-256 0d8f673e70c91ff560ad400eb5dbe14730d80ebdf18ac238819844afdcd94adc</p>
-            <p>The Trillium app carries this firmware and installs it for you. The file is for installing by hand; it replaces only the application and leaves the bootloader untouched. All files and checksums are on the <a href="https://github.com/nymble/trillium/releases/tag/v0.7.0">0.7.0 release page</a>.</p>
-          </li>
-          <li>
-            <span class="dl-name">iPhone and iPad</span> <span class="soon">Coming soon</span>
-            <p class="meta">iOS and iPadOS 16 or later</p>
-            <p>Installs via TestFlight or the App Store later.</p>
-          </li>
-          <li>
-            <a href="https://github.com/nymble/trillium">Source code</a>
-            <p class="meta">GitHub, dual-licensed: GPL-3.0 or a commercial license from M-of-N</p>
-            <p>The firmware and app source are available in the project repository under the GNU GPL v3, or under a <a href="https://github.com/nymble/trillium/blob/main/COMMERCIAL-LICENSE.md">commercial license</a> from M-of-N. For commercial terms, <a href="/contact">contact us</a>.</p>
-          </li>
-        </ul>
+      <section class="intros" aria-label="Trillium Zero and Trillium Sense">
+        <a class="card" href="zero/">
+          <h2>Trillium Zero</h2>
+          <p>An open hardware, open source instrument on a single Seeed Studio XIAO nRF52840 Sense. Plug it in and play.</p>
+          <p class="more">Trillium Zero</p>
+        </a>
+        <a class="card" href="sense/">
+          <h2>Trillium Sense</h2>
+          <p>The free companion app. Choose an instrument, map motion to MIDI, update the firmware.</p>
+          <p class="more">Trillium Sense</p>
+        </a>
       </section>
     </div>
   </main>
@@ -98,7 +64,7 @@
       <p>&copy; 2026 <a href="/">M-of-N</a>.</p>
       <nav aria-label="Legal">
         <ul>
-          <li><a href="/ambient-lab/trillium/privacy/">Trillium privacy</a></li>
+          <li><a href="privacy/">Trillium privacy</a></li>
           <li><a href="/privacy">Privacy</a></li>
           <li><a href="/terms">Terms</a></li>
         </ul>

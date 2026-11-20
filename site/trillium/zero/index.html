@@ -5,18 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <title>Trillium Zero</title>
-  <meta name="description" content="Trillium Zero: one Seeed Studio XIAO nRF52840 Sense on a USB cable, playing as a USB MIDI instrument with the Trillium app.">
+  <meta name="description" content="Trillium Zero: a Seeed Studio XIAO nRF52840 Sense on a USB cable, playing as a USB MIDI instrument. Open hardware, open source.">
   <link rel="canonical" href="https://m-of-n.com/ambient-lab/trillium/zero/">
-  <link rel="icon" href="/ambient-lab/trillium/assets/icons/rhodonea-32.png" type="image/png" sizes="32x32">
-  <link rel="icon" href="/ambient-lab/trillium/assets/icons/rhodonea-192.png" type="image/png" sizes="192x192">
-  <link rel="icon" href="/ambient-lab/trillium/assets/icons/rhodonea-512.png" type="image/png" sizes="512x512">
-  <link rel="apple-touch-icon" href="/ambient-lab/trillium/assets/icons/rhodonea-180.png" sizes="180x180">
-  <link rel="stylesheet" href="/style.css?v=8">
-  <link rel="stylesheet" href="/ambient-lab/trillium/assets/tokens.css?v=1">
-  <link rel="stylesheet" href="/ambient-lab/trillium/assets/trillium.css?v=4">
+  <link rel="icon" href="../assets/icons/rhodonea-32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="../assets/icons/rhodonea-192.png" type="image/png" sizes="192x192">
+  <link rel="icon" href="../assets/icons/rhodonea-512.png" type="image/png" sizes="512x512">
+  <link rel="apple-touch-icon" href="../assets/icons/rhodonea-180.png" sizes="180x180">
+  <link rel="stylesheet" href="/style.css?v=9">
+  <link rel="stylesheet" href="../assets/tokens.css?v=1">
+  <link rel="stylesheet" href="../assets/trillium.css?v=5">
   <meta name="color-scheme" content="dark">
   <meta property="og:title" content="Trillium Zero">
-  <meta property="og:description" content="The simplest Trillium: one small board on a USB cable.">
+  <meta property="og:description" content="A board on a USB cable. Open hardware, open source.">
   <meta property="og:url" content="https://m-of-n.com/ambient-lab/trillium/zero/">
   <meta property="og:type" content="website">
   <meta property="og:image" content="https://m-of-n.com/ambient-lab/trillium/assets/og-image-1200x630.jpg">
@@ -28,72 +28,42 @@
   <a class="skip" href="#main">Skip to content</a>
   <header class="site-header">
     <div class="wrap">
-      <a class="tr-lockup" href="/ambient-lab/trillium/"><img src="/ambient-lab/trillium/assets/lockup.svg" width="390" height="112" alt="Trillium"></a>
+      <a class="tr-lockup" href="../"><img src="../assets/lockup.svg" width="390" height="112" alt="Trillium"></a>
     </div>
   </header>
 
   <main id="main">
     <div class="page-banner">
       <div class="wrap">
-        <p class="back"><a href="/ambient-lab/trillium/">Trillium</a></p>
+        <p class="back"><a href="../">Trillium</a></p>
         <div class="hero hero-page">
           <h1>Trillium Zero</h1>
-          <p class="tagline">One small board on a USB cable.</p>
+          <p class="tagline">A board on a cable. Open hardware, open source.</p>
         </div>
-        <p class="lead">Trillium Zero is the simplest Trillium: a Seeed Studio XIAO nRF52840 Sense, with its onboard motion sensor, on a USB-C cable. There is nothing to wire or solder. It plays as a class-compliant USB MIDI instrument, and the Trillium app configures it and installs its firmware.</p>
-        <p class="status"><strong>Status:</strong> early and experimental. Firmware has run on a XIAO nRF52840 Sense from the macOS app (motion sensor and USB MIDI). The iPhone app has not yet run on hardware.</p>
+        <p class="lead">Put a Seeed Studio XIAO nRF52840 Sense on the end of a USB-C cable and it works: a USB MIDI instrument played by motion. Nothing to wire or solder.</p>
       </div>
     </div>
 
     <div class="wrap">
-    <section aria-labelledby="parts-title">
-      <h2 id="parts-title">What you need</h2>
-      <table>
-        <thead>
-          <tr><th>Part</th><th>Notes</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Seeed Studio XIAO nRF52840 Sense</td><td>The <strong>Sense</strong> model, which has the motion sensor (accelerometer and gyroscope). <a href="https://www.seeedstudio.com/Seeed-XIAO-BLE-Sense-nRF52840-p-5253.html">Product page</a></td></tr>
-          <tr><td>USB-C cable</td><td>A data cable, not a charge-only cable. Use a USB-C to USB-C cable or an adapter for your computer.</td></tr>
-          <tr><td>The Trillium app</td><td>macOS 13 or later. <a href="/ambient-lab/trillium/">Download</a></td></tr>
-        </tbody>
-      </table>
-    </section>
+      <figure class="product-shot">
+        <img src="../assets/t0-placeholder.svg" width="480" height="380" alt="Trillium Zero: a XIAO nRF52840 Sense board on the end of a USB-C cable.">
+        <figcaption>Photo to come.</figcaption>
+      </figure>
 
-    <section aria-labelledby="setup-title">
-      <h2 id="setup-title">Set up</h2>
-      <ol>
-        <li>Install and open the Trillium app.</li>
-        <li>Connect the board with the USB-C cable.</li>
-        <li>Install the firmware from the app. When it asks, double-press RESET on the board so the XIAO-SENSE drive appears. The app backs up the board&rsquo;s current application, then writes only an application-only image; the bootloader and SoftDevice are left untouched.</li>
-        <li>After the board restarts, it appears to your computer as a USB MIDI device. The red LED is the charge light, not a firmware status light.</li>
-        <li>In the app, open Sensors and move the board: motion should show live. Choose an instrument in Presets, then open your music app and play.</li>
-      </ol>
-      <p>To install by hand instead, use the application-only <a href="https://github.com/nymble/trillium/releases/download/v0.7.0/xiao-sense-fw-0.7.0.uf2">firmware file</a> and the checking tool from the <a href="https://github.com/nymble/trillium/releases/tag/v0.7.0">0.7.0 release</a>. Back up first, and never copy a full CURRENT.UF2 or a bootloader image to the board.</p>
-    </section>
-
-    <section aria-labelledby="mounting-title">
-      <h2 id="mounting-title">Holding and mounting</h2>
-      <p>The board is small enough to hold in a hand. How you hold, mount or cover it is up to you; this project has no tested enclosure yet. Keep the cable strain-relieved so it cannot pull on the board&rsquo;s USB-C connector.</p>
-    </section>
-
-    <section aria-labelledby="limits-title">
-      <h2 id="limits-title">Known limits</h2>
-      <ul>
-        <li>No enclosure is specified.</li>
-        <li>A physical iPhone or iPad install of Trillium has not been tested.</li>
-        <li>More configurations are coming.</li>
-      </ul>
-    </section>
-
-    <section aria-labelledby="sources-title">
-      <h2 id="sources-title">Sources</h2>
-      <p>More detail is in the <a href="https://github.com/nymble/trillium">project repository</a>.</p>
-      <ul>
-        <li>Seeed Studio XIAO nRF52840 Sense <a href="https://www.seeedstudio.com/Seeed-XIAO-BLE-Sense-nRF52840-p-5253.html">product page</a> and <a href="https://wiki.seeedstudio.com/XIAO_BLE/">series wiki</a></li>
-        <li>Nordic <a href="https://files.seeedstudio.com/wiki/XIAO-BLE/nRF52840_PS_v1.5.pdf">nRF52840 Product Specification v1.5</a> (PDF)</li>
-      </ul>
-    </section>
+      <dl class="facts">
+        <dt>Board</dt>
+        <dd>Seeed Studio XIAO nRF52840 Sense, the model with the motion sensor. <a href="https://www.seeedstudio.com/Seeed-XIAO-BLE-Sense-nRF52840-p-5253.html">Product page</a></dd>
+        <dt>Cable</dt>
+        <dd>USB-C data cable to a Mac or any USB MIDI host.</dd>
+        <dt>Case</dt>
+        <dd>Optional and 3D printable. Enclosure designs are in the <a href="https://github.com/nymble/trillium/tree/main/hardware">hardware folder</a>.</dd>
+        <dt>Mappings</dt>
+        <dd>Pick an instrument or map any movement to notes and controls in the free app, <a href="../sense/">Trillium Sense</a>.</dd>
+        <dt>Firmware</dt>
+        <dd>Installed and updated from the app. By hand: <a href="https://github.com/nymble/trillium/blob/main/docs/hardware/trillium-zero.md">Trillium Zero guide</a>.</dd>
+        <dt>Open</dt>
+        <dd>Firmware, app and hardware designs are published in the <a href="https://github.com/nymble/trillium">repository</a>.</dd>
+      </dl>
     </div>
   </main>
 
@@ -102,6 +72,7 @@
       <p>&copy; 2026 <a href="/">M-of-N</a>.</p>
       <nav aria-label="Legal">
         <ul>
+          <li><a href="../privacy/">Trillium privacy</a></li>
           <li><a href="/privacy">Privacy</a></li>
           <li><a href="/terms">Terms</a></li>
         </ul>

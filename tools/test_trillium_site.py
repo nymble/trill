@@ -13,7 +13,7 @@ import zipfile
 sys.path.insert(0, os.path.dirname(__file__))
 import trillium_site as ts  # noqa: E402
 
-PAGES = ["index.html", "zero/index.html", "privacy/index.html"]
+PAGES = ["index.html", "zero/index.html", "sense/index.html", "privacy/index.html"]
 
 
 def read(rel: str) -> str:
@@ -81,7 +81,8 @@ class TrilliumSiteTests(unittest.TestCase):
             self.assertIn("&copy; 2026", footer, p)
             self.assertIn("M-of-N", footer, p)
             self.assertIn('href="/"', footer, p)
-            self.assertIn("trillium.css?v=3", html, p)
+            self.assertIn("trillium.css?v=5", html, p)
+            self.assertIn("Trillium privacy", footer, p)
         privacy = read("privacy/index.html")
         self.assertIn("a project of M-of-N", privacy)
         self.assertIn("Effective 19 November 2026", privacy)
@@ -89,12 +90,18 @@ class TrilliumSiteTests(unittest.TestCase):
         self.assertIn("does not use your device", privacy)
 
     def test_downloads_point_at_the_current_release(self):
-        html = read("index.html")
+        html = read("sense/index.html")
         base = "https://github.com/nymble/trillium/releases/download/v0.7.0/"
         self.assertIn(base + "Trillium-macOS-0.7.0.dmg", html)
         self.assertIn(base + "xiao-sense-fw-0.7.0.uf2", html)
         for p in PAGES:
             self.assertNotRegex(read(p), r"v0\.[0-6]\.|\b0\.[0-6]\.0\b", p)
+
+    def test_cheatsheet_names_its_sources(self):
+        html = read("sense/index.html")
+        for src in ("BuiltInPresets.swift", "ConfigProtocol.swift", "MappingSummary.swift",
+                    "instrument-events/src/engine.rs", "docs/releasing.md", "v0.7.0"):
+            self.assertIn(src, html, src)
 
     def test_assets_carry_no_provenance_metadata(self):
         for d, _, names in os.walk(ts.ASSETS):
