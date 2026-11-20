@@ -39,18 +39,9 @@ func writeRGB(_ image: CGImage, to url: URL) {
     ) else { fail("cannot allocate \(w)x\(h) RGB context") }
     ctx.draw(image, in: CGRect(x: 0, y: 0, width: w, height: h))
     guard let out = ctx.makeImage() else { fail("cannot snapshot context") }
-    // Re-draw into a 24-bit (no alpha) context so the PNG has color type 2.
-    guard let rgb = CGContext(
-        data: nil,
-        width: w,
-        height: h,
-        bitsPerComponent: 8,
-        bytesPerRow: 0,
-        space: space,
-        bitmapInfo: CGImageAlphaInfo.none.rawValue
-    ) else { fail("cannot allocate 24-bit context") }
-    rgb.draw(out, in: CGRect(x: 0, y: 0, width: w, height: h))
-    guard let final = rgb.makeImage() else { fail("cannot snapshot 24-bit context") }
+    // CoreGraphics has no 24-bit RGB context; an noneSkipLast image is
+    // written by ImageIO as an opaque PNG (no alpha channel).
+    let final = out
     guard let dest = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil) else {
         fail("cannot write \(url.path)")
     }

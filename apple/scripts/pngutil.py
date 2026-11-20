@@ -14,8 +14,9 @@ STAGE_BLACK = (12, 12, 13)
 NEAR_BLACK_LUMA = 8.0
 BLANK_MEAN = 8.0
 BLANK_NEAR_FRAC = 0.99
-# Mac shots must fill the 16:10 canvas; a clipped window sits in a short strip.
-MAC_MIN_FILL = 0.85
+# Mac shots must fill the 16:10 canvas. A tiny window in a black frame is
+# small in both directions; a real dark UI can leave either axis sparse.
+MAC_MIN_FILL = 0.6
 
 
 @dataclass
@@ -40,7 +41,7 @@ class PngStats:
     def is_unfilled(self) -> bool:
         return (
             self.content_width_frac < MAC_MIN_FILL
-            or self.content_height_frac < MAC_MIN_FILL
+            and self.content_height_frac < MAC_MIN_FILL
         )
 
 

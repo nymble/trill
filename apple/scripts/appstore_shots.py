@@ -55,9 +55,23 @@ SETTLE_SECONDS = (3.0, 5.0, 8.0)
 DEFAULT_BUNDLE = "net.nymbus.trillium"
 
 
+# Upper bound for a single simctl/helper call. A hung `simctl terminate` once
+# stalled the CI job for most of an hour.
+CMD_TIMEOUT = 180
+
+
 def run(cmd: list[str], **kw) -> subprocess.CompletedProcess:
     print("+", " ".join(cmd), flush=True)
-    return subprocess.run(cmd, **kw)
+    kw.setdefault("timeout", CMD_TIMEOUT)
+    check = kw.pop("check", False)
+    try:
+        r = subprocess.run(cmd, **kw)
+    except subprocess.TimeoutExpired:
+        print(f"timed out after {kw['timeout']}s: {' '.join(cmd)}", file=sys.stderr, flush=True)
+        r = subprocess.CompletedProcess(cmd, 124, "" if kw.get("text") else b"", "timeout")
+    if check and r.returncode != 0:
+        raise subprocess.CalledProcessError(r.returncode, cmd)
+    return r
 
 
 def run_ok(cmd: list[str], **kw) -> subprocess.CompletedProcess:
@@ -125,7 +139,7 @@ def boot(udid: str, respring_for_date: bool = False) -> None:
         sys.stderr.write(r.stdout or "")
         sys.stderr.write(r.stderr or "")
         raise SystemExit(r.returncode or 1)
-    run_ok(["xcrun", "simctl", "bootstatus", udid, "-b"])
+    run_ok(["xcrun", "simctl", "bootstatus", udid, "-b"], timeout=1800)
     run(["open", "-a", "Simulator", "--args", "-CurrentDeviceUDID", udid], check=False)
     time.sleep(2)
     # Dark chrome to match the Stage look of the app itself.
@@ -135,7 +149,7 @@ def boot(udid: str, respring_for_date: bool = False) -> None:
         print("respringing SpringBoard so StatusBarHidesDate takes effect", flush=True)
         simctl("spawn", udid, "killall", "SpringBoard", check=False, capture_output=True)
         time.sleep(4)
-        run_ok(["xcrun", "simctl", "bootstatus", udid, "-b"])
+        run_ok(["xcrun", "simctl", "bootstatus", udid, "-b"], timeout=1800)
         apply_status_bar(udid)
         time.sleep(1)
 
@@ -183,6 +197,7 @@ def capture_ios(kind: str, accepted: tuple[tuple[int, int], ...], app: Path, out
     # First launch after a fresh boot (and iPad data migration) needs extra settle.
     time.sleep(2)
     records = []
+    failed: list[str] = []
     out.mkdir(parents=True, exist_ok=True)
     for shot_name, args in SHOTS:
         dest = out / f"{shot_name}.png"
@@ -192,7 +207,6 @@ def capture_ios(kind: str, accepted: tuple[tuple[int, int], ...], app: Path, out
                 dest.unlink()
             simctl("terminate", udid, bundle, check=False, capture_output=True)
             time.sleep(0.6)
-            apply_status_bar(udid)
             launch = simctl("launch", udid, bundle, *args, capture_output=True, text=True)
             print(launch.stdout or "", end="", flush=True)
             if launch.stderr:
@@ -226,11 +240,12 @@ def capture_ios(kind: str, accepted: tuple[tuple[int, int], ...], app: Path, out
             last_reason = reason
             print(f"{dest} attempt {attempt}: {reason}; retrying", flush=True)
         else:
-            raise SystemExit(
-                f"{dest} still unusable after {len(SETTLE_SECONDS)} attempts: {last_reason}. "
-                f"Expected {wanted} from {name}."
-            )
+            # Keep going so one bad shot does not lose the rest of the set.
+            failed.append(f"{dest}: {last_reason}")
+            print(f"{dest} still unusable after {len(SETTLE_SECONDS)} attempts: {last_reason}", flush=True)
     simctl("terminate", udid, bundle, check=False, capture_output=True)
+    if failed:
+        raise SystemExit(f"{len(failed)} unusable shot(s) from {name}: " + "; ".join(failed))
     return records
 
 
@@ -330,20 +345,27 @@ def main() -> int:
     def try_capture(label: str, fn) -> None:
         try:
             records.extend(fn())
-        except Exception as e:
+        except (Exception, SystemExit) as e:
             errors.append(f"{label}: {e}")
             print(f"ERROR {label}: {e}", file=sys.stderr, flush=True)
 
-    if not args.skip_ios:
-        if not args.ios_app or not args.ios_app.is_dir():
-            raise SystemExit("--ios-app is required unless --skip-ios")
-        try_capture("iphone-6.9", lambda: capture_ios("iphone-69", IPHONE_69_SIZES, args.ios_app, out / "iphone-6.9"))
-        try_capture("iphone-6.3", lambda: capture_ios("iphone-63", IPHONE_63_SIZES, args.ios_app, out / "iphone-6.3"))
-        try_capture("ipad-13", lambda: capture_ios("ipad-13", IPAD_SIZES, args.ios_app, out / "ipad-13"))
+    # Mac first (no simulator), then the required iPhone 6.3" and iPad 13"
+    # sets, then the optional iPhone 6.9" set.
     if not args.skip_mac:
         if not args.mac_app or not args.mac_app.is_dir():
             raise SystemExit("--mac-app is required unless --skip-mac")
         try_capture("mac", lambda: capture_mac(args.mac_app, out / "mac"))
+        write_manifest(out, records)
+    if not args.skip_ios:
+        if not args.ios_app or not args.ios_app.is_dir():
+            raise SystemExit("--ios-app is required unless --skip-ios")
+        for label, kind, sizes in (
+            ("iphone-6.3", "iphone-63", IPHONE_63_SIZES),
+            ("ipad-13", "ipad-13", IPAD_SIZES),
+            ("iphone-6.9", "iphone-69", IPHONE_69_SIZES),
+        ):
+            try_capture(label, lambda k=kind, s=sizes, l=label: capture_ios(k, s, args.ios_app, out / l))
+            write_manifest(out, records)
     write_manifest(out, records)
     print("all App Store screenshots:", ", ".join(r["name"] + f" {r['width']}x{r['height']}" for r in records), flush=True)
     if errors:

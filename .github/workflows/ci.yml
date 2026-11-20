@@ -290,6 +290,8 @@ jobs:
           v=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
           mkdir -p dist && cp in/fw/xiao-sense-fw.uf2 "dist/xiao-sense-fw-$v.uf2"
           make apple-firmware
+      - name: Pillow for PNG flatten and blank checks
+        run: python3 -m pip install --user --break-system-packages pillow || python3 -m pip install --user pillow
       - name: Generate Xcode project, build apps, capture screenshots
         run: make apple-appstore-shots
       - name: Record pixel sizes
