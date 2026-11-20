@@ -19,6 +19,9 @@ def main() -> int:
     rows = []
     failures = []
     for p in sorted(root.rglob("*.png")):
+        if p.stem.endswith("-view"):
+            # Mac fallback render kept for comparison, not an upload candidate.
+            continue
         stats = pngutil.luma_stats(p)
         line = (
             f"{p.relative_to(root)} {stats.width}x{stats.height} {p.stat().st_size} "
