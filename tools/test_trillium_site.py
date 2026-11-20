@@ -89,7 +89,7 @@ class TrilliumSiteTests(unittest.TestCase):
             self.assertIn("&copy; 2026", footer, p)
             self.assertIn("M-of-N", footer, p)
             self.assertIn('href="/"', footer, p)
-            self.assertIn("trillium.css?v=8", html, p)
+            self.assertIn("trillium.css?v=9", html, p)
             self.assertIn("Trillium privacy", footer, p)
         privacy = read("privacy/index.html")
         self.assertIn("a project of M-of-N", privacy)
