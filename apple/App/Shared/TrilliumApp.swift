@@ -34,10 +34,11 @@ enum AppTab: Hashable {
     case home, presets, sensors, settings
 }
 
-/// Four simple top-level screens; everything detailed lives under Settings.
-struct ContentView: View {
+/// Tab chrome without launch-arg side effects, so an offscreen ImageRenderer
+/// can snapshot it for App Store screenshots.
+struct AppChromeView: View {
     @EnvironmentObject var model: AppModel
-    @State private var showSplash = !ProcessInfo.processInfo.arguments.contains("--skip-splash")
+    var showSplash: Bool
 
     var body: some View {
         ZStack {
@@ -53,6 +54,16 @@ struct ContentView: View {
                     .zIndex(1)
             }
         }
+    }
+}
+
+/// Four simple top-level screens; everything detailed lives under Settings.
+struct ContentView: View {
+    @EnvironmentObject var model: AppModel
+    @State private var showSplash = !ProcessInfo.processInfo.arguments.contains("--skip-splash")
+
+    var body: some View {
+        AppChromeView(showSplash: showSplash)
         .onAppear {
             applyLaunchOverrides()
             #if os(macOS)
@@ -102,6 +113,11 @@ struct ContentView: View {
     }
 
     #if os(macOS)
+    /// Point size of the offscreen App Store shot (16:10). Rendered at @2x
+    /// to produce a 2880×1800 PNG, independent of the CI display.
+    fileprivate static let screenshotPointSize = NSSize(width: 1440, height: 900)
+    fileprivate static let screenshotPixelSize = (width: 2880, height: 1800)
+
     /// `--window-size=WIDTHxHEIGHT` in points (the whole window, including the title bar).
     /// Origin is (0, 0) so a size larger than the display is not centred and
     /// then clamped to the visible frame (GitHub macos-15 is 1024x684 @1x).
@@ -113,15 +129,29 @@ struct ContentView: View {
         }
     }
 
-    /// `--screenshot-out=PATH` writes a PNG of the window at `--window-size=`
-    /// (falling back to a view bitmap if the display clips the window) and quits.
+    /// `--screenshot-out=PATH` renders the UI offscreen at 1440×900 @2x
+    /// (2880×1800 pixels, opaque RGB) after `--screenshot-delay=` seconds, then quits.
+    /// A small CI display cannot clip this path.
     private func writeMacScreenshotIfRequested() {
         guard let arg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--screenshot-out=") }) else { return }
         let path = String(arg.dropFirst("--screenshot-out=".count))
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
-            Self.writeMacScreenshot(to: URL(fileURLWithPath: path))
+        let delay = Self.screenshotDelay()
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            let root = AppChromeView(showSplash: false)
+                .environmentObject(model)
+                .trilliumStage()
+                .frame(width: Self.screenshotPointSize.width, height: Self.screenshotPointSize.height)
+                .preferredColorScheme(.dark)
+            Self.writeOffscreenScreenshot(content: root, to: URL(fileURLWithPath: path))
             NSApp.terminate(nil)
         }
+    }
+
+    private static func screenshotDelay() -> TimeInterval {
+        guard let arg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--screenshot-delay=") }),
+              let value = Double(arg.dropFirst("--screenshot-delay=".count)),
+              value > 0 else { return 3.0 }
+        return value
     }
 
     private static func launchWindowSize() -> NSSize? {
@@ -131,46 +161,81 @@ struct ContentView: View {
         return NSSize(width: w, height: h)
     }
 
-    private static func writeMacScreenshot(to url: URL) {
-        guard let win = NSApp.windows.first(where: { $0.isVisible }) ?? NSApp.windows.first else {
-            FileHandle.standardError.write(Data("screenshot: no window\n".utf8))
+    @MainActor
+    private static func writeOffscreenScreenshot<V: View>(content: V, to url: URL) {
+        let points = screenshotPointSize
+        let pixels = screenshotPixelSize
+        let renderer = ImageRenderer(content: content)
+        renderer.proposedSize = ProposedViewSize(width: points.width, height: points.height)
+        renderer.scale = 2
+        if #available(macOS 14.0, *) {
+            renderer.isOpaque = true
+        }
+        if let cg = renderer.cgImage {
+            writeOpaqueRGB(cg, to: url, canvasWidth: pixels.width, canvasHeight: pixels.height)
+            FileHandle.standardError.write(
+                Data("screenshot: ImageRenderer wrote \(url.path) \(pixels.width)x\(pixels.height)\n".utf8)
+            )
             return
         }
-        let target = launchWindowSize() ?? win.frame.size
-        win.setFrame(NSRect(x: 0, y: 0, width: target.width, height: target.height), display: true)
-        win.contentView?.layoutSubtreeIfNeeded()
+        FileHandle.standardError.write(Data("screenshot: ImageRenderer produced no image, trying NSHostingView\n".utf8))
+        let hosting = NSHostingView(rootView: content)
+        hosting.frame = NSRect(origin: .zero, size: points)
+        hosting.wantsLayer = true
+        hosting.layer?.contentsScale = 2
+        hosting.layoutSubtreeIfNeeded()
+        let bounds = hosting.bounds
+        guard let rep = hosting.bitmapImageRepForCachingDisplay(in: bounds) else {
+            FileHandle.standardError.write(Data("screenshot: could not allocate hosting bitmap\n".utf8))
+            return
+        }
+        // Force a 2x backing store even if the display is 1x.
+        rep.size = points
+        hosting.cacheDisplay(in: bounds, to: rep)
+        guard let cg = rep.cgImage else {
+            FileHandle.standardError.write(Data("screenshot: hosting bitmap had no CGImage\n".utf8))
+            return
+        }
+        writeOpaqueRGB(cg, to: url, canvasWidth: pixels.width, canvasHeight: pixels.height)
+        FileHandle.standardError.write(
+            Data("screenshot: NSHostingView wrote \(url.path) \(cg.width)x\(cg.height)\n".utf8)
+        )
+    }
 
-        let scale = win.backingScaleFactor
-        let pixel = NSSize(width: target.width * scale, height: target.height * scale)
-
-        if let cg = CGWindowListCreateImage(
-            .null,
-            [.optionIncludingWindow],
-            CGWindowID(UInt32(win.windowNumber)),
-            [.boundsIgnoreFraming, .bestResolution]
-        ), cg.width == Int(pixel.width.rounded()), cg.height == Int(pixel.height.rounded()) {
-            writePNG(cg, to: url)
+    /// Composite `image` onto an opaque Stage-black canvas and write an 8-bit RGB PNG.
+    private static func writeOpaqueRGB(_ image: CGImage, to url: URL, canvasWidth: Int, canvasHeight: Int) {
+        guard let space = CGColorSpace(name: CGColorSpace.sRGB) else {
+            FileHandle.standardError.write(Data("screenshot: no sRGB color space\n".utf8))
             return
         }
-
-        // Display clipped the window; render the frame view at the requested size.
-        let frameView = win.contentView?.superview ?? win.contentView
-        guard let view = frameView else {
-            FileHandle.standardError.write(Data("screenshot: no content view\n".utf8))
+        guard let ctx = CGContext(
+            data: nil,
+            width: canvasWidth,
+            height: canvasHeight,
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: space,
+            bitmapInfo: CGImageAlphaInfo.none.rawValue
+        ) else {
+            FileHandle.standardError.write(Data("screenshot: could not allocate RGB context\n".utf8))
             return
         }
-        let bounds = NSRect(origin: .zero, size: target)
-        view.setFrameSize(target)
-        view.layoutSubtreeIfNeeded()
-        win.contentView?.layoutSubtreeIfNeeded()
-        guard let rep = view.bitmapImageRepForCachingDisplay(in: bounds) else {
-            FileHandle.standardError.write(Data("screenshot: could not allocate bitmap\n".utf8))
+        ctx.setFillColor(CGColor(srgbRed: 0.047, green: 0.047, blue: 0.051, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: 0, width: canvasWidth, height: canvasHeight))
+        ctx.interpolationQuality = .high
+        let iw = CGFloat(image.width)
+        let ih = CGFloat(image.height)
+        let scale = min(CGFloat(canvasWidth) / iw, CGFloat(canvasHeight) / ih)
+        let dw = iw * scale
+        let dh = ih * scale
+        let dx = (CGFloat(canvasWidth) - dw) / 2
+        let dy = (CGFloat(canvasHeight) - dh) / 2
+        ctx.draw(image, in: CGRect(x: dx, y: dy, width: dw, height: dh))
+        guard let out = ctx.makeImage() else {
+            FileHandle.standardError.write(Data("screenshot: could not snapshot RGB context\n".utf8))
             return
         }
-        view.cacheDisplay(in: bounds, to: rep)
-        if let data = rep.representation(using: .png, properties: [:]) {
-            try? data.write(to: url, options: .atomic)
-        }
+        writePNG(out, to: url)
     }
 
     private static func writePNG(_ image: CGImage, to url: URL) {
