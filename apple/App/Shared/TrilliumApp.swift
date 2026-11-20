@@ -130,11 +130,11 @@ struct ContentView: View {
     }
 
     /// `--screenshot-out=PATH` renders the UI in its own 1440×900 pt window
-    /// and writes a 2880×1800 opaque RGB PNG after `--screenshot-delay=`
+    /// and writes an opaque RGB PNG after `--screenshot-delay=`
     /// seconds, then quits. The window may be larger than the display (the
     /// GitHub macos-15 display is 1024×684), so a small CI screen cannot clip it.
-    /// A second capture of the same window from the window server is written
-    /// next to it as `NAME-window.png` (display scale) for comparison.
+    /// The PNG comes from the window server at display scale; a view render
+    /// at @2x is written next to it as `NAME-view.png` as a fallback.
     private func writeMacScreenshotIfRequested() {
         guard let arg = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--screenshot-out=") }) else { return }
         let path = String(arg.dropFirst("--screenshot-out=".count))
@@ -143,7 +143,7 @@ struct ContentView: View {
         let root = AppChromeView(showSplash: false)
             .environmentObject(model)
             .trilliumStage()
-            .frame(width: points.width, height: points.height)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .preferredColorScheme(.dark)
         DispatchQueue.main.async {
             // Keep the regular window out of the way.
@@ -159,7 +159,11 @@ struct ContentView: View {
             win.appearance = NSAppearance(named: .darkAqua)
             win.backgroundColor = NSColor(srgbRed: 0.047, green: 0.047, blue: 0.051, alpha: 1)
             win.isReleasedWhenClosed = false
-            win.contentView = NSHostingView(rootView: root)
+            let hosting = NSHostingView(rootView: root)
+            // The window sets the size (full 1440x900 frame, content under a
+            // transparent title bar); the SwiftUI content must not grow it.
+            hosting.sizingOptions = []
+            win.contentView = hosting
             win.setFrame(NSRect(origin: .zero, size: points), display: true)
             win.orderFrontRegardless()
             Self.screenshotWindow = win
@@ -193,16 +197,9 @@ struct ContentView: View {
         guard let view = win.contentView else { return }
         view.layoutSubtreeIfNeeded()
         view.displayIfNeeded()
-        // Window-server copy at display scale, written first so it exists
-        // by the time the caller sees the main PNG.
-        let alt = url.deletingPathExtension().path + "-window.png"
-        if let cg = CGWindowListCreateImage(
-            .null, .optionIncludingWindow, CGWindowID(win.windowNumber), [.boundsIgnoreFraming, .bestResolution]
-        ) {
-            writeOpaqueRGB(cg, to: URL(fileURLWithPath: alt), canvasWidth: cg.width, canvasHeight: cg.height)
-            FileHandle.standardError.write(Data("screenshot: window server wrote \(alt) \(cg.width)x\(cg.height)\n".utf8))
-        }
-        // Main copy: draw the view hierarchy into an explicit @2x bitmap.
+        // Fallback copy first (so it exists when the caller sees the main
+        // PNG): the view hierarchy drawn into an explicit @2x bitmap.
+        let alt = URL(fileURLWithPath: url.deletingPathExtension().path + "-view.png")
         guard let rep = NSBitmapImageRep(
             bitmapDataPlanes: nil,
             pixelsWide: pixels.width,
@@ -224,8 +221,19 @@ struct ContentView: View {
             FileHandle.standardError.write(Data("screenshot: @2x bitmap had no CGImage\n".utf8))
             return
         }
-        writeOpaqueRGB(cg, to: url, canvasWidth: pixels.width, canvasHeight: pixels.height)
-        FileHandle.standardError.write(Data("screenshot: view wrote \(url.path) \(cg.width)x\(cg.height)\n".utf8))
+        writeOpaqueRGB(cg, to: alt, canvasWidth: pixels.width, canvasHeight: pixels.height)
+        FileHandle.standardError.write(Data("screenshot: view wrote \(alt.path) \(cg.width)x\(cg.height)\n".utf8))
+        // Main copy from the window server: includes the AppKit tab control
+        // and title bar that a view render misses. Display scale, so
+        // 1440x900 on a 1x CI display and 2880x1800 on Retina.
+        if let shot = CGWindowListCreateImage(
+            .null, .optionIncludingWindow, CGWindowID(win.windowNumber), [.boundsIgnoreFraming, .bestResolution]
+        ) {
+            writeOpaqueRGB(shot, to: url, canvasWidth: shot.width, canvasHeight: shot.height)
+            FileHandle.standardError.write(Data("screenshot: window server wrote \(url.path) \(shot.width)x\(shot.height)\n".utf8))
+        } else {
+            FileHandle.standardError.write(Data("screenshot: window server capture failed; only \(alt.path) written\n".utf8))
+        }
     }
 
     /// Composite `image` onto an opaque Stage-black canvas and write an 8-bit RGB PNG.

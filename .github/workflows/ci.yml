@@ -10,6 +10,10 @@ on:
         description: "Run only the App Store / TestFlight screenshot job (iPhone 6.9, iPad 13, Mac)"
         type: boolean
         default: false
+      appstore_shots_args:
+        description: "Extra appstore_shots.py flags, e.g. --skip-ios or --skip-mac"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -293,7 +297,9 @@ jobs:
       - name: Pillow for PNG flatten and blank checks
         run: python3 -m pip install --user --break-system-packages pillow || python3 -m pip install --user pillow
       - name: Generate Xcode project, build apps, capture screenshots
-        run: make apple-appstore-shots
+        env:
+          SHOTS_ARGS: ${{ inputs.appstore_shots_args }}
+        run: make apple-appstore-shots SHOTS_ARGS="$SHOTS_ARGS"
       - name: Record pixel sizes
         if: always()
         run: python3 apple/scripts/list_png_sizes.py dist/appstore-screenshots

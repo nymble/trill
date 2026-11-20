@@ -174,7 +174,7 @@ apple-ipad-sim: apple-ios-sim
 apple-appstore-shots: apple-ios-sim apple-mac
 	python3 $(APPLE)/scripts/appstore_shots.py --out $(DIST)/appstore-screenshots \
 		--ios-app $(APPLE_DD)/Build/Products/Debug-iphonesimulator/Trillium.app \
-		--mac-app $(APPLE_DD)/Build/Products/Release/Trillium.app
+		--mac-app $(APPLE_DD)/Build/Products/Release/Trillium.app $(SHOTS_ARGS)
 
 # Development IPA for a physical iPhone or iPad. Needs a Mac with Xcode
 # and apple/Config/Local.xcconfig (git-ignored) with DEVELOPMENT_TEAM.

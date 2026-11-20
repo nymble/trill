@@ -207,7 +207,7 @@ def capture_ios(kind: str, accepted: tuple[tuple[int, int], ...], app: Path, out
                 dest.unlink()
             simctl("terminate", udid, bundle, check=False, capture_output=True)
             time.sleep(0.6)
-            launch = simctl("launch", udid, bundle, *args, capture_output=True, text=True)
+            launch = simctl("launch", udid, bundle, *args, check=False, capture_output=True, text=True)
             print(launch.stdout or "", end="", flush=True)
             if launch.stderr:
                 print(launch.stderr, end="", file=sys.stderr, flush=True)
@@ -263,6 +263,7 @@ def capture_mac(app: Path, out: Path) -> list[dict]:
     )
     out.mkdir(parents=True, exist_ok=True)
     records = []
+    failed: list[str] = []
     for shot_name, args in SHOTS:
         dest = out / f"{shot_name}.png"
         last_reason = "not captured"
@@ -316,10 +317,10 @@ def capture_mac(app: Path, out: Path) -> list[dict]:
             last_reason = reason
             print(f"{dest} attempt {attempt}: {reason}; retrying", flush=True)
         else:
-            raise SystemExit(
-                f"{dest} still unusable after {len(SETTLE_SECONDS)} attempts: {last_reason}. "
-                f"Expected {MAC_PREFERRED[0]}x{MAC_PREFERRED[1]} (offscreen @2x)."
-            )
+            failed.append(f"{dest}: {last_reason}")
+            print(f"{dest} still unusable after {len(SETTLE_SECONDS)} attempts: {last_reason}", flush=True)
+    if failed:
+        raise SystemExit(f"{len(failed)} unusable Mac shot(s): " + "; ".join(failed))
     return records
 
 
