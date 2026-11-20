@@ -99,6 +99,45 @@ public struct TelemetryFrame: Equatable, Sendable {
     public static func isTelemetry(_ m: [UInt8]) -> Bool {
         m.count > 5 && TrillCodec.isTrillSysEx(m) && m[5] == TrillProtocol.MessageType.telemetry.rawValue
     }
+
+    /// Repeatable motion and linear-sensor frames for App Store / TestFlight
+    /// screenshots (`--demo-hardware`). Not used in a normal session.
+    public static func screenshotDemo(seq: Int, timeMs: Int) -> TelemetryFrame {
+        let t = Double(seq) / 50.0
+        let pitch = 12 * sin(t * 0.7)
+        let roll = 25 * sin(t * 0.45 + 0.4)
+        let ax = Int((sin(t * 0.7) * 180).rounded())
+        let ay = Int((sin(t * 0.45 + 0.4) * 320).rounded())
+        let az = 1000 - Int((cos(t * 0.3) * 40).rounded())
+        let gx = Int((cos(t * 0.7) * 80).rounded())
+        let gy = Int((cos(t * 0.45) * 60).rounded())
+        let gz = Int((sin(t * 1.1) * 40).rounded())
+        let pos = 0.5 + 0.32 * sin(t * 0.6)
+        let size = 0.42 + 0.08 * sin(t * 1.3)
+        var frame = TelemetryFrame(
+            seq: seq & 0x3FFF,
+            timeMs: timeMs & 0x1FFFFF,
+            flags: flagIMUValid | flagCalibrated | flagTouch | flagIMUNew,
+            imuStateCode: SensorState.running.rawValue,
+            trillStateCode: SensorState.running.rawValue,
+            accelMg: [ax, ay, az],
+            gyroDdps: [gx, gy, gz],
+            pitchCdeg: Int((pitch * 100).rounded()),
+            rollCdeg: Int((roll * 100).rounded()),
+            touchPos: Int((pos * 16383).rounded()),
+            touchSize: Int((size * 16383).rounded()),
+            imuSamples: seq & 0x3FFF,
+            taps: 0,
+            calibrations: 1,
+            skipped: 0,
+            trillFrames: seq & 0x3FFF
+        )
+        frame.multiTouches = [
+            TouchContact(position: pos, size: size),
+            TouchContact(position: min(0.95, pos + 0.18), size: max(0.2, size - 0.14)),
+        ]
+        return frame
+    }
 }
 
 /// One contact on the linear sensor, normalised 0...1.

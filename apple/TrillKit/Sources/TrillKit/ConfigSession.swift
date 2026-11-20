@@ -78,6 +78,8 @@ public final class ConfigSession {
     public private(set) var statusAt: TimeInterval?
     /// Status poll period while connected.
     public let statusInterval: TimeInterval = 2
+    /// Set by `applyScreenshotDemo`: the session stays ready with no transport.
+    public private(set) var isScreenshotDemo = false
 
     public let timeout: TimeInterval
     public let maxQueue = 8
@@ -98,6 +100,7 @@ public final class ConfigSession {
 
     /// Start (or restart) the handshake on a newly selected endpoint pair.
     public func connect(now: TimeInterval) {
+        guard !isScreenshotDemo else { return }
         pending = nil
         queue = []
         acknowledged = nil
@@ -116,6 +119,7 @@ public final class ConfigSession {
     }
 
     public func disconnect(now: TimeInterval) {
+        guard !isScreenshotDemo else { return }
         pending = nil
         queue = []
         telemetryRate = nil
@@ -196,19 +200,38 @@ public final class ConfigSession {
     /// Turn Bluetooth discoverability on or off (Bluetooth firmware only).
     @discardableResult
     public func setDiscoverable(_ on: Bool, now: TimeInterval) -> Bool {
-        perform(on ? .bluetoothDiscoverableOn : .bluetoothDiscoverableOff, now: now)
+        if isScreenshotDemo {
+            guard var s = status else { return false }
+            s.discoverable = on
+            if !on && !s.bluetoothMIDI { s.link = .off; s.offReason = .turnedOff }
+            else if on { s.link = s.bluetoothMIDI ? .advertising : .off; s.offReason = .running }
+            status = s
+            statusAt = now
+            return true
+        }
+        return perform(on ? .bluetoothDiscoverableOn : .bluetoothDiscoverableOff, now: now)
     }
 
     /// Turn the Bluetooth MIDI service on or off (Bluetooth firmware only).
     @discardableResult
     public func setBluetoothMIDI(_ on: Bool, now: TimeInterval) -> Bool {
-        perform(on ? .bluetoothMIDIOn : .bluetoothMIDIOff, now: now)
+        if isScreenshotDemo {
+            guard var s = status else { return false }
+            s.bluetoothMIDI = on
+            if on && s.discoverable { s.link = .advertising; s.offReason = .running }
+            else if !s.discoverable { s.link = .off; s.offReason = .turnedOff }
+            else { s.link = .off; s.offReason = .running }
+            status = s
+            statusAt = now
+            return true
+        }
+        return perform(on ? .bluetoothMIDIOn : .bluetoothMIDIOff, now: now)
     }
 
     /// Keep the status fresh: read it every `statusInterval` while ready.
     /// Call from the UI timer. Does nothing on firmware without status.
     public func maintainStatus(now: TimeInterval) {
-        guard isReady, supportsStatus else { return }
+        guard !isScreenshotDemo, isReady, supportsStatus else { return }
         let inFlight = pending?.request == .getStatus || queue.contains(.getStatus)
         guard !inFlight else { return }
         if statusAt.map({ now - $0 >= statusInterval }) ?? true { enqueue(.getStatus, now: now) }
@@ -222,7 +245,7 @@ public final class ConfigSession {
     /// the UI timer. `desiredRate` nil = off. Does nothing on firmware
     /// without telemetry.
     public func maintainTelemetry(desiredRate: Int?, now: TimeInterval) {
-        guard isReady, supportsTelemetry, telemetryError == nil else { return }
+        guard !isScreenshotDemo, isReady, supportsTelemetry, telemetryError == nil else { return }
         let inFlight = (pending.map { Self.isTelemetry($0.request) } ?? false) || queue.contains(where: Self.isTelemetry)
         guard !inFlight else { return }
         if let rate = desiredRate {
@@ -362,5 +385,54 @@ public final class ConfigSession {
     private func note(_ now: TimeInterval, _ text: String, error: Bool = false) {
         log.append(LogEntry(time: now, text: text, isError: error))
         if log.count > maxLog { log.removeFirst(log.count - maxLog) }
+    }
+
+    /// Enter a connected state with no MIDI transport, for App Store screenshots.
+    /// A T1 board (battery and Bluetooth) with an attached linear sensor,
+    /// Discoverable and Bluetooth MIDI on, and a live-looking sensor stream.
+    public func applyScreenshotDemo(now: TimeInterval) {
+        isScreenshotDemo = true
+        pending = nil
+        queue = []
+        deviceRestarted = false
+        telemetryError = nil
+        telemetryRate = TelemetryFrame.defaultRateHz
+        telemetryLease = 60
+        telemetryAckAt = now
+        let variant: UInt8 = TrillProtocol.variantIMU | TrillProtocol.variantMic
+            | TrillProtocol.variantMultiTouch | TrillProtocol.variantBLEMIDI
+            | TrillProtocol.variantStatus
+        let caps: UInt8 = TrillProtocol.capSetConfig | TrillProtocol.capActions
+            | TrillProtocol.capTelemetry | TrillProtocol.capConfigPages
+            | TrillProtocol.capStrikes | TrillProtocol.capBoard
+        hello = TrillReply.Hello(
+            protocolVersion: 1,
+            firmware: (0, 8, 0),
+            variant: variant,
+            capabilities: caps,
+            maxMessageLength: 64,
+            paramCount: 38,
+            uptimeSeconds: 90,
+            bootID: 4
+        )
+        let sound = BuiltInPreset.all.first { $0.id == "tilt-melody" }?.config ?? .firmwareDefaults
+        acknowledged = sound
+        receivedPages = hello?.pages ?? [0, 1, 2]
+        generation = 1
+        status = DeviceStatus(
+            battery: .present,
+            charging: true,
+            usbPower: true,
+            batteryMillivolts: 3990,
+            batteryPercent: 76,
+            discoverable: true,
+            bluetoothMIDI: true,
+            settingsStored: true,
+            link: .advertising,
+            offReason: .running
+        )
+        statusAt = now
+        phase = .ready
+        note(now, "screenshot demo: T1 + linear sensor, no transport")
     }
 }

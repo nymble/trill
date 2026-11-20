@@ -144,7 +144,12 @@ struct SensorsView: View {
     @State private var showExporter = false
     @AppStorage("sensorsPage") private var page = SensorsPage.overview
 
-    enum SensorsPage: String { case overview, charts }
+    enum SensorsPage: String { case overview, charts, linear }
+
+    private var resolvedPage: SensorsPage {
+        if let raw = model.sensorsPageOverride, let p = SensorsPage(rawValue: raw) { return p }
+        return page
+    }
 
     var body: some View {
         NavigationStack {
@@ -157,12 +162,14 @@ struct SensorsView: View {
                     .pickerStyle(.segmented)
                     .labelsHidden()
                     .frame(maxWidth: 320)
-                    if page == .charts { controls }
+                    if resolvedPage == .charts { controls }
                     StatusBanner()
                     if model.session.isReady && model.session.supportsTelemetry {
-                        if page == .overview { MotionOverview() } else { dashboard }
+                        if resolvedPage == .overview { MotionOverview() }
+                        else if resolvedPage == .linear { linearFocus }
+                        else { dashboard }
                     }
-                    if page == .charts {
+                    if resolvedPage == .charts {
                         if model.hardware.sensorPanels.contains(.microphone) { MicTestPanel() }
                         UnavailableNotes()
                     }
@@ -239,6 +246,20 @@ struct SensorsView: View {
             }
             HealthPanel()
             EventsPanel()
+        }
+    }
+
+    /// Screenshot helper (`--sensors-page=linear`): put the linear sensor first.
+    private var linearFocus: some View {
+        let t = model.telemetry
+        return VStack(alignment: .leading, spacing: 16) {
+            TouchPanel(frame: t.latest)
+            if model.hardware.sensorPanels.contains(.motion) {
+                let end = model.sensorsPaused ? (t.lastHostTime ?? model.clock) : model.clock
+                let rate = Double(model.session.telemetryRate ?? model.telemetryRateHz)
+                let brk = max(0.25, 4 / max(rate, 1))
+                orientation(t, end, brk)
+            }
         }
     }
 

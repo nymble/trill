@@ -17,7 +17,7 @@ FW_ELF  := $(FW_DIR)/target/thumbv7em-none-eabihf/release/xiao-sense-fw
 FW_UF2  := $(DIST)/xiao-sense-fw-$(VERSION).uf2
 
 .PHONY: all ci fmt fmt-check clippy test tools-test check-thumb fw fw-check fw-uf2 fw-uf2-pcm fw-uf2-ble synth-demo build pi-zero pi-arm64 x86-musl dist clean \
-        protocol-vectors apple apple-project apple-test apple-test-ios-sim apple-test-ipad-sim apple-mac apple-ios-sim apple-ios-device apple-ipad-sim apple-ios-ipa apple-testflight apple-dist apple-dmg apple-firmware test-kit
+        protocol-vectors apple apple-project apple-test apple-test-ios-sim apple-test-ipad-sim apple-mac apple-ios-sim apple-ios-device apple-ipad-sim apple-appstore-shots apple-ios-ipa apple-testflight apple-dist apple-dmg apple-firmware test-kit
 
 all: ci
 
@@ -164,6 +164,17 @@ apple-ipad-sim: apple-ios-sim
 	python3 $(APPLE)/scripts/ipad_sim_shots.py --out $(DIST)/ipad-screenshots \
 		--project $(APPLE)/Trillium.xcodeproj --derived-data $(APPLE_DD) \
 		--app $(APPLE_DD)/Build/Products/Debug-iphonesimulator/Trillium.app
+
+# App Store / TestFlight screenshots at Apple's required sizes: iPhone 6.9"
+# (1320x2868), iPhone 6.3"/6.1" (1206x2622 or 1179x2556), iPad 13"
+# (2064x2752) and Mac (2880x1800).
+# Home/connect is the real disconnected screen; other shots use --demo-hardware.
+# Used by the workflow_dispatch "app store screenshots" job. Pixel sizes are
+# checked in the script.
+apple-appstore-shots: apple-ios-sim apple-mac
+	python3 $(APPLE)/scripts/appstore_shots.py --out $(DIST)/appstore-screenshots \
+		--ios-app $(APPLE_DD)/Build/Products/Debug-iphonesimulator/Trillium.app \
+		--mac-app $(APPLE_DD)/Build/Products/Release/Trillium.app $(SHOTS_ARGS)
 
 # Development IPA for a physical iPhone or iPad. Needs a Mac with Xcode
 # and apple/Config/Local.xcconfig (git-ignored) with DEVELOPMENT_TEAM.
