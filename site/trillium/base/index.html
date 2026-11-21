@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Trillium Base</title>
+  <meta name="description" content="An open source hardware design, operating system, tuned kernel and applications to support real-time processing. Audio and MIDI applications preloaded and managed through a convenient console.">
+  <link rel="canonical" href="https://m-of-n.com/ambient-lab/trillium/base/">
+  <link rel="icon" href="../assets/icons/rhodonea-32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="../assets/icons/rhodonea-192.png" type="image/png" sizes="192x192">
+  <link rel="icon" href="../assets/icons/rhodonea-512.png" type="image/png" sizes="512x512">
+  <link rel="apple-touch-icon" href="../assets/icons/rhodonea-180.png" sizes="180x180">
+  <link rel="stylesheet" href="/style.css?v=9">
+  <link rel="stylesheet" href="../assets/tokens.css?v=1">
+  <link rel="stylesheet" href="../assets/trillium.css?v=9">
+  <meta name="color-scheme" content="dark">
+  <meta property="og:title" content="Trillium Base">
+  <meta property="og:description" content="A real-time Raspberry Pi 5 instrument base, configured from the browser.">
+  <meta property="og:url" content="https://m-of-n.com/ambient-lab/trillium/base/">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="https://m-of-n.com/ambient-lab/trillium/assets/og-image-1200x630.jpg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Trillium">
+</head>
+<body class="ambient trillium base">
+  <a class="skip" href="#main">Skip to content</a>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="tr-lockup" href="../"><img src="../assets/lockup.svg" width="390" height="112" alt="Trillium"></a>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="page-banner">
+      <div class="wrap">
+        <p class="back"><a href="../">Trillium</a></p>
+        <div class="hero hero-page">
+          <h1>Trillium Base</h1>
+          <p class="tagline">A real-time Raspberry Pi 5 instrument base, configured from the browser.</p>
+        </div>
+        <p class="lead">Trillium Base is a Raspberry Pi 5 configured for low-latency applications. It runs a real-time Linux kernel, PipeWire and Trillium Synth, a 32-voice software instrument, and is configured from Trillium Console in a web browser on the same network. It is a working system, documented so others can rebuild it.</p>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <figure class="product-shot">
+        <img src="../assets/trillium-base.jpg" width="1200" height="950" alt="Trillium Console Signals view: a patch panel with sources on the left, destinations on the right, and cables from Trillium Synth to the DAC.">
+      </figure>
+
+      <dl class="facts">
+        <dt>Hardware</dt>
+        <dd>Raspberry Pi 5 Model B with a 32 GB microSD card.</dd>
+        <dt>Audio</dt>
+        <dd>Allo Katana DAC HAT (ES9038Q2M, up to 32-bit), run at 48 kHz with a 64-frame PipeWire quantum (1.33 ms).</dd>
+        <dt>OS</dt>
+        <dd>Raspberry Pi OS Lite (Debian 13 Trixie) with the PREEMPT_RT 6.18 kernel. One CPU core is reserved for audio.</dd>
+        <dt>Connections</dt>
+        <dd>USB and BLE MIDI input, Ethernet, and DNS-SD discovery.</dd>
+        <dt>Software</dt>
+        <dd>Trillium Console, a web patch panel with levels, meters, instruments, scenes and service switches. Trillium Synth, a 32-voice wavetable and sample-playback instrument with an output limiter.</dd>
+        <dt>Status</dt>
+        <dd>Beta 0.3.0-beta.1 (SD image, not yet hardware-tested)</dd>
+        <dt>SD card image</dt>
+        <dd><a href="https://github.com/nymble/trillium-base/releases/download/v0.3.0-beta.1/trillium-base-0.3.0-beta.1.img.xz">Download trillium-base-0.3.0-beta.1.img.xz (278 MB)</a>, <a href="https://github.com/nymble/trillium-base/releases/download/v0.3.0-beta.1/trillium-base-0.3.0-beta.1.img.xz.sha256">SHA-256 checksum</a>, <a href="https://github.com/nymble/trillium-base/releases/tag/v0.3.0-beta.1">release page</a></dd>
+        <dt>Install</dt>
+        <dd><a href="https://github.com/nymble/trillium-base/blob/v0.3.0-beta.1/docs/image.md">Flash and first-boot instructions</a>. To build from source instead: <a href="https://github.com/nymble/trillium-base/blob/main/BUILD.md">Install / build instructions</a></dd>
+        <dt>Open</dt>
+        <dd>Source in the <a href="https://github.com/nymble/trillium-base">repository</a>, licensed GPL-3.0-or-later OR commercial. Open hardware is planned.</dd>
+        <dt>Marks</dt>
+        <dd>Trillium and the Trillium names and marks are trademarks of M-of-N and are not covered by these licences.</dd>
+      </dl>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <p>&copy; 2026 <a href="/">M-of-N</a>.</p>
+      <nav aria-label="Legal">
+        <ul>
+          <li><a href="../privacy/">Trillium privacy</a></li>
+          <li><a href="/privacy">Privacy</a></li>
+          <li><a href="/terms">Terms</a></li>
+        </ul>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

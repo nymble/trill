@@ -1,0 +1,164 @@
+/* SPDX-License-Identifier: GPL-3.0-only */
+/* Trillium pages only (/ambient-lab/trillium/): Stage palette from brand/BRAND.md.
+   Loaded after /style.css and tokens.css (--tr-*); the rest of m-of-n.com is untouched.
+   Colours come from tokens.css only. Fonts are self-hosted (SIL OFL 1.1, see fonts/). */
+
+@font-face { font-family: "Outfit"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("fonts/outfit-latin-wght-normal.woff2") format("woff2"); }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 100 900; font-display: swap; src: url("fonts/inter-latin-wght-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/ibm-plex-mono-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/ibm-plex-mono-latin-500-normal.woff2") format("woff2"); }
+
+/* Dark first, in light and dark system modes alike. */
+html:has(body.ambient.trillium) { color-scheme: dark; background: var(--tr-black); }
+body.ambient.trillium {
+  --bg: var(--tr-bg);
+  --fg: var(--tr-text);
+  --muted: var(--tr-text-muted);
+  --line: var(--tr-graphite);
+  --card: var(--tr-surface);
+  --accent: var(--tr-signal);
+  background: var(--tr-bg);
+  background-image: none;
+  animation: none;
+  color: var(--tr-text);
+  font-family: var(--tr-font-ui);
+}
+
+/* Header: the Trillium lockup only. M-of-N is a quiet footer credit. */
+body.ambient.trillium .site-header,
+body.ambient.trillium .page-banner { background-color: var(--tr-black); }
+body.ambient.trillium .site-header { border-bottom: 1px solid var(--tr-graphite); }
+/* Keep the lockup on the left: /style.css sends .wrap:not(:has(.brand)) to the right. */
+body.ambient.trillium .site-header .wrap { justify-content: flex-start; }
+body.ambient.trillium .tr-lockup { display: block; line-height: 0; }
+body.ambient.trillium .tr-lockup img { display: block; width: auto; height: 32px; }
+
+/* Banner: plain black ground. One trefoil mark per page (the lockup), no trails. */
+body.ambient.trillium .page-banner { padding-bottom: 2.5rem; background-image: none; }
+
+/* Type */
+body.ambient.trillium h1,
+body.ambient.trillium h3 { font-family: var(--tr-font-display); font-weight: 400; letter-spacing: -.01em; color: var(--tr-warm-white); }
+body.ambient.trillium .hero h1 { font-weight: 300; }
+body.ambient.trillium h2 { font-family: var(--tr-font-ui); color: var(--tr-ash); }
+body.ambient.trillium .prose h2,
+body.ambient.trillium.zero h2 { font-family: var(--tr-font-display); font-weight: 500; color: var(--tr-warm-white); }
+body.ambient.trillium .tagline { color: var(--tr-ash-light); }
+body.ambient.trillium .lead { color: var(--tr-warm-white); }
+
+/* Links: warm white with a signal underline; orange stays a signal. */
+body.ambient.trillium a { color: var(--tr-warm-white); text-decoration-color: var(--tr-signal); text-decoration-thickness: 1px; }
+body.ambient.trillium a:hover { text-decoration-thickness: 2px; }
+body.ambient.trillium a:focus-visible,
+body.ambient.trillium .menu summary:focus-visible { outline-color: var(--tr-signal); }
+body.ambient.trillium .back a { color: var(--tr-ash-light); }
+body.ambient.trillium .back a:hover { color: var(--tr-warm-white); }
+
+/* Surfaces */
+body.ambient.trillium section { border-top-color: var(--tr-graphite); }
+body.ambient.trillium .status { background: var(--tr-graphite); border-left-color: var(--tr-amber); border-radius: var(--tr-radius-control); }
+body.ambient.trillium .downloads li { background: var(--tr-graphite); border-color: var(--tr-graphite); border-radius: var(--tr-radius-card); }
+body.ambient.trillium .downloads .meta { font-family: var(--tr-font-mono); font-size: .8rem; color: var(--tr-ash-light); }
+body.ambient.trillium .downloads p:last-child { color: var(--tr-ash); }
+body.ambient.trillium .downloads .soon { border-color: var(--tr-unavailable); color: var(--tr-ash-light); }
+/* The one primary action: an orange pill with black text (never white on orange). */
+body.ambient.trillium .downloads li:first-child > a {
+  display: inline-block; padding: .35rem 1.1rem; border-radius: 999px;
+  background: var(--tr-signal); color: var(--tr-on-accent); text-decoration: none;
+}
+body.ambient.trillium .downloads li:first-child > a:hover { text-decoration: underline; text-decoration-color: var(--tr-on-accent); }
+body.ambient.trillium th { color: var(--tr-ash); }
+body.ambient.trillium th,
+body.ambient.trillium td { border-bottom-color: var(--tr-graphite); }
+body.ambient.trillium td strong { font-family: var(--tr-font-mono); font-weight: 500; }
+
+/* Schematic keeps its light ground (drawn for white); framed as a card. */
+body.ambient.trillium figure.schematic img { border-color: var(--tr-graphite); border-radius: var(--tr-radius-card); background: var(--tr-warm-white); }
+body.ambient.trillium figure.schematic figcaption { color: var(--tr-ash); }
+
+/* Footer: quiet M-of-N credit and legal links only. */
+body.ambient.trillium .site-footer { border-top-color: var(--tr-graphite); color: var(--tr-ash); font-size: .8rem; }
+body.ambient.trillium .site-footer a { color: var(--tr-ash); text-decoration: none; }
+body.ambient.trillium .site-footer a:hover { color: var(--tr-ash-light); text-decoration: underline; text-decoration-color: var(--tr-unavailable); }
+
+/* Print: the light ground from the kit; orange text becomes Rust. */
+@media print {
+  html:has(body.ambient.trillium) { background: var(--tr-warm-white); color-scheme: light; }
+  body.ambient.trillium,
+  body.ambient.trillium .site-header,
+  body.ambient.trillium .page-banner { background: var(--tr-warm-white); background-image: none; color: var(--tr-black); }
+  body.ambient.trillium h1, body.ambient.trillium h2, body.ambient.trillium h3,
+  body.ambient.trillium .lead, body.ambient.trillium a { color: var(--tr-black); }
+  body.ambient.trillium a { text-decoration-color: var(--tr-rust); }
+  body.ambient.trillium .downloads li:first-child > a { background: none; color: var(--tr-rust); padding: 0; }
+  body.ambient.trillium .tr-lockup { display: none; }
+}
+
+/* Links inside download notes read as text links, not as download names. */
+body.ambient.trillium .downloads p a { font-weight: inherit; font-size: inherit; text-decoration: underline; text-decoration-color: var(--tr-signal); }
+
+/* Top page: logo first, centred over the key visual. */
+body.ambient.trillium.home .page-banner { padding-bottom: 1rem; }
+body.ambient.trillium .hero-home { text-align: center; padding: 5.5rem 0 3rem; }
+body.ambient.trillium .hero-home h1 { margin: 0 0 1.25rem; line-height: 0; }
+body.ambient.trillium .hero-lockup { display: inline-block; width: min(360px, 78vw); height: auto; }
+body.ambient.trillium .hero-home .tagline { font-family: var(--tr-font-display); font-size: clamp(1.4rem, 4vw, 1.9rem); color: var(--tr-warm-white); margin: 0 0 .5rem; }
+body.ambient.trillium .hero-home .lead { margin: 0 auto; color: var(--tr-ash-light); }
+body.ambient.trillium .intros { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1rem; border-top: none; }
+body.ambient.trillium .card { background: var(--tr-graphite); border-color: var(--tr-graphite); border-radius: var(--tr-radius-card); }
+body.ambient.trillium .card:hover,
+body.ambient.trillium .card:focus-visible { border-color: var(--tr-signal); }
+body.ambient.trillium .card h2 { font-family: var(--tr-font-display); font-size: 1.4rem; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--tr-warm-white); margin: 0 0 .5rem; }
+body.ambient.trillium .card p { color: var(--tr-ash-light); }
+body.ambient.trillium .card .more { color: var(--tr-warm-white); text-decoration: underline; text-decoration-color: var(--tr-signal); font-weight: 500; }
+body.ambient.trillium .card .more::after { content: " \2192"; }
+
+/* Subpages share the zero width. */
+body.ambient.trillium.sense { --max: 56rem; }
+body.ambient.trillium.sense h2 { font-family: var(--tr-font-display); font-weight: 500; font-size: 1.15rem; text-transform: none; letter-spacing: 0; color: var(--tr-warm-white); margin: 0 0 .8rem; }
+body.ambient.trillium.sense section { padding: 1.75rem 0; }
+
+/* Trillium Zero: picture and fact list. */
+body.ambient.trillium .zero-spec { display: grid; grid-template-columns: 240px 1fr; gap: 1.5rem; align-items: start; margin: .5rem 0 2rem; }
+body.ambient.trillium figure.product-shot { margin: 0; width: 100%; }
+body.ambient.trillium figure.product-shot img { display: block; width: 100%; height: auto; border-radius: var(--tr-radius-control); }
+body.ambient.trillium .facts { display: grid; grid-template-columns: 5.5rem 1fr; gap: .35rem .75rem; margin: 0; font-size: .875rem; line-height: 1.4; }
+body.ambient.trillium .facts dt { font-family: var(--tr-font-mono); font-size: .75rem; color: var(--tr-ash); padding-top: .1rem; }
+body.ambient.trillium .facts dd { margin: 0; color: var(--tr-warm-white); }
+body.ambient.trillium .disclosure { margin: .75rem 0 0; font-size: .75rem; line-height: 1.4; color: var(--tr-ash); }
+/* Tighter Trillium Zero page. */
+body.ambient.trillium.zero .page-banner { padding-bottom: 1rem; }
+body.ambient.trillium.zero .hero-page { padding: .75rem 0 1rem; }
+body.ambient.trillium.zero .lead { margin-bottom: .5rem; }
+@media (max-width: 640px) {
+  body.ambient.trillium .zero-spec { grid-template-columns: 1fr; gap: 1rem; }
+  body.ambient.trillium figure.product-shot { width: min(240px, 70vw); }
+}
+
+/* Trillium Sense: downloads note, features, cheatsheet. */
+body.ambient.trillium .disclaimer { color: var(--tr-ash); font-size: .85rem; margin: 1rem 0 0; }
+body.ambient.trillium .downloads li:not(:first-child) > a { color: var(--tr-warm-white); }
+body.ambient.trillium .features { list-style: none; padding: 0; margin: 0; display: grid; gap: .45rem; }
+body.ambient.trillium .features li { color: var(--tr-ash-light); }
+body.ambient.trillium .features strong { color: var(--tr-warm-white); font-weight: 600; margin-right: .4rem; }
+body.ambient.trillium .cheatsheet h3 { font-family: var(--tr-font-ui); font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--tr-ash); margin: 1.5rem 0 .4rem; }
+body.ambient.trillium .cheatsheet h3:first-of-type { margin-top: 0; }
+body.ambient.trillium .table-scroll { overflow-x: auto; }
+body.ambient.trillium .cheatsheet table { font-size: .88rem; margin-bottom: .5rem; table-layout: fixed; }
+body.ambient.trillium .cheatsheet td:nth-child(2), body.ambient.trillium .cheatsheet th:nth-child(2) { width: 40%; }
+body.ambient.trillium .cheatsheet td { color: var(--tr-ash-light); line-height: 1.45; }
+body.ambient.trillium .cheatsheet th:first-child { width: 11rem; }
+body.ambient.trillium .cheatsheet td:first-child { color: var(--tr-warm-white); font-weight: 500; white-space: nowrap; width: 11rem; }
+body.ambient.trillium .cheatsheet .req { display: block; font-family: var(--tr-font-mono); font-size: .7rem; font-weight: 400; color: var(--tr-amber); }
+body.ambient.trillium .cheatsheet .note { color: var(--tr-ash); font-size: .85rem; margin: .25rem 0 0; }
+@media (max-width: 560px) {
+  body.ambient.trillium .cheatsheet table, body.ambient.trillium .cheatsheet thead, body.ambient.trillium .cheatsheet tbody,
+  body.ambient.trillium .cheatsheet tr, body.ambient.trillium .cheatsheet td { display: block; width: auto; }
+  body.ambient.trillium .cheatsheet thead { display: none; }
+  body.ambient.trillium .cheatsheet tr { border-bottom: 1px solid var(--tr-graphite); padding: .5rem 0; }
+  body.ambient.trillium .cheatsheet td,
+  body.ambient.trillium .cheatsheet td:first-child,
+  body.ambient.trillium .cheatsheet td:nth-child(2) { border: none; padding: .05rem 0; white-space: normal; width: auto; }
+  body.ambient.trillium .cheatsheet td:nth-child(3) { color: var(--tr-warm-white); }
+  body.ambient.trillium .cheatsheet td:nth-child(3)::before { content: "\2192\00a0"; color: var(--tr-signal); }
+}

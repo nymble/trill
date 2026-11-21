@@ -1,0 +1,3 @@
+d22034e890e309fd7f3677fedd9e2676613b35f1b8aaf8f43eaeb0c9bd791364  Trillium-macOS-0.8.0.dmg
+96a3281541cbf2303cc6c991bd75382fb4b8ef3ccaced6bc4e73eeb623322c56  xiao-sense-fw-0.8.0.uf2
+65820ebbbe5a993a3b8fd43b01eae5d04b8db09b16006be14cf03ce611cc5afa  xiao-sense-fw-ble-midi-0.8.0.uf2
