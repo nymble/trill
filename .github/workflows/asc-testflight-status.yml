@@ -1,5 +1,6 @@
 # TestFlight status check (and safe fixes) through the App Store Connect
-# API. Runs only on pushes to this branch. Never submits for review.
+# API. Runs only on pushes to this branch. May submit a build for TestFlight
+# beta review (external testers); never submits for App Store review.
 name: TestFlight status (ASC API)
 
 on:
@@ -25,6 +26,8 @@ jobs:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
           ASC_APP_ID: "6836153137"
           FIX: "1"
+          EXTERNAL_GROUP: "Trillium"
+          SUBMIT_BETA_REVIEW: "1"
           BUILD: "4"
           WHAT_TO_TEST: "Handpan instrument view (prototype): Presets > Handpan instrument (prototype) > Open instrument view. The view reads motion data over USB. Bluetooth MIDI pairing: Settings > Bluetooth MIDI (needs the BLE-MIDI firmware and a battery); Bluetooth carries instrument MIDI only."
         run: python3 tools/asc_testflight_status.py

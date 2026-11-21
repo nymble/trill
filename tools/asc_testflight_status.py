@@ -133,6 +133,24 @@ if fix:
                     "type": "betaBuildLocalizations", "attributes": {"locale": "en-US", "whatsNew": wtt},
                     "relationships": {"build": {"data": {"type": "builds", "id": bid}}}}})
                 print(f"  {plat} ({num}) What to Test created -> {s} {r.get('errors', '')}")
+    ext = os.environ.get("EXTERNAL_GROUP", "")
+    egids = [gid for gid, n in gmap.items() if n == ext] if ext else []
+    for (bid, plat, ver, num, proc, enc, exp, mos, ist, est, gs, up) in rows:
+        if not egids or (target and num != target) or proc != "VALID" or exp:
+            continue
+        if ext not in gs:
+            s, r = call("POST", f"/v1/betaGroups/{egids[0]}/relationships/builds",
+                        {"data": [{"type": "builds", "id": bid}]})
+            print(f"  {plat} ({num}) add to {ext} -> {s} {r.get('errors', '')}")
+        s, sub = call("GET", f"/v1/betaAppReviewSubmissions?filter[build]={bid}")
+        subs = sub.get("data", [])
+        if subs:
+            print(f"  {plat} ({num}) beta review: {[x['attributes'].get('betaReviewState') for x in subs]}")
+        elif os.environ.get("SUBMIT_BETA_REVIEW") == "1":
+            s, r = call("POST", "/v1/betaAppReviewSubmissions", {"data": {"type": "betaAppReviewSubmissions",
+                        "relationships": {"build": {"data": {"type": "builds", "id": bid}}}}})
+            st = (r.get("data") or {}).get("attributes", {}).get("betaReviewState")
+            print(f"  {plat} ({num}) submitted for TestFlight beta review -> {s} {st or ''} {r.get('errors', '')}")
     print("== Builds after fixes")
     show()
 
