@@ -95,7 +95,7 @@ make apple-project && open apple/Trillium.xcodeproj   # run, or sign with your o
 
 ## Licence
 
-Copyright © 2026 Nymble ([@nymble](https://github.com/nymble)).
+Copyright © 2026 M-of-N ([m-of-n.com](https://m-of-n.com)).
 
 This project is dual-licensed: you may use it under the GNU GPL v3.0 only or under a commercial license from M-of-N. For commercial terms, contact <https://m-of-n.com/contact>.
 

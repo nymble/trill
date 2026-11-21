@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Copyright (C) 2026 Nymble (https://github.com/nymble)
+// Copyright (C) 2026 M-of-N (https://m-of-n.com)
 
 //! `trill`: Linux bring-up tool for Trill sensors on an i2c-dev bus.
 

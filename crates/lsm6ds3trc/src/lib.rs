@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Copyright (C) 2026 Nymble (https://github.com/nymble)
+// Copyright (C) 2026 M-of-N (https://m-of-n.com)
 
 //! Minimal `no_std` driver for the ST **LSM6DS3TR-C** 6-axis IMU over I²C,
 //! written from the ST datasheet (DocID030071 Rev 3), section 9 (register map).

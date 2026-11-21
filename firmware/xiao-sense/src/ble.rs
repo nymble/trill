@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Copyright (C) 2026 Nymble (https://github.com/nymble)
+// Copyright (C) 2026 M-of-N (https://m-of-n.com)
 
 //! MIDI over Bluetooth LE (feature `ble-midi`), on the S140 SoftDevice that
 //! the factory bootloader already keeps in flash. The SoftDevice and the

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Copyright (C) 2026 Nymble (https://github.com/nymble)
+// Copyright (C) 2026 M-of-N (https://m-of-n.com)
 
 //! Firmware for the Seeed XIAO nRF52840 **Sense** (application image for
 //! the factory UF2 bootloader; see `link/memory.x` and docs/firmware-xiao-sense.md).

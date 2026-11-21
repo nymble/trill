@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-# Copyright (C) 2026 Nymble (https://github.com/nymble)
+# Copyright (C) 2026 M-of-N (https://m-of-n.com)
 """Capture the firmware's framed PCM test stream (second USB CDC port) to WAV.
 
   pcm_capture.py /dev/ttyACM1 -o take.wav --seconds 10     # Linux

@@ -24,4 +24,4 @@ Contributions are accepted only if they are compatible with this dual-licensing 
 
 ## Contact
 
-Contact the copyright holder, Nymble ([github.com/nymble](https://github.com/nymble)), by opening a GitHub issue titled "Commercial licensing enquiry" on this repository. Do not include confidential details in a public issue. The holder will reply with a private contact channel.
+Contact the copyright holder, M-of-N ([m-of-n.com](https://m-of-n.com)), by opening a GitHub issue titled "Commercial licensing enquiry" on this repository. Do not include confidential details in a public issue. The holder will reply with a private contact channel.
