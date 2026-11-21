@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: GPL-3.0-only
-# Copyright (C) 2026 Nymble (https://github.com/nymble)
+# Copyright (C) 2026 M-of-N (https://m-of-n.com)
 """Safe UF2 tooling for the Seeed XIAO nRF52840 (Sense) UF2 bootloader.
 
 Application-only by construction: every image is checked to stay inside

@@ -2,7 +2,7 @@
 
 ## This project
 
-Copyright © 2026 Nymble ([@nymble](https://github.com/nymble)). Licensed under GPL-3.0-only; see [LICENSE](LICENSE) and [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).
+Copyright © 2026 M-of-N ([m-of-n.com](https://m-of-n.com)). Licensed under GPL-3.0-only; see [LICENSE](LICENSE) and [COMMERCIAL-LICENSE.md](COMMERCIAL-LICENSE.md).
 
 The wiring diagrams in `docs/images/` are original drawings created for this project.
 

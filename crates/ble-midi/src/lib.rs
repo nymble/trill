@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Copyright (C) 2026 Nymble (https://github.com/nymble)
+// Copyright (C) 2026 M-of-N (https://m-of-n.com)
 
 //! MIDI over Bluetooth Low Energy (BLE-MIDI 1.0, the Apple / MMA
 //! specification) packet framing. `no_std`, no allocation.

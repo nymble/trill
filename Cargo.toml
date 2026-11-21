@@ -8,7 +8,7 @@ version = "0.8.0"
 edition = "2021"
 license = "GPL-3.0-only"
 repository = "https://github.com/nymble/trill"
-authors = ["Nymble (https://github.com/nymble)"]
+authors = ["M-of-N (https://m-of-n.com)"]
 
 [profile.release]
 lto = true

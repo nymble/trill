@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Copyright (C) 2026 Nymble (https://github.com/nymble)
+// Copyright (C) 2026 M-of-N (https://m-of-n.com)
 
 //! `no_std` status indication for a plain three-channel RGB LED (one GPIO per
 //! channel, no PWM, no addressable LED).

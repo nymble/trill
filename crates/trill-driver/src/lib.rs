@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-3.0-only
-// Copyright (C) 2026 Nymble (https://github.com/nymble)
+// Copyright (C) 2026 M-of-N (https://m-of-n.com)
 
 //! `no_std` driver for Bela Trill capacitive touch sensors, written against
 //! the [`embedded_hal::i2c::I2c`] and [`embedded_hal::delay::DelayNs`] 1.0 traits.
