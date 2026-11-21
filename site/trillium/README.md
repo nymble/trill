@@ -9,6 +9,7 @@ This folder is served at `https://m-of-n.com/ambient-lab/trillium/`:
 | `sense/` | `/ambient-lab/trillium/sense/` |
 | `privacy/` | `/ambient-lab/trillium/privacy/` |
 | `assets/` | `/ambient-lab/trillium/assets/` (Trillium pages only) |
+| `downloads/` | `/ambient-lab/trillium/downloads/` (app and firmware files linked from `sense/`, with `SHA256SUMS.txt`) |
 
 Only the Trillium pages live here. The rest of m-of-n.com, including `/ambient-lab/`, `/style.css`, `_headers`, `_redirects`, `sitemap.xml` and `functions/`, stays in the deploy tree and keeps its own palette. The pages still load `/style.css` for layout, then `assets/tokens.css` and `assets/trillium.css` for the Stage look from [`brand/BRAND.md`](../../brand/BRAND.md). Each page opens on the Trillium lockup; M-of-N appears only as a small footer credit (and, on the privacy page, as the operator named in the body).
 

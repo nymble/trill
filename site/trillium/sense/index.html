@@ -49,18 +49,23 @@
         <h2 id="downloads-title">Download</h2>
         <ul class="downloads">
           <li>
-            <a href="https://github.com/nymble/trillium/releases/download/v0.7.0/Trillium-macOS-0.7.0.dmg">macOS</a>
-            <p class="meta">0.7.0 · macOS 13 or later · universal · 2.36 MB</p>
-            <p>Unsigned. Open once, then System Settings › Privacy &amp; Security › Open Anyway (macOS 15+), or right-click › Open (macOS 13–14).</p>
+            <a href="../downloads/Trillium-macOS-0.8.0.dmg">macOS</a>
+            <p class="meta">0.8.0 · macOS 13 or later · universal · 2.83 MB</p>
+            <p>Prerelease build with the handpan instrument view. Same code as TestFlight build 4. Unsigned. Open once, then System Settings › Privacy &amp; Security › Open Anyway (macOS 15+), or right-click › Open (macOS 13–14).</p>
           </li>
           <li>
             <span class="dl-name">iPhone and iPad</span> <span class="soon">Coming soon</span>
-            <p class="meta">iOS and iPadOS 16 or later</p>
+            <p class="meta">iOS and iPadOS 16 or later · in TestFlight for invited testers</p>
           </li>
           <li>
-            <a href="https://github.com/nymble/trillium/releases/download/v0.7.0/xiao-sense-fw-0.7.0.uf2">Firmware</a>
-            <p class="meta">xiao-sense-fw-0.7.0.uf2 · application only · 280 KB</p>
-            <p>The app installs it for you. Files and SHA-256 checksums: <a href="https://github.com/nymble/trillium/releases/tag/v0.7.0">0.7.0 release</a>.</p>
+            <a href="../downloads/xiao-sense-fw-0.8.0.uf2">Firmware</a>
+            <p class="meta">xiao-sense-fw-0.8.0.uf2 · USB · application only · 290 KB</p>
+            <p>The app installs it for you.</p>
+          </li>
+          <li>
+            <a href="../downloads/xiao-sense-fw-ble-midi-0.8.0.uf2">Firmware with Bluetooth MIDI</a>
+            <p class="meta">xiao-sense-fw-ble-midi-0.8.0.uf2 · USB and Bluetooth · application only · 368 KB</p>
+            <p>For boards with a battery. Not yet tested on hardware. Install by hand: double-press RESET, then copy the file to the XIAO-SENSE drive. SHA-256 checksums: <a href="../downloads/SHA256SUMS.txt">SHA256SUMS.txt</a>.</p>
           </li>
           <li>
             <a href="https://github.com/nymble/trillium">Source code</a>
@@ -76,6 +81,8 @@
           <li><strong>Presets</strong> Ten built-in instruments. Edit, save, duplicate, export.</li>
           <li><strong>Mapping</strong> Notes, scale, range, controllers, taps, strikes, gestures. Edits play live.</li>
           <li><strong>Sensors</strong> Live motion charts, board pose, tilt zones, strike compass, Linear sensor touches.</li>
+          <li><strong>Instrument view</strong> Handpan (prototype): strike in 8 directions, tilt for a second ring and the ding.</li>
+          <li><strong>Bluetooth MIDI</strong> Pair a battery-powered board through the system panel. Settings and sensor data stay on USB.</li>
           <li><strong>MIDI monitor</strong> Every message the instrument sends.</li>
           <li><strong>Firmware</strong> Install and update from the app, with a backup first (macOS).</li>
         </ul>
@@ -83,11 +90,13 @@
 
       <!--
         Cheatsheet: keep in step with each release (see docs/releasing.md).
-        Describes release v0.7.0, the one linked under Download. Mirrors:
+        Describes 0.8.0 (TestFlight build 4, main 7e8c53e), the build linked under Download. Mirrors:
           apple/TrillKit/Sources/TrillKit/BuiltInPresets.swift  (presets)
           apple/TrillKit/Sources/TrillKit/ConfigProtocol.swift  (SensorMode, CCSource, ScaleKind, parameter ranges)
           apple/TrillKit/Sources/TrillKit/MappingSummary.swift  (input -> MIDI wording, strike chord tones)
           crates/instrument-events/src/engine.rs                (Mode, MIDI behaviour)
+          apple/TrillKit/Sources/TrillKit/Handpan.swift         (handpan scales, rings, layouts)
+          docs/instrument-view.md                               (instrument view defaults)
           CHANGELOG.md                                          (release section)
         List only what the linked release ships.
       -->
@@ -136,6 +145,19 @@
             <tr><td>Flick gestures</td><td>Flick, zig-zag</td><td>Three drum notes</td></tr>
             <tr><td>Touch strip <span class="req">Linear sensor</span></td><td>Touch strip</td><td>Strip notes · turn CC74 · tilt CC1</td></tr>
             <tr><td>Touch + expression <span class="req">Linear sensor</span></td><td>Touch strip</td><td>Strip notes · roll CC74 · tilt CC1, smoothed</td></tr>
+          </tbody>
+        </table>
+        </div>
+
+        <h3>Handpan instrument view (prototype)</h3>
+        <p class="note">Presets › Handpan instrument (prototype) › Open instrument view. Detection runs in the app from motion data over USB; notes come from the app's MIDI source &ldquo;Trillium Instrument&rdquo;, so a music app or synth is needed to hear them.</p>
+        <div class="table-scroll">
+        <table>
+          <thead><tr><th>Control</th><th>Motion in</th><th>MIDI out</th></tr></thead>
+          <tbody>
+            <tr><td>Strike</td><td>Strike on a stick or a string in 8 directions</td><td>One tone field per direction · velocity from strength</td></tr>
+            <tr><td>Tilt</td><td>Past 30° · past 60° (both adjustable)</td><td>Ring 2 · the ding</td></tr>
+            <tr><td>Scale</td><td>Kurd, Celtic Minor, Integral, Hijaz, Pygmy, Amara, Equinox, La Sirena</td><td>Any ding E2–A3 · clockwise or alternating layout</td></tr>
           </tbody>
         </table>
         </div>
