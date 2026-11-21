@@ -1,0 +1,30 @@
+# TestFlight status check (and safe fixes) through the App Store Connect
+# API. Runs only on pushes to this branch. Never submits for review.
+name: TestFlight status (ASC API)
+
+on:
+  push:
+    branches: [ci/asc-testflight-status]
+    paths: [.github/workflows/asc-testflight-status.yml, tools/asc_testflight_status.py]
+
+permissions:
+  contents: read
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m pip install --quiet "pyjwt[crypto]==2.10.1"
+      - name: Report and fix
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_APP_ID: "6836153137"
+          FIX: "1"
+          BUILD: "4"
+          WHAT_TO_TEST: "Handpan instrument view (prototype): Presets > Handpan instrument (prototype) > Open instrument view. The view reads motion data over USB. Bluetooth MIDI pairing: Settings > Bluetooth MIDI (needs the BLE-MIDI firmware and a battery); Bluetooth carries instrument MIDI only."
+        run: python3 tools/asc_testflight_status.py
